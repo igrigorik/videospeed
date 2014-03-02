@@ -2,7 +2,7 @@
   "name": "HTML5 Video Playback Speed Controller",
   "version": "0.1.0",
   "manifest_version": 2,
-  "description": "Lean in and speed up your video learning with handy shortcuts to accelerate, slow-down, and rewind your video right from your keyboard. This extension adds a handy video controller to any HTML5 video, regardless of the type of player. Shortcuts: 'a' for rewind, 's' for slower, and 'd' for faster playback. To remove the controller simply click on the speed indicator in the top right.",
+  "description": "Lean in and speed up your video learning with handy shortcuts to accelerate, slow-down, and rewind your video via your keyboard.",
   "homepage_url": "https://github.com/igrigorik/videospeed",
   "icons": {
     "16": "icons/icon16.png",
