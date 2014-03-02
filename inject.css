@@ -1,0 +1,49 @@
+.tc-videoHost {
+  position: relative;
+  text-align: center;
+}
+
+.tc-videoController {
+  position: absolute;
+  background: black;
+  color: white;
+
+  border-radius: 5px;
+  padding: 5px;
+  margin: 10px;
+  line-height: 1.8em;
+
+  cursor: pointer;
+  z-index: 9999999;
+  opacity: 0.3;
+
+  font-family: Verdana;
+  font-size: 13px;
+}
+
+.tc-videController button {
+}
+
+.tc-videoController:hover {
+  opacity: 0.7;
+}
+
+.tc-videoController:hover .tc-controls {
+  display: inline;
+}
+
+.tc-controls {
+  display: none;
+  margin-left:1em;
+}
+
+.tc-controls button {
+  color: black !important;
+  background: white !important;
+  font-weight: bold !important;
+  margin: 0 2px !important;
+  border-radius: 5px !important;
+  padding: 3px 8px !important;
+  font-size: 15px !important;
+  line-height: 15px !important;
+}
