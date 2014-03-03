@@ -64,6 +64,11 @@ chrome.extension.sendMessage({}, function(response) {
           e.preventDefault();
           e.stopPropagation();
         }, true);
+
+        container.addEventListener('dblclick', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
       }
 
       function runAction(action) {
