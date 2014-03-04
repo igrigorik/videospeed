@@ -64,6 +64,18 @@ chrome.extension.sendMessage({}, function(response) {
           e.preventDefault();
           e.stopPropagation();
         }, true);
+
+        // Prevent full screen mode on YouTube
+        container.addEventListener('dblclick', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
+
+        // Prevent full screen mode on Vimeo
+        container.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);        
       }
 
       function runAction(action) {
