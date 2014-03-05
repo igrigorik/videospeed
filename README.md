@@ -21,7 +21,11 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **s** - will lower playback speed.
 * **d** - will accelerate playback speed.
 
-Enjoy. Also, as a protip for YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5)!
+Also, a few tips for enabling / forcing HTML5 video:
+
+ * YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5).
+ * Udemy: account settings > preferences > HTML5 player ([instructions](http://support.udemy.com/knowledgebase/articles/198167-how-do-i-change-my-video-player-settings-)).
+ * If you're adventerous, try disabling the Flash plugin in Chrome: chrome://plugins/
 
 
 ### Wishlist
