@@ -12,6 +12,17 @@ chrome.extension.sendMessage({}, function(response) {
         this.video.addEventListener('ratechange', function(event) {
           this.speedIndicator.textContent = this.getSpeed();
         }.bind(this));
+
+        // Resets speedIndicator display when src changes (e.g. youtube doesn't reload page)
+        this.observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.attributeName.toLowerCase() == 'src') {
+              self.speedIndicator.textContent = '1.00';
+            }
+          });
+        });
+        self = this;
+        this.observer.observe(this.video, {attributes: true, attributeFilter: ['src']});
       };
 
       tc.videoController.prototype.getSpeed = function() {
