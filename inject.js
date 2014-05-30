@@ -88,7 +88,7 @@ chrome.extension.sendMessage({}, function(response) {
               v.playbackRate -= 0.10;
               v.currentTime -= 10;
             } else if (action === 'faster') { v.playbackRate += 0.10 }
-              else if (action === 'slower') { v.playbackRate -= 0.10 }
+              else if (action === 'slower') { v.playbackRate = Math.max(v.playbackRate - 0.10, 0.00) }
           }
         });
       }
