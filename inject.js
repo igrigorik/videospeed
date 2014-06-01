@@ -85,10 +85,10 @@ chrome.extension.sendMessage({}, function(response) {
         videoTags.forEach(function(v) {
           if (!v.paused && !v.classList.contains("vc-cancelled")) {
             if (action === 'rewind') {
-              v.playbackRate -= 0.20;
+              v.playbackRate -= 0.10;
               v.currentTime -= 10;
             } else if (action === 'faster') { v.playbackRate += 0.10 }
-              else if (action === 'slower') { v.playbackRate -= 0.10 }
+              else if (action === 'slower') { v.playbackRate = Math.max(v.playbackRate - 0.10, 0.00) }
           }
         });
       }

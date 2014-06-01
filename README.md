@@ -17,7 +17,7 @@ HTML5 video provides a native API to accelerate playback of any video. The probl
 
 Once the extension is installed simply navigate to any page that offers HTML5 video ([example](http://www.youtube.com/watch?v=E9FxNzv1Tr8)), and you'll see a speed indicator in top left corner. Hover over the indicator to reveal the controls to accelerate, slowdown, or rewind the video (10 seconds + lowers playback speed). Or, even better, simply use your keyboard:
 
-* **a** - will rewind video 10s and lower playback speed.
+* **a** - will rewind video 10s and lower playback speed **by 10 points**.
 * **s** - will lower playback speed.
 * **d** - will accelerate playback speed.
 
