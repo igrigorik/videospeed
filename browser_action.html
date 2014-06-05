@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style type="text/css">
+    #mainPopup {
+      padding: 5px;
+      height: 20px;
+      width: 120px;
+      font-family: Helvetica, Ubuntu, Arial, sans-serif;
+    }
+    .tc-controls button {
+      color: black !important;
+      background: white !important;
+      font-weight: bold !important;
+      margin: 0 2px !important;
+      border-radius: 5px !important;
+      padding: 3px 8px !important;
+      font-size: 15px !important;
+      line-height: 15px !important;
+    }
+  </style>
+</head>
+<body>
+<div id="mainPopup">
+  <div class="tc-controls">
+    <button data-control="decrease" id="decrease-video-speed">-</button>
+    <span id="current-video-speed">1</span>
+    <button data-control="increase" id="increase-video-speed">+</button>
+  </div>
+</div>
+<script type="text/javascript" src="browser_action.js"></script>
+</body>
+</html>

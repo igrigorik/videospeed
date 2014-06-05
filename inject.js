@@ -12,6 +12,14 @@ chrome.extension.sendMessage({}, function(response) {
         this.video.addEventListener('ratechange', function(event) {
           this.speedIndicator.textContent = this.getSpeed();
         }.bind(this));
+        chrome.storage.sync.get('speed', function(storage) {
+          target.playbackRate = storage.speed;
+        });
+        chrome.storage.onChanged.addListener(function(storage) {
+          if(storage.speed) {
+            target.playbackRate = storage.speed.newValue;
+          }
+        });
       };
 
       tc.videoController.prototype.getSpeed = function() {
