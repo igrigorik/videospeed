@@ -27,7 +27,7 @@
     }
 
     function decrease() {
-      set_speed(common_speed - 0.10);
+      set_speed(Math.max(common_speed - 0.10, 0.00));
       return common_speed;
     }
 
