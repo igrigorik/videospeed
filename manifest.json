@@ -16,10 +16,5 @@
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
     }
-  ],
-  "browser_action": {
-      "default_icon": "icons/icon16.png",
-      "default_title": "Video Playback Speed Controller",
-      "default_popup": "browser_action.html"
-  }
+  ]
 }
