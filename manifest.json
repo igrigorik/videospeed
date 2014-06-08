@@ -1,6 +1,6 @@
 {
   "name": "HTML5 Video Playback Speed Controller",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "manifest_version": 2,
   "description": "Lean in and speed up your video learning with handy shortcuts to accelerate, slow-down, and rewind your video via your keyboard.",
   "homepage_url": "https://github.com/igrigorik/videospeed",
@@ -9,7 +9,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": [ "activeTab" ],
+  "permissions": [ "activeTab", "storage" ],
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*"],
