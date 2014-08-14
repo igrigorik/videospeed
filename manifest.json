@@ -10,6 +10,7 @@
     "128": "icons/icon128.png"
   },
   "permissions": [ "activeTab", "storage" ],
+  "options_page": "options.html",
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*"],

@@ -92,18 +92,24 @@ chrome.extension.sendMessage({}, function(response) {
         videoTags.forEach(function(v) {
           if (!v.paused && !v.classList.contains("vc-cancelled")) {
             if (action === 'rewind') {
-              v.playbackRate -= 0.10;
-              v.currentTime -= 10;
-            } else if (action === 'faster') { v.playbackRate += 0.10 }
-              else if (action === 'slower') { v.playbackRate = Math.max(v.playbackRate - 0.10, 0.00) }
+              v.playbackRate -= speedStep;
+              v.currentTime -= rewindTime;
+            } else if (action === 'faster') { 
+                v.playbackRate += speedStep }
+              else if (action === 'slower') { 
+                  v.playbackRate = Math.max(v.playbackRate - speedStep, 0.00) }
           }
         });
       }
 
-      document.addEventListener('keydown', function(event) {
-        if      (event.keyCode == 65) { runAction('rewind') } // A
-        else if (event.keyCode == 68) { runAction('faster') } // D
-        else if (event.keyCode == 83) { runAction('slower') } // S
+      document.addEventListener('keypress', function(event) {
+        
+        // if lowercase letter pressed, check for uppercase key code
+        var keyCode = String.fromCharCode(event.keyCode).toUpperCase().charCodeAt();
+
+        if      (keyCode == rewindKeyCode) { runAction('rewind') }
+        else if (keyCode == fasterKeyCode) { runAction('faster') } 
+        else if (keyCode == slowerKeyCode) { runAction('slower') }
 
         return false;
       }, true);
@@ -120,6 +126,23 @@ chrome.extension.sendMessage({}, function(response) {
       videoTags.forEach(function(video) {
         var control = new tc.videoController(video);
       });
+        
+      var speedStep, rewindTime, rewindKeyCode, slowerKeyCode, fasterKeyCode;
+      
+      chrome.storage.sync.get({ 
+        speedStep:        0.25, // default 0.25x
+        rewindTime:       10,   // default 10s
+          rewindKeyCode:  65,   // default: A
+          slowerKeyCode:  83,   // default: S
+          fasterKeyCode:  68    // default: D
+        },              
+        function(storage) { 
+          speedStep     = Number(storage.speedStep);
+          rewindTime    = Number(storage.rewindTime);
+          rewindKeyCode = Number(storage.rewindKeyCode);
+          slowerKeyCode = Number(storage.slowerKeyCode);
+          fasterKeyCode = Number(storage.fasterKeyCode);
+      });                     
     }
   }, 10);
 });

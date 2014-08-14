@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>HTML5 Video Playback Speed Controller Options</title>
+		<link rel="stylesheet" type="text/css" href="options.css" />	
+	</head>
+	<body>
+		<header>
+			<h1>HTML5 Video Playback Speed Controller</h1>
+		</header>
+        
+        <section>
+            <h3>Shortcuts</h3>
+            <div class="row">
+                <label for="rewindKeyInput">Rewind</label>
+                <input id="rewindKeyInput" placeholder="Press a Key" type="text" value=""/>
+            </div>
+            <div class="row">
+                <label for="slowerKeyInput">Slow Down</label>
+                <input id="slowerKeyInput" placeholder="Press a Key" type="text" value=""/>
+            </div>
+            <div class="row">
+                <label for="fasterKeyInput">Speed Up</label>
+                <input id="fasterKeyInput" placeholder="Press a Key" type="text" value=""/>
+            </div>
+        </section>
+      
+        <section>
+			<h3>Others</h3>
+            <div class="row">
+                <label for="rewindTime">Rewind Time (s)</label> 
+                <input id="rewindTime" type="text" value=""/> 
+            </div>
+            <div class="row">
+                <label for="speedStep">Speed change step</label>
+                <select id="speedStep">
+                    <option value="0.10">0.10 x</option>
+                    <option value="0.20">0.20 x</option>
+                    <option value="0.25">0.25 x</option>
+                    <option value="0.50">0.50 x</option>
+                    <option value="0.75">0.75 x</option>
+                    <option value="1.00">1.00 x</option>
+                </select>
+            </div>
+        </section>
+		
+        <button id="save">Save</button>  <button id="restore">Restore Defaults</button>
+        <div id="status"></div>
+        
+	</body>
+    <script type="text/javascript" src="options.js"></script>
+</html>
