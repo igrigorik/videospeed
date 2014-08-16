@@ -130,7 +130,7 @@ chrome.extension.sendMessage({}, function(response) {
       var speedStep, rewindTime, rewindKeyCode, slowerKeyCode, fasterKeyCode;
       
       chrome.storage.sync.get({ 
-        speedStep:        0.25, // default 0.25x
+        speedStep:        0.1, // default 0.10x
         rewindTime:       10,   // default 10s
           rewindKeyCode:  65,   // default: A
           slowerKeyCode:  83,   // default: S

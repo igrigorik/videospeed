@@ -1,10 +1,18 @@
 function recordKeyPress(e) {
-  var normalizedKeyCode = String.fromCharCode(e.keyCode).toUpperCase().charCodeAt();
-  e.target.value = getInputMsg(normalizedKeyCode);
-  e.target.keyCode = normalizedKeyCode;
+  var normalizedChar = String.fromCharCode(e.keyCode).toUpperCase();
+  e.target.value = normalizedChar;
+  e.target.keyCode = normalizedChar.charCodeAt();
   
   e.preventDefault();
   e.stopPropagation();
+};
+
+function inputFilterNumbersOnly(e) {
+  var char = String.fromCharCode(e.keyCode);
+  if (!/[\d\.]$/.test(char) || !/^\d+(\.\d*)?$/.test(e.target.value + char)) {
+    e.preventDefault();
+    e.stopPropagation();
+  } 
 };
 
 function inputFocus(e) {
@@ -12,28 +20,25 @@ function inputFocus(e) {
 };
 
 function inputBlur(e) {
-   e.target.value = getInputMsg(e.target.keyCode);
+   e.target.value = String.fromCharCode(e.target.keyCode).toUpperCase();
 };
 
 function updateShortcutInputText(inputId, keyCode) {
-  document.getElementById(inputId).value = getInputMsg(keyCode);
+  document.getElementById(inputId).value = String.fromCharCode(keyCode).toUpperCase();
   document.getElementById(inputId).keyCode = keyCode;
 }
-
-function getInputMsg(keyCode) {
-  return "Shortcut set to " + String.fromCharCode(keyCode).toUpperCase(); 
-};
 
 // Saves options to chrome.storage
 function save_options() {
  
-  var speedStep     = Number(document.getElementById('speedStep').value);
+  var speedStep     = document.getElementById('speedStep').value;
   var rewindTime    = document.getElementById('rewindTime').value;
   var rewindKeyCode = document.getElementById('rewindKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
   
-  rewindTime    = isNaN(rewindTime) ? 10 : rewindTime;
+  speedStep     = isNaN(speedStep) ? 0.1 : Number(speedStep);
+  rewindTime    = isNaN(rewindTime) ? 10 : Number(rewindTime);
   rewindKeyCode = isNaN(rewindKeyCode) ? 65 : rewindKeyCode;
   slowerKeyCode = isNaN(slowerKeyCode) ? 83 : slowerKeyCode;
   fasterKeyCode = isNaN(fasterKeyCode) ? 68 : fasterKeyCode;
@@ -57,7 +62,7 @@ function save_options() {
 // Restores options from chrome.storage
 function restore_options() {
   chrome.storage.sync.get({
-    speedStep: 0.25,
+    speedStep: 0.1,
     rewindTime: 10,
     rewindKeyCode: 65,
     slowerKeyCode: 83,
@@ -74,7 +79,7 @@ function restore_options() {
 function restore_defaults() {
   
   chrome.storage.sync.set({
-    speedStep: 0.25,
+    speedStep: 0.1,
     rewindTime: 10,
     rewindKeyCode: 65,
     slowerKeyCode: 83,
@@ -99,6 +104,9 @@ document.getElementById('restore').addEventListener('click', restore_defaults);
 initShortcutInput('rewindKeyInput');
 initShortcutInput('slowerKeyInput');
 initShortcutInput('fasterKeyInput');
+
+document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
+document.getElementById('speedStep').addEventListener('keypress', inputFilterNumbersOnly);
 
 function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('focus', inputFocus);

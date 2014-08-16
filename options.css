@@ -47,7 +47,7 @@ section h3 {
 	margin-left: -18px;
 }
 
-button, select {
+button {
 	-webkit-appearance: none;
 	position: relative;
 	
@@ -56,7 +56,7 @@ button, select {
 	min-width: 4em;
 	min-height: 2em;
 	
-	background-image:         linear-gradient(#EDEDED, #EDEDED 38%, #DEDEDE);
+	background-image: linear-gradient(#EDEDED, #EDEDED 38%, #DEDEDE);
 	border: 1px solid rgba(0,0,0,0.25);
 	border-radius: 2px;
 	outline: none;
@@ -68,16 +68,10 @@ button, select {
     user-select: none;
 }
 
-select {
-    padding-right: 20px;
-
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAAICAYAAAAbQcSUAAAAaUlEQVQoz2P4//8/A7UwdkEGhiggTsODo4g2LBEImJmZvwE1/UfHIHGQPNGGAbHCggULFrKxsf1ENgjEB4mD5EnxJoaByAZB5Yk3DNlAPj6+L8gGkWUYzMC3b982IRtEtmFQjaxYxDAwAGi4TwMYKNLfAAAAAElFTkSuQmCC'), linear-gradient(#EDEDED, #EDEDED 38%, #DEDEDE);
-    background-position: right center;
-    background-repeat: no-repeat;
-}
 
 input[type="text"] {
-    width: 120px;
+    width: 75px;
+    text-align: center;
 }
 
 .row {
@@ -87,11 +81,6 @@ input[type="text"] {
 label {
     display: inline-block;
     width: 150px;
-}
-
-#rewindTime {
-    width: 69px;
-    text-align: center;
 }
 
 #status {
