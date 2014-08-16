@@ -69,7 +69,7 @@ function restore_options() {
     rewindKeyCode: 65,
     slowerKeyCode: 83,
     fasterKeyCode: 68,
-    rememberSpeed: true
+    rememberSpeed: false
   }, function(storage) {
     document.getElementById('speedStep').value = storage.speedStep.toFixed(2);
     document.getElementById('rewindTime').value = storage.rewindTime;
@@ -87,7 +87,8 @@ function restore_defaults() {
     rewindTime: 10,
     rewindKeyCode: 65,
     slowerKeyCode: 83,
-    fasterKeyCode: 68
+    fasterKeyCode: 68,
+    rememberSpeed: false
   }, function() {
     restore_options();
     // Update status to let user know options were saved.

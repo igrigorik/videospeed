@@ -10,7 +10,7 @@ chrome.extension.sendMessage({}, function(response) {
 
         chrome.storage.sync.get({
           speed: '1.00',
-          rememberSpeed: true
+          rememberSpeed: false
         }, function(storage) {
           var speed = storage.rememberSpeed ? storage.speed : '1.00';
           target.playbackRate = speed;
