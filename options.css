@@ -80,7 +80,11 @@ input[type="text"] {
 
 label {
     display: inline-block;
-    width: 150px;
+    width: 170px;
+}
+
+label[for=rememberSpeed] {
+  width: 200px;
 }
 
 #status {

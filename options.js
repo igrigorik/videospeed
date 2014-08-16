@@ -36,6 +36,7 @@ function save_options() {
   var rewindKeyCode = document.getElementById('rewindKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
+  var rememberSpeed = document.getElementById('rememberSpeed').checked;
   
   speedStep     = isNaN(speedStep) ? 0.1 : Number(speedStep);
   rewindTime    = isNaN(rewindTime) ? 10 : Number(rewindTime);
@@ -48,7 +49,8 @@ function save_options() {
     rewindTime:     rewindTime,
     rewindKeyCode:  rewindKeyCode,
     slowerKeyCode:  slowerKeyCode,
-    fasterKeyCode:  fasterKeyCode
+    fasterKeyCode:  fasterKeyCode,
+    rememberSpeed: rememberSpeed
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -66,13 +68,15 @@ function restore_options() {
     rewindTime: 10,
     rewindKeyCode: 65,
     slowerKeyCode: 83,
-    fasterKeyCode: 68
+    fasterKeyCode: 68,
+    rememberSpeed: true
   }, function(storage) {
     document.getElementById('speedStep').value = storage.speedStep.toFixed(2);
     document.getElementById('rewindTime').value = storage.rewindTime;
     updateShortcutInputText('rewindKeyInput', storage.rewindKeyCode);
     updateShortcutInputText('slowerKeyInput', storage.slowerKeyCode);
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
+    document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
   });
 }
 

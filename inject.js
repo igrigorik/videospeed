@@ -8,8 +8,11 @@ chrome.extension.sendMessage({}, function(response) {
         this.video = target;
         this.initializeControls();
 
-        chrome.storage.sync.get('speed', function(storage) {
-          var speed = storage.speed ? storage.speed : '1.00';
+        chrome.storage.sync.get({
+          speed: '1.00',
+          rememberSpeed: true
+        }, function(storage) {
+          var speed = storage.rememberSpeed ? storage.speed : '1.00';
           target.playbackRate = speed;
           this.speedIndicator.textContent = speed;
         }.bind(this));
