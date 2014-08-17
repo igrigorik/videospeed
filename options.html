@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>HTML5 Video Playback Speed Controller Options</title>
+		<link rel="stylesheet" type="text/css" href="options.css" />	
+	</head>
+	<body>
+		<header>
+			<h1>HTML5 Video Playback Speed Controller</h1>
+		</header>
+        
+        <section>
+            <h3>Shortcuts</h3>
+            <div class="row">
+                <label for="rewindKeyInput">Rewind</label>
+                <input id="rewindKeyInput" placeholder="press a key" type="text" value=""/>
+            </div>
+            <div class="row">
+                <label for="slowerKeyInput">Slow Down</label>
+                <input id="slowerKeyInput" placeholder="press a key" type="text" value=""/>
+            </div>
+            <div class="row">
+                <label for="fasterKeyInput">Speed Up</label>
+                <input id="fasterKeyInput" placeholder="press a key" type="text" value=""/>
+            </div>
+        </section>
+      
+        <section>
+			<h3>Others</h3>
+            <div class="row">
+                <label for="rewindTime">Rewind Time (s)</label> 
+                <input id="rewindTime" type="text" value=""/> 
+            </div>
+            <div class="row">
+                <label for="speedStep">Speed Change Step</label>
+                <input id="speedStep" type="text" value=""/>
+            </div>
+            <div class="row">
+                <label for="rememberSpeed">Remember Playback Speed</label>
+                <input id="rememberSpeed" type="checkbox"/>
+            </div>
+        </section>
+		
+        <button id="save">Save</button>  <button id="restore">Restore Defaults</button>
+        <div id="status"></div>
+        
+	</body>
+    <script type="text/javascript" src="options.js"></script>
+</html>
