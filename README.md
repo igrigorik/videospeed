@@ -1,10 +1,10 @@
 # The science of accelerated playback
 
-**TL;DR: faster playback can translate to better engagement, retention, and much quicker progress.**
+**TL;DR: faster playback translates to quick progress, better engagement, and retention.**
 
 Average adult reads prose text at [250 to 300 words per minute](http://www.paperbecause.com/PIOP/files/f7/f7bb6bc5-2c4a-466f-9ae7-b483a2c0dca4.pdf) (wpm). By contrast, the average rate of speech for English speakers is ~150 wpm, with slide presentations often closer to 100 wpm. As a result, when given the choice, many viewers [speed up video playback to ~1.3~1.5 its recorded rate](http://research.microsoft.com/en-us/um/people/lhe/papers/chi99.tc.pdf) to compensate for the difference.
 
-Better, many viewers report that [accelerated viewing keeps their attention longer](http://www.enounce.com/docs/BYUPaper020319.pdf): faster delivery keeps the viewer more engaged with the content. With a little training, many end up watching videos at speeds twice the normal rate and even higher. In fact, some studies report that after being exposed to accelerated playback, [listeners become uncomfortable](http://xenia.media.mit.edu/~barons/html/avios92.html#beasleyalteredspeech) if they are forced to return to normal rate of presentation.
+Many viewers report that [accelerated viewing keeps their attention longer](http://www.enounce.com/docs/BYUPaper020319.pdf): faster delivery keeps the viewer more engaged with the content. In fact, with a little training many end up watching videos at 2x+ the recorded speed. Some studies report that after being exposed to accelerated playback, [listeners become uncomfortable](http://xenia.media.mit.edu/~barons/html/avios92.html#beasleyalteredspeech) if they are forced to return to normal rate of presentation.
 
 
 ## Faster HTML5 Video
@@ -21,18 +21,15 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **s** - will lower playback speed.
 * **d** - will accelerate playback speed.
 
-Also, a few tips for enabling / forcing HTML5 video:
+Note that you can customize these shortcuts in the extension settings page. Also, a few tips for enabling and forcing HTML5 video:
 
  * YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5).
- * Udemy: account settings > preferences > HTML5 player ([instructions](http://support.udemy.com/knowledgebase/articles/198167-how-do-i-change-my-video-player-settings-)).
- * If you're adventerous, try disabling the Flash plugin in Chrome: chrome://plugins/
+ * If you're adventurous, try disabling the Flash plugin in Chrome in chrome://plugins/
 
 
 ### Wishlist
 
 * Make it not suck with Vimeo content: "s" shortcut and button clicks
-* Some YouTube videos still fallback to flash: force iOS user-agent to force HTML5?
-* Add plumbing for configurable shortcuts?
 * Your awesome feature here...
 
 
