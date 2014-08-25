@@ -1,5 +1,6 @@
 {
   "name": "Video Speed Controller",
+  "short_name": "videospeed",
   "version": "0.2.0",
   "manifest_version": 2,
   "description": "Speed up, slow down, and rewind any HTML5 video with quick shortcuts.",
