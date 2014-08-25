@@ -13,8 +13,8 @@
   "options_page": "options.html",
   "browser_action": {
     "default_icon": {
-      "19": "images/icon16.png",
-      "38": "images/icon48.png"
+      "19": "images/icon19.png",
+      "38": "images/icon38.png"
     },
     "default_icon": "icons/icon48.png",
     "default_popup": "popup.html"
