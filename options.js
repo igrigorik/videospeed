@@ -2,7 +2,7 @@ function recordKeyPress(e) {
   var normalizedChar = String.fromCharCode(e.keyCode).toUpperCase();
   e.target.value = normalizedChar;
   e.target.keyCode = normalizedChar.charCodeAt();
-  
+
   e.preventDefault();
   e.stopPropagation();
 };
@@ -12,7 +12,7 @@ function inputFilterNumbersOnly(e) {
   if (!/[\d\.]$/.test(char) || !/^\d+(\.\d*)?$/.test(e.target.value + char)) {
     e.preventDefault();
     e.stopPropagation();
-  } 
+  }
 };
 
 function inputFocus(e) {
@@ -30,14 +30,14 @@ function updateShortcutInputText(inputId, keyCode) {
 
 // Saves options to chrome.storage
 function save_options() {
- 
+
   var speedStep     = document.getElementById('speedStep').value;
   var rewindTime    = document.getElementById('rewindTime').value;
   var rewindKeyCode = document.getElementById('rewindKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
-  
+
   speedStep     = isNaN(speedStep) ? 0.1 : Number(speedStep);
   rewindTime    = isNaN(rewindTime) ? 10 : Number(rewindTime);
   rewindKeyCode = isNaN(rewindKeyCode) ? 65 : rewindKeyCode;
@@ -81,7 +81,6 @@ function restore_options() {
 }
 
 function restore_defaults() {
-  
   chrome.storage.sync.set({
     speedStep: 0.1,
     rewindTime: 10,
@@ -98,23 +97,24 @@ function restore_defaults() {
       status.textContent = '';
     }, 1000);
   });
-  
 }
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', restore_options);
-document.getElementById('save').addEventListener('click', save_options);
-document.getElementById('restore').addEventListener('click', restore_defaults);
-
-initShortcutInput('rewindKeyInput');
-initShortcutInput('slowerKeyInput');
-initShortcutInput('fasterKeyInput');
-
-document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
-document.getElementById('speedStep').addEventListener('keypress', inputFilterNumbersOnly);
 
 function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('focus', inputFocus);
   document.getElementById(inputId).addEventListener('blur', inputBlur);
   document.getElementById(inputId).addEventListener('keypress', recordKeyPress);
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+  restore_options();
+
+  document.getElementById('save').addEventListener('click', save_options);
+  document.getElementById('restore').addEventListener('click', restore_defaults);
+
+  initShortcutInput('rewindKeyInput');
+  initShortcutInput('slowerKeyInput');
+  initShortcutInput('fasterKeyInput');
+
+  document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
+  document.getElementById('speedStep').addEventListener('keypress', inputFilterNumbersOnly);
+})
