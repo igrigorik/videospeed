@@ -110,6 +110,9 @@ chrome.extension.sendMessage({}, function(response) {
         // if lowercase letter pressed, check for uppercase key code
         var keyCode = String.fromCharCode(event.keyCode).toUpperCase().charCodeAt();
 
+        // Ignore keypress event if typing in an input box
+        if      (document.activeElement.nodeName === "INPUT" && document.activeElement.getAttribute("type") === "text") { return false; }
+
         if      (keyCode == rewindKeyCode) { runAction('rewind') }
         else if (keyCode == fasterKeyCode) { runAction('faster') } 
         else if (keyCode == slowerKeyCode) { runAction('slower') }
