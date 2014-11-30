@@ -47,3 +47,13 @@
   font-size: 15px !important;
   line-height: 15px !important;
 }
+
+/* shift controller when YouTube infobar is present */
+.ytp-block-autohide:not(.el-detailpage) .tc-videoController, html[data-player-size=fullscreen] .tc-videoController {
+  margin-top: 40px;
+}
+
+.html5-video-player:not(.ytp-block-autohide):not(.el-detailpage) .tc-videoController, html[data-player-size=fullscreen] .html5-video-player:not(.ytp-block-autohide) .tc-videoController {
+    transition: margin-top .25s cubic-bezier(0.4,0,0.2,1);
+    margin-top: 10px;
+}
