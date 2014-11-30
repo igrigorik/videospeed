@@ -22,7 +22,7 @@
   },
   "content_scripts": [{
       "all_frames": true,
-      "matches": [ "http://*/*", "https://*/*"],
+      "matches": [ "http://*/*", "https://*/*", "file:///*"],
       "exclude_matches": [ "https://plus.google.com/hangouts/*" ],
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
