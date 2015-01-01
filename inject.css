@@ -20,7 +20,7 @@
   font-size: 13px;
 }
 
-.tc-videController button {
+.tc-videoController button {
 }
 
 .tc-videoController:hover {
@@ -65,4 +65,17 @@ html[data-player-size=fullscreen] .tc-videoController {
 html[data-player-size=fullscreen] .html5-video-player:not(.ytp-block-autohide) .tc-videoController {
   transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
   opacity: 0;
+}
+
+/* shift controller on Vine embeds: mute always visible */
+/* e.g. https://twitter.com/Vine_Football/status/550614684575858688 */
+.video-container .tc-videoController {
+  margin-top: 12px;
+  margin-left: 55px;
+}
+
+/* shift controller on vine.co */
+/* e.g. https://vine.co/v/OrJj39YlL57 */
+.video-container .vine-video-container .tc-videoController {
+  margin-left: 40px;
 }
