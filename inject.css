@@ -48,7 +48,7 @@
 }
 
 /* shift controller when YouTube infobar is present */
-.ytp-block-autohide:not(.el-detailpage) .tc-videoController {
+.ytp-block-autohide:not(.el-detailpage):not(.el-embedded) .tc-videoController {
   margin-top: 40px;
 }
 
