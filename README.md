@@ -30,6 +30,7 @@ Note that you can customize these shortcuts in the extension settings page. Also
 ### Wishlist
 
 * Make it not suck with Vimeo content: "s" shortcut and button clicks
+* Show actual playback speed
 * Your awesome feature here...
 
 
