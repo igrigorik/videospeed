@@ -102,9 +102,13 @@ chrome.extension.sendMessage({}, function(response) {
             if (action === 'rewind') {
               v.currentTime -= rewindTime;
             } else if (action === 'faster') {
-              v.playbackRate += speedStep
+              // Maxium playback speed in Chrome is set to 16:
+              // https://code.google.com/p/chromium/codesearch#chromium/src/media/blink/webmediaplayer_impl.cc&l=64
+              v.playbackRate = Math.Min(v.playbackRate + speedStep, 16);
             } else if (action === 'slower') {
-              v.playbackRate = Math.max(v.playbackRate - speedStep, 0.00);
+              // Audio playback is cut at 0.05:
+              // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
+              v.playbackRate = Math.max(v.playbackRate - speedStep, 0.05);
             }
           }
         });
