@@ -1,29 +1,47 @@
 chrome.extension.sendMessage({}, function(response) {
-  var readyStateCheckInterval = setInterval(function() {
+
+  var tc = {
+    settings: {
+      speed: 1.0,         // default 1x
+      speedStep: 0.1,     // default 0.1x
+      rewindTime: 10,     // default 10s
+      rewindKeyCode: 65,  // default: A
+      slowerKeyCode: 83,  // default: S
+      fasterKeyCode: 68   // default: D
+    }
+  };
+
+  var readyStateCheckInterval;
+  chrome.storage.sync.get(tc.settings, function(storage) {
+      tc.settings.speed = Number(storage.speed);
+      tc.settings.speedStep = Number(storage.speedStep);
+      tc.settings.rewindTime = Number(storage.rewindTime);
+      tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
+      tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
+      tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+
+      readyStateCheckInterval = setInterval(initializeVideoSpeed, 10);
+    }
+  );
+
+  function initializeVideoSpeed() {
     if (document.readyState === 'complete') {
       clearInterval(readyStateCheckInterval);
 
-      var tc = tc || {};
       tc.videoController = function(target) {
         this.video = target;
         this.initializeControls();
 
-        chrome.storage.sync.get({
-          speed: '1.00',
-          rememberSpeed: false
-        }, function(storage) {
-          var speed = storage.rememberSpeed ? storage.speed : '1.00';
-          target.playbackRate = speed;
+        target.addEventListener('play', function(event) {
+          target.playbackRate = tc.settings.speed;
+        });
+
+        target.addEventListener('ratechange', function(event) {
+          var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
         }.bind(this));
 
-        this.video.addEventListener('ratechange', function(event) {
-          var speed = this.getSpeed();
-          this.speedIndicator.textContent = speed;
-          chrome.storage.sync.set({
-            'speed': speed
-          });
-        }.bind(this));
+        target.playbackRate = tc.settings.speed;
       };
 
       tc.videoController.prototype.getSpeed = function() {
@@ -62,6 +80,8 @@ chrome.extension.sendMessage({}, function(response) {
         this.video.parentElement.insertBefore(fragment, this.video);
         this.video.classList.add('tc-videoHost');
 
+        var speed = parseFloat(tc.settings.speed).toFixed(2);
+        speedIndicator.textContent = speed;
         this.speedIndicator = speedIndicator;
 
         container.addEventListener('click', function(e) {
@@ -93,6 +113,12 @@ chrome.extension.sendMessage({}, function(response) {
         }, true);
       }
 
+      function setSpeed(v, speed) {
+        v.playbackRate = speed;
+        tc.settings.speed = speed;
+        chrome.storage.sync.set({'speed': speed});
+      }
+
       function runAction(action) {
         var videoTags = document.getElementsByTagName('video');
         videoTags.forEach = Array.prototype.forEach;
@@ -100,15 +126,17 @@ chrome.extension.sendMessage({}, function(response) {
         videoTags.forEach(function(v) {
           if (!v.paused && !v.classList.contains('vc-cancelled')) {
             if (action === 'rewind') {
-              v.currentTime -= rewindTime;
+              v.currentTime -= tc.settings.rewindTime;
             } else if (action === 'faster') {
               // Maxium playback speed in Chrome is set to 16:
               // https://code.google.com/p/chromium/codesearch#chromium/src/media/blink/webmediaplayer_impl.cc&l=64
-              v.playbackRate = Math.Min(v.playbackRate + speedStep, 16);
+              var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
+              setSpeed(v, s);
             } else if (action === 'slower') {
               // Audio playback is cut at 0.05:
               // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
-              v.playbackRate = Math.max(v.playbackRate - speedStep, 0.05);
+              var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.05);
+              setSpeed(v, s);
             }
           }
         });
@@ -123,11 +151,11 @@ chrome.extension.sendMessage({}, function(response) {
           return false;
         }
 
-        if (keyCode == rewindKeyCode) {
+        if (keyCode == tc.settings.rewindKeyCode) {
           runAction('rewind')
-        } else if (keyCode == fasterKeyCode) {
+        } else if (keyCode == tc.settings.fasterKeyCode) {
           runAction('faster')
-        } else if (keyCode == slowerKeyCode) {
+        } else if (keyCode == tc.settings.slowerKeyCode) {
           runAction('slower')
         }
 
@@ -146,23 +174,6 @@ chrome.extension.sendMessage({}, function(response) {
       videoTags.forEach(function(video) {
         var control = new tc.videoController(video);
       });
-
-      var speedStep, rewindTime, rewindKeyCode, slowerKeyCode, fasterKeyCode;
-
-      chrome.storage.sync.get({
-          speedStep: 0.1, // default 0.10x
-          rewindTime: 10, // default 10s
-          rewindKeyCode: 65, // default: A
-          slowerKeyCode: 83, // default: S
-          fasterKeyCode: 68 // default: D
-        },
-        function(storage) {
-          speedStep = Number(storage.speedStep);
-          rewindTime = Number(storage.rewindTime);
-          rewindKeyCode = Number(storage.rewindKeyCode);
-          slowerKeyCode = Number(storage.slowerKeyCode);
-          fasterKeyCode = Number(storage.fasterKeyCode);
-        });
     }
-  }, 10);
+  }
 });
