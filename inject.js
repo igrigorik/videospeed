@@ -100,7 +100,6 @@ chrome.extension.sendMessage({}, function(response) {
         videoTags.forEach(function(v) {
           if (!v.paused && !v.classList.contains('vc-cancelled')) {
             if (action === 'rewind') {
-              v.playbackRate = Math.max(v.playbackRate - speedStep, 0.00);
               v.currentTime -= rewindTime;
             } else if (action === 'faster') {
               v.playbackRate += speedStep
