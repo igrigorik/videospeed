@@ -135,7 +135,7 @@ chrome.extension.sendMessage({}, function(response) {
             } else if (action === 'slower') {
               // Audio playback is cut at 0.05:
               // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
-              var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.05);
+              var s = Math.max(v.playbackRate - tc.settings.speedStep, 0);
               setSpeed(v, s);
             }
           }
