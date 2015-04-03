@@ -2,12 +2,13 @@ chrome.extension.sendMessage({}, function(response) {
 
   var tc = {
     settings: {
-      speed: 1.0,         // default 1x
-      speedStep: 0.1,     // default 0.1x
-      rewindTime: 10,     // default 10s
-      rewindKeyCode: 65,  // default: A
-      slowerKeyCode: 83,  // default: S
-      fasterKeyCode: 68   // default: D
+      speed: 1.0,          // default 1x
+      speedStep: 0.1,      // default 0.1x
+      rewindTime: 10,      // default 10s
+      rewindKeyCode: 65,   // default: A
+      slowerKeyCode: 83,   // default: S
+      fasterKeyCode: 68,   // default: D
+      rememberSpeed: false // default: false
     }
   };
 
@@ -19,6 +20,7 @@ chrome.extension.sendMessage({}, function(response) {
       tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
       tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
       tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+      tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
 
       readyStateCheckInterval = setInterval(initializeVideoSpeed, 10);
     }
@@ -30,6 +32,9 @@ chrome.extension.sendMessage({}, function(response) {
 
       tc.videoController = function(target) {
         this.video = target;
+        if (!tc.settings.rememberSpeed) {
+          tc.settings.speed = 1.0;
+        }
         this.initializeControls();
 
         target.addEventListener('play', function(event) {
