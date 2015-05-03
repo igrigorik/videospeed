@@ -79,3 +79,13 @@ html[data-player-size=fullscreen] .html5-video-player:not(.ytp-block-autohide) .
 .video-container .vine-video-container .tc-videoController {
   margin-left: 40px;
 }
+
+/* shift YT 3D controller down */
+/* e.g. https://www.youtube.com/watch?v=erftYPflJzQ */
+.webgl-pan-button {
+  top: 50px !important;
+}
+
+html[data-player-size=fullscreen] .webgl-pan-button {
+  top: 80px !important;
+}
