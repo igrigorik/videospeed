@@ -12,15 +12,12 @@
   margin: 10px;
   line-height: 1.8em;
 
-  cursor: pointer;
+  cursor: default;
   z-index: 9999999;
   opacity: 0.3;
 
   font-family: Verdana;
   font-size: 13px;
-}
-
-.tc-videoController button {
 }
 
 .tc-videoController:hover {
@@ -37,6 +34,7 @@
 }
 
 .tc-controls button {
+  cursor: pointer;
   color: black !important;
   background: white !important;
   font-weight: bold !important;
@@ -45,6 +43,11 @@
   padding: 3px 8px !important;
   font-size: 15px !important;
   line-height: 15px !important;
+}
+
+.tc-videoController button.tc-hideButton {
+  margin: 0 2px 0 20px !important;
+  opacity: 0.8;
 }
 
 /* shift controller when YouTube infobar is present */

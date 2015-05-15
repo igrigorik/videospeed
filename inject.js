@@ -66,14 +66,18 @@ chrome.extension.sendMessage({}, function(response) {
         var fasterButton = document.createElement('button');
         var slowerButton = document.createElement('button');
         var rewindButton = document.createElement('button');
+        var hideButton = document.createElement('button');
 
         rewindButton.innerHTML = '&laquo;';
         fasterButton.textContent = '+';
         slowerButton.textContent = '-';
+        hideButton.textContent = 'x';
+        hideButton.className = 'tc-hideButton';
 
         controls.appendChild(rewindButton);
         controls.appendChild(slowerButton);
         controls.appendChild(fasterButton);
+        controls.appendChild(hideButton);
 
         container.appendChild(speedIndicator);
         container.appendChild(controls);
@@ -96,7 +100,7 @@ chrome.extension.sendMessage({}, function(response) {
             runAction('faster')
           } else if (e.target === rewindButton) {
             runAction('rewind')
-          } else {
+          } else if (e.target === hideButton) {
             container.nextSibling.classList.add('vc-cancelled')
             container.remove();
           }
