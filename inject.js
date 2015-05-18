@@ -5,6 +5,7 @@ chrome.extension.sendMessage({}, function(response) {
       speed: 1.0,          // default 1x
       speedStep: 0.1,      // default 0.1x
       rewindTime: 10,      // default 10s
+      resetKeyCode:  82,   // default: R
       rewindKeyCode: 65,   // default: A
       slowerKeyCode: 83,   // default: S
       fasterKeyCode: 68,   // default: D
@@ -17,6 +18,7 @@ chrome.extension.sendMessage({}, function(response) {
       tc.settings.speed = Number(storage.speed);
       tc.settings.speedStep = Number(storage.speedStep);
       tc.settings.rewindTime = Number(storage.rewindTime);
+      tc.settings.resetKeyCode = Number(storage.resetKeyCode);
       tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
       tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
       tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
@@ -146,6 +148,8 @@ chrome.extension.sendMessage({}, function(response) {
               // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
               var s = Math.max(v.playbackRate - tc.settings.speedStep, 0);
               setSpeed(v, s);
+            } else if (action === 'reset') {
+            	setSpeed(v, 1.0);
             }
           }
         });
@@ -166,6 +170,8 @@ chrome.extension.sendMessage({}, function(response) {
           runAction('faster')
         } else if (keyCode == tc.settings.slowerKeyCode) {
           runAction('slower')
+        } else if (keyCode == tc.settings.resetKeyCode) {
+          runAction('reset')
         }
 
         return false;

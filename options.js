@@ -1,3 +1,13 @@
+var tcDefaults = {
+  speedStep: 0.1,
+  rewindTime: 10,
+  resetKeyCode: 82,
+  rewindKeyCode: 65,
+  slowerKeyCode: 83,
+  fasterKeyCode: 68,
+  rememberSpeed: false
+};
+
 function recordKeyPress(e) {
   var normalizedChar = String.fromCharCode(e.keyCode).toUpperCase();
   e.target.value = normalizedChar;
@@ -33,24 +43,27 @@ function save_options() {
 
   var speedStep     = document.getElementById('speedStep').value;
   var rewindTime    = document.getElementById('rewindTime').value;
+  var resetKeyCode  = document.getElementById('resetKeyInput').keyCode;
   var rewindKeyCode = document.getElementById('rewindKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
 
-  speedStep     = isNaN(speedStep) ? 0.1 : Number(speedStep);
-  rewindTime    = isNaN(rewindTime) ? 10 : Number(rewindTime);
-  rewindKeyCode = isNaN(rewindKeyCode) ? 65 : rewindKeyCode;
-  slowerKeyCode = isNaN(slowerKeyCode) ? 83 : slowerKeyCode;
-  fasterKeyCode = isNaN(fasterKeyCode) ? 68 : fasterKeyCode;
+  speedStep     = isNaN(speedStep) ? tcDefaults.speedStep : Number(speedStep);
+  rewindTime    = isNaN(rewindTime) ? tcDefaults.rewindTime : Number(rewindTime);
+  resetKeyCode = isNaN(resetKeyCode) ? tcDefaults.resetKeyCode : resetKeyCode;
+  rewindKeyCode = isNaN(rewindKeyCode) ? tcDefaults.rewindKeyCode : rewindKeyCode;
+  slowerKeyCode = isNaN(slowerKeyCode) ? tcDefaults.slowerKeyCode : slowerKeyCode;
+  fasterKeyCode = isNaN(fasterKeyCode) ? tcDefaults.fasterKeyCode : fasterKeyCode;
 
   chrome.storage.sync.set({
     speedStep:      speedStep,
     rewindTime:     rewindTime,
+    resetKeyCode:   resetKeyCode,
     rewindKeyCode:  rewindKeyCode,
     slowerKeyCode:  slowerKeyCode,
     fasterKeyCode:  fasterKeyCode,
-    rememberSpeed: rememberSpeed
+    rememberSpeed:  rememberSpeed
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -63,16 +76,10 @@ function save_options() {
 
 // Restores options from chrome.storage
 function restore_options() {
-  chrome.storage.sync.get({
-    speedStep: 0.1,
-    rewindTime: 10,
-    rewindKeyCode: 65,
-    slowerKeyCode: 83,
-    fasterKeyCode: 68,
-    rememberSpeed: false
-  }, function(storage) {
+  chrome.storage.sync.get(tcDefaults, function(storage) {
     document.getElementById('speedStep').value = storage.speedStep.toFixed(2);
     document.getElementById('rewindTime').value = storage.rewindTime;
+    updateShortcutInputText('resetKeyInput',  storage.resetKeyCode);
     updateShortcutInputText('rewindKeyInput', storage.rewindKeyCode);
     updateShortcutInputText('slowerKeyInput', storage.slowerKeyCode);
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
@@ -81,14 +88,7 @@ function restore_options() {
 }
 
 function restore_defaults() {
-  chrome.storage.sync.set({
-    speedStep: 0.1,
-    rewindTime: 10,
-    rewindKeyCode: 65,
-    slowerKeyCode: 83,
-    fasterKeyCode: 68,
-    rememberSpeed: false
-  }, function() {
+  chrome.storage.sync.set(tcDefaults, function() {
     restore_options();
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('save').addEventListener('click', save_options);
   document.getElementById('restore').addEventListener('click', restore_defaults);
 
+  initShortcutInput('resetKeyInput');
   initShortcutInput('rewindKeyInput');
   initShortcutInput('slowerKeyInput');
   initShortcutInput('fasterKeyInput');
