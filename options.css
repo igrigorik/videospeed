@@ -50,12 +50,12 @@ section h3 {
 button {
 	-webkit-appearance: none;
 	position: relative;
-	
+
 	margin: 0 1px 0 0;
 	padding: 0 10px;
 	min-width: 4em;
 	min-height: 2em;
-	
+
 	background-image: linear-gradient(#EDEDED, #EDEDED 38%, #DEDEDE);
 	border: 1px solid rgba(0,0,0,0.25);
 	border-radius: 2px;
@@ -64,7 +64,7 @@ button {
 	color: #444;
 	text-shadow: 0 1px 0 rgb(240,240,240);
 	font: inherit;
-	
+
     user-select: none;
 }
 
@@ -91,4 +91,8 @@ label[for=rememberSpeed] {
     color: #9D9D9D;
     display: inline-block;
     margin-left: 50px;
+}
+
+#faq {
+	margin-top: 2em;
 }
