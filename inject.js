@@ -46,6 +46,8 @@ chrome.extension.sendMessage({}, function(response) {
         target.addEventListener('ratechange', function(event) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
+          tc.settings.speed = speed;
+          chrome.storage.sync.set({'speed': speed});
         }.bind(this));
 
         target.playbackRate = tc.settings.speed;
@@ -126,8 +128,6 @@ chrome.extension.sendMessage({}, function(response) {
 
       function setSpeed(v, speed) {
         v.playbackRate = speed;
-        tc.settings.speed = speed;
-        chrome.storage.sync.set({'speed': speed});
       }
 
       function runAction(action) {
