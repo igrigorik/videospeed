@@ -89,7 +89,6 @@ chrome.extension.sendMessage({}, function(response) {
 
         fragment.appendChild(container);
         this.video.parentElement.insertBefore(fragment, this.video);
-        this.video.classList.add('tc-videoHost');
 
         var speed = parseFloat(tc.settings.speed).toFixed(2);
         speedIndicator.textContent = speed;
