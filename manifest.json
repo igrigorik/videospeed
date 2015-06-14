@@ -23,7 +23,10 @@
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*", "file:///*"],
-      "exclude_matches": [ "https://plus.google.com/hangouts/*" ],
+      "exclude_matches": [ 
+        "https://plus.google.com/hangouts/*",
+        "http://www.lynda.com/*"
+      ],
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
     }
