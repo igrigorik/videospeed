@@ -15,11 +15,12 @@ HTML5 video provides a native API to accelerate playback of any video. The probl
 
 #### *[Install Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk)*
 
-Once the extension is installed simply navigate to any page that offers HTML5 video ([example](http://www.youtube.com/watch?v=E9FxNzv1Tr8)), and you'll see a speed indicator in top left corner. Hover over the indicator to reveal the controls to accelerate, slowdown, and quickly rewind the video. Or, even better, simply use your keyboard:
+Once the extension is installed simply navigate to any page that offers HTML5 video ([example](http://www.youtube.com/watch?v=E9FxNzv1Tr8)), and you'll see a speed indicator in top left corner. Hover over the indicator to reveal the controls to accelerate, slowdown, and quickly rewind or advance the video. Or, even better, simply use your keyboard:
 
 * **a** - rewind video 10 seconds.
 * **s** - decrease playback speed.
 * **d** - increase playback speed.
+* **t** - advance video 10 seconds.
 
 Note that you can customize these shortcuts in the extension settings page. Also, a few tips for enabling and forcing HTML5 video:
 

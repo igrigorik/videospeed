@@ -5,10 +5,12 @@ chrome.extension.sendMessage({}, function(response) {
       speed: 1.0,          // default 1x
       speedStep: 0.1,      // default 0.1x
       rewindTime: 10,      // default 10s
+      advanceTime: 10,     // default 10s
       resetKeyCode:  82,   // default: R
       rewindKeyCode: 65,   // default: A
       slowerKeyCode: 83,   // default: S
       fasterKeyCode: 68,   // default: D
+      advanceKeyCode: 84,  // default: T
       rememberSpeed: false // default: false
     }
   };
@@ -18,10 +20,12 @@ chrome.extension.sendMessage({}, function(response) {
       tc.settings.speed = Number(storage.speed);
       tc.settings.speedStep = Number(storage.speedStep);
       tc.settings.rewindTime = Number(storage.rewindTime);
+      tc.settings.advanceTime = Number(storage.advanceTime);
       tc.settings.resetKeyCode = Number(storage.resetKeyCode);
       tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
       tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
       tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+      tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
       tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
 
       readyStateCheckInterval = setInterval(initializeVideoSpeed, 10);
@@ -73,17 +77,20 @@ chrome.extension.sendMessage({}, function(response) {
         var fasterButton = document.createElement('button');
         var slowerButton = document.createElement('button');
         var rewindButton = document.createElement('button');
+        var advanceButton = document.createElement('button');
         var hideButton = document.createElement('button');
 
         rewindButton.innerHTML = '&laquo;';
         fasterButton.textContent = '+';
         slowerButton.textContent = '-';
+        advanceButton.innerHTML = '&raquo;';
         hideButton.textContent = 'x';
         hideButton.className = 'tc-hideButton';
 
         controls.appendChild(rewindButton);
         controls.appendChild(slowerButton);
         controls.appendChild(fasterButton);
+        controls.appendChild(advanceButton);
         controls.appendChild(hideButton);
 
         container.appendChild(speedIndicator);
@@ -106,6 +113,8 @@ chrome.extension.sendMessage({}, function(response) {
             runAction('faster')
           } else if (e.target === rewindButton) {
             runAction('rewind')
+          } else if (e.target === advanceButton) {
+            runAction('advance')
           } else if (e.target === hideButton) {
             container.nextSibling.classList.add('vc-cancelled')
             container.remove();
@@ -137,9 +146,11 @@ chrome.extension.sendMessage({}, function(response) {
         videoTags.forEach = Array.prototype.forEach;
 
         videoTags.forEach(function(v) {
-          if (!v.paused && !v.classList.contains('vc-cancelled')) {
+          if (!v.classList.contains('vc-cancelled')) {
             if (action === 'rewind') {
               v.currentTime -= tc.settings.rewindTime;
+            } else if (action === 'advance') {
+              v.currentTime += tc.settings.advanceTime;
             } else if (action === 'faster') {
               // Maxium playback speed in Chrome is set to 16:
               // https://code.google.com/p/chromium/codesearch#chromium/src/media/blink/webmediaplayer_impl.cc&l=64
@@ -168,6 +179,8 @@ chrome.extension.sendMessage({}, function(response) {
 
         if (keyCode == tc.settings.rewindKeyCode) {
           runAction('rewind')
+        } else if (keyCode == tc.settings.advanceKeyCode) {
+          runAction('advance')
         } else if (keyCode == tc.settings.fasterKeyCode) {
           runAction('faster')
         } else if (keyCode == tc.settings.slowerKeyCode) {
