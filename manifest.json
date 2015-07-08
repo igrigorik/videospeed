@@ -3,7 +3,7 @@
   "short_name": "videospeed",
   "version": "0.2.5",
   "manifest_version": 2,
-  "description": "Speed up, slow down, and rewind any HTML5 video with quick shortcuts.",
+  "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
   "homepage_url": "https://github.com/igrigorik/videospeed",
   "icons": {
     "16": "icons/icon16.png",
