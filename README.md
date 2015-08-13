@@ -26,7 +26,7 @@ Note that you can customize these shortcuts in the extension settings page. Also
 
  * YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5).
  * If you're adventurous, try disabling the Flash plugin in Chrome in chrome://plugins/
-
+ * If viewing a video on Wistia, right click to switch to HTML5 video, refresh the page, and the controls will appear. 
 
 ### Wishlist
 
