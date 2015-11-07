@@ -173,7 +173,9 @@ chrome.extension.sendMessage({}, function(response) {
         var keyCode = String.fromCharCode(event.keyCode).toUpperCase().charCodeAt();
 
         // Ignore keypress event if typing in an input box
-        if (document.activeElement.nodeName === 'INPUT' && document.activeElement.getAttribute('type') === 'text') {
+        if ((document.activeElement.nodeName === 'INPUT'
+              && document.activeElement.getAttribute('type') === 'text')
+            || document.activeElement.isContentEditable) {
           return false;
         }
 
