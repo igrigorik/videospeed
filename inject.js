@@ -7,10 +7,10 @@ chrome.extension.sendMessage({}, function(response) {
       rewindTime: 10,      // default 10s
       advanceTime: 10,     // default 10s
       resetKeyCode:  82,   // default: R
-      rewindKeyCode: 65,   // default: A
       slowerKeyCode: 83,   // default: S
       fasterKeyCode: 68,   // default: D
-      advanceKeyCode: 84,  // default: T
+      rewindKeyCode: 90,   // default: Z
+      advanceKeyCode: 88,  // default: X
       rememberSpeed: false // default: false
     }
   };

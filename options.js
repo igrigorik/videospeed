@@ -1,13 +1,14 @@
 var tcDefaults = {
-  speedStep: 0.1,
-  rewindTime: 10,
-  advanceTime: 10,
-  resetKeyCode: 82,
-  rewindKeyCode: 65,
-  slowerKeyCode: 83,
-  fasterKeyCode: 68,
-  advanceKeyCode: 84,
-  rememberSpeed: false
+  speed: 1.0,          // default 1x
+  speedStep: 0.1,      // default 0.1x
+  rewindTime: 10,      // default 10s
+  advanceTime: 10,     // default 10s
+  resetKeyCode:  82,   // default: R
+  slowerKeyCode: 83,   // default: S
+  fasterKeyCode: 68,   // default: D
+  rewindKeyCode: 90,   // default: Z
+  advanceKeyCode: 88,  // default: X
+  rememberSpeed: false // default: false
 };
 
 function recordKeyPress(e) {
