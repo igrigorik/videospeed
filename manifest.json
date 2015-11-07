@@ -23,9 +23,10 @@
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*", "file:///*"],
-      "exclude_matches": [ 
+      "exclude_matches": [
         "https://plus.google.com/hangouts/*",
-        "http://www.lynda.com/*"
+        "http://www.lynda.com/*",
+        "http://www.hitbox.tv/*"
       ],
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
