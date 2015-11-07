@@ -5,7 +5,7 @@
 
   border-radius: 5px;
   padding: 5px;
-  margin: 10px;
+  margin: 10px 10px 10px 15px;
   line-height: 1.8em;
 
   cursor: default;
@@ -26,7 +26,7 @@
 
 .tc-controls {
   display: none;
-  margin-left:1em;
+  margin-left: 1em;
 }
 
 .tc-controls button {
@@ -46,39 +46,25 @@
   opacity: 0.8;
 }
 
-/* shift controller when YouTube infobar is present */
-.ytp-block-autohide:not(.el-detailpage):not(.hide-info-bar) .tc-videoController {
-  margin-top: 40px;
+/* YouTube player */
+.ytp-hide-info-bar .tc-videoController {
+  margin-top: 10px;
 }
 
-body:not(.not-yt-legacy-css) .html5-video-player:not(.ytp-block-autohide):not(.el-detailpage) .tc-videoController {
-    transition: margin-top .25s cubic-bezier(0.4,0,0.2,1);
-    margin-top: 10px;
-}
-
-html[data-player-size=fullscreen] .tc-videoController {
-  display: block;
-  margin-top: 40px;
-}
-
-html[data-player-size=fullscreen] .html5-video-player:not(.ytp-block-autohide) .tc-videoController {
+.ytp-autohide .tc-videoController {
   transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
   opacity: 0;
 }
 
-/* new YT player */
-body.not-yt-legacy-css .el-embedded .tc-videoController {
-  margin-top: 50px;
+/* YouTube embedded player */
+/* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
+.full-frame .html5-video-player:not(.ytp-fullscreen) .tc-videoController {
+  margin-top: 45px;
 }
 
-body.not-yt-legacy-css .ytp-fullscreen .tc-videoController {
+.ytp-fullscreen .tc-videoController {
   display: block;
   margin-top: 60px;
-}
-
-body.not-yt-legacy-css .ytp-autohide .tc-videoController {
-  transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
-  opacity: 0;
 }
 
 /* shift controller on Vine embeds: mute always visible */
@@ -96,10 +82,9 @@ body.not-yt-legacy-css .ytp-autohide .tc-videoController {
 
 /* shift YT 3D controller down */
 /* e.g. https://www.youtube.com/watch?v=erftYPflJzQ */
-.webgl-pan-button {
+.ytp-webgl-spherical-control {
   top: 50px !important;
 }
-
-html[data-player-size=fullscreen] .webgl-pan-button {
-  top: 80px !important;
+.ytp-fullscreen .ytp-webgl-spherical-control {
+  top: 100px !important;
 }
