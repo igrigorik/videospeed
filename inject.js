@@ -15,6 +15,7 @@ chrome.extension.sendMessage({}, function(response) {
     }
   };
 
+  var controllerAnimation;
   var readyStateCheckInterval;
   chrome.storage.sync.get(tc.settings, function(storage) {
       tc.settings.speed = Number(storage.speed);
@@ -163,6 +164,27 @@ chrome.extension.sendMessage({}, function(response) {
               setSpeed(v, Number(s.toFixed(2)));
             } else if (action === 'reset') {
             	setSpeed(v, 1.0);
+            }
+
+            // show controller on keyboard input
+            var controller = v.parentElement
+              .getElementsByClassName('tc-videoController')[0];
+            controller.style.visibility = 'visible';
+            if (controllerAnimation != null
+                && controllerAnimation.playState != 'finished') {
+              controllerAnimation.cancel();
+            }
+            controllerAnimation = controller.animate([
+              {opacity: 0.3},
+              {opacity: 0.3},
+              {opacity: 0.0},
+            ], {
+              duration: 3000,
+              iterations: 1,
+              delay: 0
+            });
+            player.onfinish = function(e) {
+              controller.style.visibility = 'hidden';
             }
           }
         });
