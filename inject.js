@@ -16,22 +16,18 @@ chrome.extension.sendMessage({}, function(response) {
   };
 
   var controllerAnimation;
-  var readyStateCheckInterval;
   chrome.storage.sync.get(tc.settings, function(storage) {
-      tc.settings.speed = Number(storage.speed);
-      tc.settings.speedStep = Number(storage.speedStep);
-      tc.settings.rewindTime = Number(storage.rewindTime);
-      tc.settings.advanceTime = Number(storage.advanceTime);
-      tc.settings.resetKeyCode = Number(storage.resetKeyCode);
-      tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
-      tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
-      tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
-      tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
-      tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
-
-      readyStateCheckInterval = setInterval(initializeVideoSpeed, 10);
-    }
-  );
+    tc.settings.speed = Number(storage.speed);
+    tc.settings.speedStep = Number(storage.speedStep);
+    tc.settings.rewindTime = Number(storage.rewindTime);
+    tc.settings.advanceTime = Number(storage.advanceTime);
+    tc.settings.resetKeyCode = Number(storage.resetKeyCode);
+    tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
+    tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
+    tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+    tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
+    tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+  });
 
   function defineVideoController() {
     tc.videoController = function(target) {
@@ -68,16 +64,18 @@ chrome.extension.sendMessage({}, function(response) {
     }
 
     tc.videoController.prototype.initializeControls = function() {
-      var fragment = this.document.createDocumentFragment();
-      var container = this.document.createElement('div');
-      var speedIndicator = this.document.createElement('span');
+      var document = this.document;
 
-      var controls = this.document.createElement('span');
-      var fasterButton = this.document.createElement('button');
-      var slowerButton = this.document.createElement('button');
-      var rewindButton = this.document.createElement('button');
-      var advanceButton = this.document.createElement('button');
-      var hideButton = this.document.createElement('button');
+      var fragment = document.createDocumentFragment();
+      var container = document.createElement('div');
+      var speedIndicator = document.createElement('span');
+
+      var controls = document.createElement('span');
+      var fasterButton = document.createElement('button');
+      var slowerButton = document.createElement('button');
+      var rewindButton = document.createElement('button');
+      var advanceButton = document.createElement('button');
+      var hideButton = document.createElement('button');
 
       rewindButton.innerHTML = '&laquo;';
       fasterButton.textContent = '+';
@@ -107,13 +105,13 @@ chrome.extension.sendMessage({}, function(response) {
 
       container.addEventListener('click', function(e) {
         if (e.target === slowerButton) {
-          runAction('slower', this.document)
+          runAction('slower', document)
         } else if (e.target === fasterButton) {
-          runAction('faster', this.document)
+          runAction('faster', document)
         } else if (e.target === rewindButton) {
-          runAction('rewind', this.document)
+          runAction('rewind', document)
         } else if (e.target === advanceButton) {
-          runAction('advance', this.document)
+          runAction('advance', document)
         } else if (e.target === hideButton) {
           container.nextSibling.classList.add('vc-cancelled')
           container.remove();
@@ -135,17 +133,27 @@ chrome.extension.sendMessage({}, function(response) {
         e.stopPropagation();
       }, true);
     }
-
-    function setSpeed(v, speed) {
-      v.playbackRate = speed;
-    }
   }
 
-  function initializeVideoSpeed() {
-    if (document.readyState === 'complete') {
-      clearInterval(readyStateCheckInterval);
+  function initializeWhenReady(document) {
+    var readyStateCheckInterval = setInterval(function() {
+      if (document.readyState === 'complete') {
+        clearInterval(readyStateCheckInterval);
+        initializeNow(document);
+      }
+    }, 10);
+  }
 
-      defineVideoController();
+  function initializeNow(document) {
+      if (document === window.document) {
+        defineVideoController();
+      } else {
+        var link = document.createElement('link');
+        link.href = chrome.extension.getURL('inject.css');
+        link.type = 'text/css';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
 
       document.addEventListener('keypress', function(event) {
         // if lowercase letter pressed, check for uppercase key code
@@ -180,12 +188,18 @@ chrome.extension.sendMessage({}, function(response) {
         }
       });
 
+      var forEach = Array.prototype.forEach;
       var videoTags = document.getElementsByTagName('video');
-      videoTags.forEach = Array.prototype.forEach;
-      videoTags.forEach(function(video) {
-        var control = new tc.videoController(video);
+      forEach.call(videoTags, function(video) {
+        new tc.videoController(video);
       });
-    }
+
+      var frameTags = document.getElementsByTagName('iframe');
+      forEach.call(frameTags, function(frame) {
+        // Ignore frames we don't have permission to access (different origin).
+        try { var childDocument = frame.contentDocument } catch (e) { return }
+        initializeWhenReady(childDocument);
+      });
   }
 
   function runAction(action, document) {
@@ -202,14 +216,14 @@ chrome.extension.sendMessage({}, function(response) {
           // Maximum playback speed in Chrome is set to 16:
           // https://code.google.com/p/chromium/codesearch#chromium/src/media/blink/webmediaplayer_impl.cc&l=64
           var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
-          setSpeed(v, Number(s.toFixed(2)));
+          v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
           // Audio playback is cut at 0.05:
           // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
           var s = Math.max(v.playbackRate - tc.settings.speedStep, 0);
-          setSpeed(v, Number(s.toFixed(2)));
+          v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
-          setSpeed(v, 1.0);
+          v.playbackRate = 1.0;
         }
 
         // show controller on keyboard input
@@ -235,4 +249,6 @@ chrome.extension.sendMessage({}, function(response) {
       }
     });
   }
+
+  initializeWhenReady(document);
 });
