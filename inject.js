@@ -183,7 +183,7 @@ chrome.extension.sendMessage({}, function(response) {
               iterations: 1,
               delay: 0
             });
-            player.onfinish = function(e) {
+            controllerAnimation.onfinish = function(e) {
               controller.style.visibility = 'hidden';
             }
           }
