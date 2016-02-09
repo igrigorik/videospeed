@@ -2,32 +2,42 @@ chrome.extension.sendMessage({}, function(response) {
 
   var tc = {
     settings: {
-      speed: 1.0,          // default 1x
-      speedStep: 0.1,      // default 0.1x
-      rewindTime: 10,      // default 10s
-      advanceTime: 10,     // default 10s
-      resetKeyCode:  82,   // default: R
-      slowerKeyCode: 83,   // default: S
-      fasterKeyCode: 68,   // default: D
-      rewindKeyCode: 90,   // default: Z
-      advanceKeyCode: 88,  // default: X
-      rememberSpeed: false // default: false
+      speed:              1.0,  // default 1x
+      speedStep:          0.1,  // default 0.1x
+      rewindTime:         10,   // default 10s
+      advanceTime:        10,   // default 10s
+      resetKeyCode:       82,   // default: R
+      resetKeyCodeDupl:   1050, // default: К (Cyrillic)
+      slowerKeyCode:      83,   // default: S
+      slowerKeyCodeDupl:  1067, // default: В (Cyrillic)
+      fasterKeyCode:      68,   // default: D
+      fasterKeyCodeDupl:  1042, // default: Ы (Cyrillic)
+      rewindKeyCode:      90,   // default: Z
+      rewindKeyCodeDupl:  1071, // default: Я (Cyrillic)
+      advanceKeyCode:     88,   // default: X
+      advanceKeyCodeDupl: 1063, // default: Ч (Cyrillic)
+      rememberSpeed:      false // default: false
     }
   };
 
   var controllerAnimation;
   var readyStateCheckInterval;
   chrome.storage.sync.get(tc.settings, function(storage) {
-      tc.settings.speed = Number(storage.speed);
-      tc.settings.speedStep = Number(storage.speedStep);
-      tc.settings.rewindTime = Number(storage.rewindTime);
-      tc.settings.advanceTime = Number(storage.advanceTime);
-      tc.settings.resetKeyCode = Number(storage.resetKeyCode);
-      tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
-      tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
-      tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
-      tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
-      tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+      tc.settings.speed              = Number(storage.speed);
+      tc.settings.speedStep          = Number(storage.speedStep);
+      tc.settings.rewindTime         = Number(storage.rewindTime);
+      tc.settings.advanceTime        = Number(storage.advanceTime);
+      tc.settings.resetKeyCode       = Number(storage.resetKeyCode);
+      tc.settings.resetKeyCodeDupl   = Number(storage.resetKeyCodeDupl);
+      tc.settings.rewindKeyCode      = Number(storage.rewindKeyCode);
+      tc.settings.rewindKeyCodeDupl  = Number(storage.rewindKeyCodeDupl);
+      tc.settings.slowerKeyCode      = Number(storage.slowerKeyCode);
+      tc.settings.slowerKeyCodeDupl  = Number(storage.slowerKeyCodeDupl);
+      tc.settings.fasterKeyCode      = Number(storage.fasterKeyCode);
+      tc.settings.fasterKeyCodeDupl  = Number(storage.fasterKeyCodeDupl);
+      tc.settings.advanceKeyCode     = Number(storage.advanceKeyCode);
+      tc.settings.advanceKeyCodeDupl = Number(storage.advanceKeyCodeDupl);
+      tc.settings.rememberSpeed      = Boolean(storage.rememberSpeed);
 
       readyStateCheckInterval = setInterval(initializeVideoSpeed, 10);
     }
@@ -201,15 +211,15 @@ chrome.extension.sendMessage({}, function(response) {
           return false;
         }
 
-        if (keyCode == tc.settings.rewindKeyCode) {
+        if (keyCode == tc.settings.rewindKeyCode || keyCode == tc.settings.rewindKeyCodeDupl) {
           runAction('rewind')
-        } else if (keyCode == tc.settings.advanceKeyCode) {
+        } else if (keyCode == tc.settings.advanceKeyCode || keyCode == tc.settings.advanceKeyCodeDupl) {
           runAction('advance')
-        } else if (keyCode == tc.settings.fasterKeyCode) {
+        } else if (keyCode == tc.settings.fasterKeyCode || keyCode == tc.settings.fasterKeyCodeDupl) {
           runAction('faster')
-        } else if (keyCode == tc.settings.slowerKeyCode) {
+        } else if (keyCode == tc.settings.slowerKeyCode || keyCode == tc.settings.slowerKeyCodeDupl) {
           runAction('slower')
-        } else if (keyCode == tc.settings.resetKeyCode) {
+        } else if (keyCode == tc.settings.resetKeyCode || keyCode == tc.settings.resetKeyCodeDupl) {
           runAction('reset')
         }
 
