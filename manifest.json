@@ -31,5 +31,8 @@
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
     }
+  ],
+  "web_accessible_resources": [
+    "inject.css"
   ]
 }
