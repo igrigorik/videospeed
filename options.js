@@ -113,7 +113,7 @@ function restore_defaults() {
 function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('focus', inputFocus);
   document.getElementById(inputId).addEventListener('blur', inputBlur);
-  document.getElementById(inputId).addEventListener('keypress', recordKeyPress);
+  document.getElementById(inputId).addEventListener('keydown', recordKeyPress);
 }
 
 document.addEventListener('DOMContentLoaded', function () {

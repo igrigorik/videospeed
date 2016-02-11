@@ -155,11 +155,10 @@ chrome.extension.sendMessage({}, function(response) {
         document.head.appendChild(link);
       }
 
-      document.addEventListener('keypress', function(event) {
-        // if lowercase letter pressed, check for uppercase key code
-        var keyCode = String.fromCharCode(event.keyCode).toUpperCase().charCodeAt();
+      document.addEventListener('keydown', function(event) {
+        var keyCode = event.keyCode;
 
-        // Ignore keypress event if typing in an input box
+        // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
             || document.activeElement.isContentEditable) {
