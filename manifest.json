@@ -25,6 +25,7 @@
       "matches": [ "http://*/*", "https://*/*", "file:///*"],
       "exclude_matches": [
         "https://plus.google.com/hangouts/*",
+        "https://hangouts.google.com/hangouts/*",
         "http://www.lynda.com/*",
         "http://www.hitbox.tv/*"
       ],
