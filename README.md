@@ -28,11 +28,19 @@ Note that you can customize these shortcuts in the extension settings page. Also
  * If you're adventurous, try disabling the Flash plugin in Chrome in chrome://plugins/
  * If viewing a video on Wistia, right click to switch to HTML5 video, refresh the page, and the controls will appear. 
 
-### Wishlist
+### FAQ
 
-* Make it not suck with Vimeo content: "s" shortcut and button clicks
-* Your awesome feature here...
+**The video controls are not showing up?** This extension is only compatible with HTML5 video. If you don't see the controls showing up, chances are you are viewing a Flash video. If you want to confirm, try right-clicking on the video and inspect the menu: if it mentions flash, then that's the issue. That said, most sites will fallback to HTML5 if they detect that Flash it not available. You can try manually disabling Flash plugin in Chrome:
 
+* In a new tab, navigate to `chrome://plugins`
+* Disable "Adobe Flash Player"
+* Restart your browser and try playing your video again
+
+**The speed controls are not showing up for local videos?** To enable playback of local media (e.g. File > Open File), you need to grant additional permissions to the extension.
+
+* In a new tab, navigate to `chrome://extensions`
+* Find "Video Speed Controller" extension in the list and enable "Allow access to file URLs"
+* Open a new tab and try opening a local file, the controls should show up
 
 ### License
 
