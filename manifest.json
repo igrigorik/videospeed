@@ -26,6 +26,7 @@
       "exclude_matches": [
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/hangouts/*",
+        "https://teamtreehouse.com/*",
         "http://www.lynda.com/*",
         "http://www.hitbox.tv/*"
       ],
