@@ -27,6 +27,8 @@
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/hangouts/*",
         "https://teamtreehouse.com/*",
+        "https://www.instagram.com/*",
+        "https://www.twitter.com/*",
         "http://www.lynda.com/*",
         "http://www.hitbox.tv/*"
       ],
