@@ -242,9 +242,6 @@ chrome.extension.sendMessage({}, function(response) {
           iterations: 1,
           delay: 0
         });
-        controllerAnimation.onfinish = function(e) {
-          controller.style.visibility = 'hidden';
-        }
       }
     });
   }
