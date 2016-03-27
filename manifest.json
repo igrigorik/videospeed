@@ -30,7 +30,8 @@
         "https://www.instagram.com/*",
         "https://www.twitter.com/*",
         "http://www.lynda.com/*",
-        "http://www.hitbox.tv/*"
+        "http://www.hitbox.tv/*",
+        "https://vine.co/*"
       ],
       "css": [ "inject.css" ],
       "js":  [ "inject.js" ]
