@@ -11,13 +11,50 @@ var tcDefaults = {
   rememberSpeed: false // default: false
 };
 
-function recordKeyPress(e) {
-  var normalizedChar = String.fromCharCode(e.keyCode).toUpperCase();
-  e.target.value = normalizedChar;
-  e.target.keyCode = normalizedChar.charCodeAt();
+var keyCodeAliases = {
+  32:  'Space',
+  96:  'Num 0',
+  97:  'Num 1',
+  98:  'Num 2',
+  99:  'Num 3',
+  100: 'Num 4',
+  101: 'Num 5',
+  102: 'Num 6',
+  103: 'Num 7',
+  104: 'Num 8',
+  105: 'Num 9',
+  106: 'Num *',
+  107: 'Num +',
+  109: 'Num -',
+  110: 'Num .',
+  111: 'Num /',
+  186: ';',
+  188: '<',
+  189: '-',
+  187: '+',
+  190: '>',
+  191: '/',
+  192: '~',
+  219: '[',
+  220: '\\',
+  221: ']',
+  222: '\'',
+}
 
-  e.preventDefault();
-  e.stopPropagation();
+function recordKeyPress(e) {
+  if (
+    (e.keyCode >= 48 && e.keyCode <= 57)    // Numbers 0-9
+    || (e.keyCode >= 65 && e.keyCode <= 90) // Letters A-Z
+    || keyCodeAliases[e.keyCode]            // Other character keys
+  ) {
+    e.target.value = keyCodeAliases[e.keyCode] || String.fromCharCode(e.keyCode);
+    e.target.keyCode = e.keyCode;
+
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.keyCode === 8) { // Clear input when backspace pressed
+    e.target.value = '';
+  }
 };
 
 function inputFilterNumbersOnly(e) {
@@ -33,11 +70,11 @@ function inputFocus(e) {
 };
 
 function inputBlur(e) {
-   e.target.value = String.fromCharCode(e.target.keyCode).toUpperCase();
+  e.target.value = keyCodeAliases[e.target.keyCode] || String.fromCharCode(e.target.keyCode);
 };
 
 function updateShortcutInputText(inputId, keyCode) {
-  document.getElementById(inputId).value = String.fromCharCode(keyCode).toUpperCase();
+  document.getElementById(inputId).value = keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
   document.getElementById(inputId).keyCode = keyCode;
 }
 
