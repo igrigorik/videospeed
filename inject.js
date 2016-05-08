@@ -98,6 +98,7 @@ chrome.extension.sendMessage({}, function(response) {
       container.style.top = this.video.offsetTop+"px";
 
       fragment.appendChild(container);
+      this.video.classList.add('tc-initialized');
       this.video.parentElement.insertBefore(fragment, this.video);
 
       var speed = parseFloat(tc.settings.speed).toFixed(2);
@@ -181,14 +182,27 @@ chrome.extension.sendMessage({}, function(response) {
         return false;
       }, true);
 
-      document.addEventListener('DOMNodeInserted', function(event) {
-        var node = event.target || null;
-        if (node && node.nodeName === 'VIDEO') {
-          new tc.videoController(node);
-        }
-      });
-
       var forEach = Array.prototype.forEach;
+      function checkForVideo(node) {
+        if (node.nodeName === 'VIDEO') {
+          if (!node.classList.contains('tc-initialized')) {
+            new tc.videoController(node);
+          }
+        } else if (node.children != undefined) {
+          for (var i = 0; i < node.children.length; i++) {
+            checkForVideo(node.children[i]);
+          }
+        }
+      }
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          forEach.call(mutation.addedNodes, function(node) {
+            checkForVideo(node);
+          })
+        });
+      });
+      observer.observe(document, { childList: true, subtree: true });
+
       var videoTags = document.getElementsByTagName('video');
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);

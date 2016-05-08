@@ -71,13 +71,6 @@
   margin-top: 60px;
 }
 
-/* shift controller on Vine embeds: mute always visible */
-/* e.g. https://twitter.com/Vine_Football/status/550614684575858688 */
-.video-container .tc-videoController {
-  margin-top: 12px;
-  margin-left: 55px;
-}
-
 /* shift controller on vine.co */
 /* e.g. https://vine.co/v/OrJj39YlL57 */
 .video-container .vine-video-container .tc-videoController {
