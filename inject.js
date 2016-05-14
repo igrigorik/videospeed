@@ -253,7 +253,7 @@ chrome.extension.sendMessage({}, function(response) {
           {opacity: 0.3},
           {opacity: 0.0},
         ], {
-          duration: 3000,
+          duration: 2000,
           iterations: 1,
           delay: 0
         });
