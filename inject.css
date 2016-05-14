@@ -15,7 +15,7 @@
   z-index: 9999999;
   opacity: 0.3;
 
-  font-family: Verdana;
+  font-family: Verdana, Geneva, sans-serif;
   font-size: 13px;
 }
 
@@ -43,12 +43,16 @@
   font-size: 14px !important;
   line-height: 14px !important;
   border: 1px solid white !important;
-  font-family: Verdana !important;
+  font-family: "Lucida Console", Monaco, monospace !important;
+}
+
+.tc-videoController button.rw {
+  opacity: 0.65;
 }
 
 .tc-videoController button.tc-hideButton {
   margin: 0 2px 0 20px !important;
-  opacity: 0.7;
+  opacity: 0.5;
 }
 
 /* YouTube player */

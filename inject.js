@@ -78,9 +78,11 @@ chrome.extension.sendMessage({}, function(response) {
       var hideButton = document.createElement('button');
 
       rewindButton.innerHTML = '&laquo;';
+      rewindButton.className = 'rw';
       fasterButton.textContent = '+';
       slowerButton.textContent = '-';
       advanceButton.innerHTML = '&raquo;';
+      advanceButton.className = 'rw';
       hideButton.textContent = 'x';
       hideButton.className = 'tc-hideButton';
 
