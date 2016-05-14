@@ -95,7 +95,7 @@ chrome.extension.sendMessage({}, function(response) {
 
       container.classList.add('tc-videoController');
       controls.classList.add('tc-controls');
-      container.style.top = this.video.offsetTop+"px";
+      container.style.top = Math.max(this.video.offsetTop,0)+"px";
 
       fragment.appendChild(container);
       this.video.classList.add('tc-initialized');
