@@ -9,14 +9,14 @@
   border-radius: 5px;
   padding: 5px;
   margin: 10px 10px 10px 15px;
-  line-height: 1.8em;
 
   cursor: default;
   z-index: 9999999;
   opacity: 0.3;
 
   font-family: Verdana, Geneva, sans-serif;
-  font-size: 13px;
+  font-size: 13px !important;
+  line-height: 1.8em !important;
 }
 
 .tc-videoController:hover {
