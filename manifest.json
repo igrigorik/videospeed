@@ -38,6 +38,6 @@
     }
   ],
   "web_accessible_resources": [
-    "inject.css"
+    "inject.css", "shadow.css"
   ]
 }

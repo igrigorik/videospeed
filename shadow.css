@@ -1,0 +1,45 @@
+* {
+  line-height: 1.8em;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 13px;
+}
+
+:host(:hover) .tc-controls {
+  display: inline;
+}
+
+.tc-controls {
+  display: none;
+  margin-left: 1em;
+}
+
+button {
+  cursor: pointer;
+  color: black;
+  background: white;
+  font-weight: bold;
+  margin: 0 2px;
+  border-radius: 5px;
+  padding: 1px 6px 3px 6px;
+  font-size: 14px;
+  line-height: 14px;
+  border: 1px solid white;
+  font-family: "Lucida Console", Monaco, monospace;
+}
+
+button:hover {
+  opacity: 1.0;
+}
+
+button:active {
+  background: #ccc;
+}
+
+button.rw {
+  opacity: 0.65;
+}
+
+button.tc-hideButton {
+  margin: 0 2px 0 20px;
+  opacity: 0.5;
+}

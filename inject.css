@@ -13,46 +13,10 @@
   cursor: default;
   z-index: 9999999;
   opacity: 0.3;
-
-  font-family: Verdana, Geneva, sans-serif;
-  font-size: 13px !important;
-  line-height: 1.8em !important;
 }
 
 .tc-videoController:hover {
   opacity: 0.7;
-}
-
-.tc-videoController:hover .tc-controls {
-  display: inline;
-}
-
-.tc-controls {
-  display: none;
-  margin-left: 1em;
-}
-
-.tc-controls button {
-  cursor: pointer;
-  color: black !important;
-  background: white !important;
-  font-weight: bold !important;
-  margin: 0 2px !important;
-  border-radius: 5px !important;
-  padding: 1px 6px 3px 6px !important;
-  font-size: 14px !important;
-  line-height: 14px !important;
-  border: 1px solid white !important;
-  font-family: "Lucida Console", Monaco, monospace !important;
-}
-
-.tc-videoController button.rw {
-  opacity: 0.65;
-}
-
-.tc-videoController button.tc-hideButton {
-  margin: 0 2px 0 20px !important;
-  opacity: 0.5;
 }
 
 /* YouTube player */
@@ -90,4 +54,9 @@
 }
 .ytp-fullscreen .ytp-webgl-spherical-control {
   top: 100px !important;
+}
+
+/* disable Vimeo video overlay*/
+div.video-wrapper + div.target {
+  height: 0;
 }

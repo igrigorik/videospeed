@@ -68,8 +68,13 @@ chrome.extension.sendMessage({}, function(response) {
 
       var fragment = document.createDocumentFragment();
       var container = document.createElement('div');
-      var speedIndicator = document.createElement('span');
 
+      var shadow = container.createShadowRoot();
+      shadow.innerHTML = '<style> @import "' +
+        chrome.extension.getURL('shadow.css') +
+        '"; </style>';
+
+      var speedIndicator = document.createElement('span');
       var controls = document.createElement('span');
       var fasterButton = document.createElement('button');
       var slowerButton = document.createElement('button');
@@ -79,12 +84,32 @@ chrome.extension.sendMessage({}, function(response) {
 
       rewindButton.innerHTML = '&laquo;';
       rewindButton.className = 'rw';
+      rewindButton.addEventListener('click', function(e) {
+        runAction('rewind', document);
+      });
+
       fasterButton.textContent = '+';
+      fasterButton.addEventListener('click', function(e) {
+        runAction('faster', document);
+      });
+
       slowerButton.textContent = '-';
+      slowerButton.addEventListener('click', function(e) {
+        runAction('slower', document);
+      });
+
       advanceButton.innerHTML = '&raquo;';
       advanceButton.className = 'rw';
+      advanceButton.addEventListener('click', function(e) {
+        runAction('advance', document);
+      });
+
       hideButton.textContent = 'x';
       hideButton.className = 'tc-hideButton';
+      hideButton.addEventListener('click', function(e) {
+        container.nextSibling.classList.add('vc-cancelled')
+        container.remove();
+      });
 
       controls.appendChild(rewindButton);
       controls.appendChild(slowerButton);
@@ -92,8 +117,8 @@ chrome.extension.sendMessage({}, function(response) {
       controls.appendChild(advanceButton);
       controls.appendChild(hideButton);
 
-      container.appendChild(speedIndicator);
-      container.appendChild(controls);
+      shadow.appendChild(speedIndicator);
+      shadow.appendChild(controls);
 
       container.classList.add('tc-videoController');
       controls.classList.add('tc-controls');
@@ -108,35 +133,21 @@ chrome.extension.sendMessage({}, function(response) {
       speedIndicator.textContent = speed;
       this.speedIndicator = speedIndicator;
 
-      container.addEventListener('click', function(e) {
-        if (e.target === slowerButton) {
-          runAction('slower', document)
-        } else if (e.target === fasterButton) {
-          runAction('faster', document)
-        } else if (e.target === rewindButton) {
-          runAction('rewind', document)
-        } else if (e.target === advanceButton) {
-          runAction('advance', document)
-        } else if (e.target === hideButton) {
-          container.nextSibling.classList.add('vc-cancelled')
-          container.remove();
-        }
-
-        e.preventDefault();
-        e.stopPropagation();
-      }, true);
-
-      // Prevent full screen mode on YouTube
       container.addEventListener('dblclick', function(e) {
         e.preventDefault();
         e.stopPropagation();
       }, true);
 
-      // Prevent full screen mode on Vimeo
       container.addEventListener('mousedown', function(e) {
         e.preventDefault();
         e.stopPropagation();
       }, true);
+
+      container.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
     }
   }
 
@@ -171,15 +182,15 @@ chrome.extension.sendMessage({}, function(response) {
         }
 
         if (keyCode == tc.settings.rewindKeyCode) {
-          runAction('rewind', document)
+          runAction('rewind', document, true)
         } else if (keyCode == tc.settings.advanceKeyCode) {
-          runAction('advance', document)
+          runAction('advance', document, true)
         } else if (keyCode == tc.settings.fasterKeyCode) {
-          runAction('faster', document)
+          runAction('faster', document, true)
         } else if (keyCode == tc.settings.slowerKeyCode) {
-          runAction('slower', document)
+          runAction('slower', document, true)
         } else if (keyCode == tc.settings.resetKeyCode) {
-          runAction('reset', document)
+          runAction('reset', document, true)
         }
 
         return false;
@@ -219,11 +230,14 @@ chrome.extension.sendMessage({}, function(response) {
       });
   }
 
-  function runAction(action, document) {
+  function runAction(action, document, keyboard = false) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {
+      if (keyboard)
+        showController(v);
+
       if (!v.classList.contains('vc-cancelled')) {
         if (action === 'rewind') {
           v.currentTime -= tc.settings.rewindTime;
@@ -242,25 +256,29 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'reset') {
           v.playbackRate = 1.0;
         }
-
-        // show controller on keyboard input
-        var controller = v.parentElement
-          .getElementsByClassName('tc-videoController')[0];
-        controller.style.visibility = 'visible';
-        if (controllerAnimation != null
-            && controllerAnimation.playState != 'finished') {
-          controllerAnimation.cancel();
-        }
-        controllerAnimation = controller.animate([
-          {opacity: 0.3},
-          {opacity: 0.3},
-          {opacity: 0.0},
-        ], {
-          duration: 2000,
-          iterations: 1,
-          delay: 0
-        });
       }
+    });
+  }
+
+  function showController(v) {
+    var controller = v.closest('.tc-videoController ~ .tc-initialized')
+      .parentElement.getElementsByClassName('tc-videoController')[0];
+
+    controller.style.visibility = 'visible';
+    if (controllerAnimation != null
+        && controllerAnimation.playState != 'finished') {
+      controllerAnimation.cancel();
+    }
+
+    // TODO : if controller is visible, do not start animation.
+    controllerAnimation = controller.animate([
+      {opacity: 0.3},
+      {opacity: 0.3},
+      {opacity: 0.0},
+    ], {
+      duration: 2000,
+      iterations: 1,
+      delay: 0
     });
   }
 
