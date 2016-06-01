@@ -30,8 +30,9 @@ chrome.extension.sendMessage({}, function(response) {
   });
 
   function defineVideoController() {
-    tc.videoController = function(target) {
+    tc.videoController = function(target, parent) {
       this.video = target;
+      this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
@@ -127,7 +128,11 @@ chrome.extension.sendMessage({}, function(response) {
 
       fragment.appendChild(container);
       this.video.classList.add('tc-initialized');
-      this.video.parentElement.insertBefore(fragment, this.video);
+
+      // Note: when triggered via a MutationRecord, it's possible that the
+      // target is not the immediate parent. This appends the controller as
+      // the first element of the target, which may not be the parent.
+      this.parent.insertBefore(fragment, this.parent.firstChild);
 
       var speed = parseFloat(tc.settings.speed).toFixed(2);
       speedIndicator.textContent = speed;
@@ -197,21 +202,22 @@ chrome.extension.sendMessage({}, function(response) {
       }, true);
 
       var forEach = Array.prototype.forEach;
-      function checkForVideo(node) {
+      function checkForVideo(node, parent) {
         if (node.nodeName === 'VIDEO') {
           if (!node.classList.contains('tc-initialized')) {
-            new tc.videoController(node);
+            new tc.videoController(node, parent);
           }
         } else if (node.children != undefined) {
           for (var i = 0; i < node.children.length; i++) {
-            checkForVideo(node.children[i]);
+            checkForVideo(node.children[i],
+                          node.children[i].parentNode || parent);
           }
         }
       }
       var observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           forEach.call(mutation.addedNodes, function(node) {
-            checkForVideo(node);
+            checkForVideo(node, node.parentNode || mutation.target);
           })
         });
       });
