@@ -34,6 +34,7 @@ chrome.extension.sendMessage({}, function(response) {
       this.video = target;
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
+      this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
       }
@@ -66,93 +67,56 @@ chrome.extension.sendMessage({}, function(response) {
 
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
+      var speed = parseFloat(tc.settings.speed).toFixed(2),
+        top = Math.max(this.video.offsetTop, 0) + "px",
+        left = Math.max(this.video.offsetLeft, 0) + "px";
 
+      var prevent = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      var wrapper = document.createElement('div');
+      wrapper.classList.add('vsc-controller');
+      wrapper.dataset['vscid'] = this.id;
+      wrapper.addEventListener('dblclick', prevent, true);
+      wrapper.addEventListener('mousedown', prevent, true);
+      wrapper.addEventListener('click', prevent, true);
+
+      var shadow = wrapper.createShadowRoot();
+      var shadowTemplate = `
+        <style>
+          @import "${chrome.extension.getURL('shadow.css')}";
+        </style>
+
+        <div id="controller" style="top:${top}; left:${left}">
+          <span>${speed}</span>
+          <span id="controls">
+            <button data-action="rewind" class="rw">«</button>
+            <button data-action="slower">-</button>
+            <button data-action="faster">+</button>
+            <button data-action="advance" class="rw">»</button>
+            <button data-action="close" class="hideButton">x</button>
+          </span>
+        </div>
+      `;
+      shadow.innerHTML = shadowTemplate;
+      shadow.querySelectorAll('button').forEach(button => {
+        button.onclick = (e) => {
+          runAction(e.target.dataset['action'], document);
+        }
+      });
+
+      this.speedIndicator = shadow.querySelector('span');
       var fragment = document.createDocumentFragment();
-      var container = document.createElement('div');
-
-      var shadow = container.createShadowRoot();
-      shadow.innerHTML = '<style> @import "' +
-        chrome.extension.getURL('shadow.css') +
-        '"; </style>';
-
-      var speedIndicator = document.createElement('span');
-      var controls = document.createElement('span');
-      var fasterButton = document.createElement('button');
-      var slowerButton = document.createElement('button');
-      var rewindButton = document.createElement('button');
-      var advanceButton = document.createElement('button');
-      var hideButton = document.createElement('button');
-
-      rewindButton.innerHTML = '&laquo;';
-      rewindButton.className = 'rw';
-      rewindButton.addEventListener('click', function(e) {
-        runAction('rewind', document);
-      });
-
-      fasterButton.textContent = '+';
-      fasterButton.addEventListener('click', function(e) {
-        runAction('faster', document);
-      });
-
-      slowerButton.textContent = '-';
-      slowerButton.addEventListener('click', function(e) {
-        runAction('slower', document);
-      });
-
-      advanceButton.innerHTML = '&raquo;';
-      advanceButton.className = 'rw';
-      advanceButton.addEventListener('click', function(e) {
-        runAction('advance', document);
-      });
-
-      hideButton.textContent = 'x';
-      hideButton.className = 'tc-hideButton';
-      hideButton.addEventListener('click', function(e) {
-        container.nextSibling.classList.add('vc-cancelled')
-        container.remove();
-      });
-
-      controls.appendChild(rewindButton);
-      controls.appendChild(slowerButton);
-      controls.appendChild(fasterButton);
-      controls.appendChild(advanceButton);
-      controls.appendChild(hideButton);
-
-      shadow.appendChild(speedIndicator);
-      shadow.appendChild(controls);
-
-      container.classList.add('tc-videoController');
-      controls.classList.add('tc-controls');
-      container.style.top = Math.max(this.video.offsetTop,0)+"px";
-      container.style.left = Math.max(this.video.offsetLeft,0)+"px";
-
-      fragment.appendChild(container);
-      this.video.classList.add('tc-initialized');
+      fragment.appendChild(wrapper);
 
       // Note: when triggered via a MutationRecord, it's possible that the
       // target is not the immediate parent. This appends the controller as
       // the first element of the target, which may not be the parent.
       this.parent.insertBefore(fragment, this.parent.firstChild);
-
-      var speed = parseFloat(tc.settings.speed).toFixed(2);
-      speedIndicator.textContent = speed;
-      this.speedIndicator = speedIndicator;
-
-      container.addEventListener('dblclick', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }, true);
-
-      container.addEventListener('mousedown', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }, true);
-
-      container.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }, true);
-
+      this.video.classList.add('vsc-initialized');
+      this.video.dataset['vscid'] = this.id;
     }
   }
 
@@ -204,7 +168,7 @@ chrome.extension.sendMessage({}, function(response) {
       var forEach = Array.prototype.forEach;
       function checkForVideo(node, parent) {
         if (node.nodeName === 'VIDEO') {
-          if (!node.classList.contains('tc-initialized')) {
+          if (!node.classList.contains('vsc-initialized')) {
             new tc.videoController(node, parent);
           }
         } else if (node.children != undefined) {
@@ -241,10 +205,14 @@ chrome.extension.sendMessage({}, function(response) {
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {
-      if (keyboard)
-        showController(v);
+      var id = v.dataset['vscid'];
+      var controller = document.querySelector(`div[data-vscid="${id}"]`)
+        .shadowRoot.querySelector('#controller');
 
-      if (!v.classList.contains('vc-cancelled')) {
+      if (keyboard)
+        showController(controller);
+
+      if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
           v.currentTime -= tc.settings.rewindTime;
         } else if (action === 'advance') {
@@ -261,15 +229,15 @@ chrome.extension.sendMessage({}, function(response) {
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           v.playbackRate = 1.0;
+        } else if (action === 'close') {
+          v.classList.add('vsc-cancelled');
+          controller.remove();
         }
       }
     });
   }
 
-  function showController(v) {
-    var controller = v.closest('.tc-videoController ~ .tc-initialized')
-      .parentElement.getElementsByClassName('tc-videoController')[0];
-
+  function showController(controller) {
     controller.style.visibility = 'visible';
     if (controllerAnimation != null
         && controllerAnimation.playState != 'finished') {

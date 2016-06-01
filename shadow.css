@@ -4,11 +4,32 @@
   font-size: 13px;
 }
 
-:host(:hover) .tc-controls {
+:host(:hover) #controls {
   display: inline;
 }
 
-.tc-controls {
+#controller {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  background: black;
+  color: white;
+
+  border-radius: 5px;
+  padding: 5px;
+  margin: 10px 10px 10px 15px;
+
+  cursor: default;
+  z-index: 9999999;
+  opacity: 0.3;
+}
+
+#controller:hover {
+  opacity: 0.7;
+}
+
+#controls {
   display: none;
   margin-left: 1em;
 }
@@ -18,13 +39,16 @@ button {
   color: black;
   background: white;
   font-weight: bold;
-  margin: 0 2px;
   border-radius: 5px;
   padding: 1px 6px 3px 6px;
   font-size: 14px;
   line-height: 14px;
   border: 1px solid white;
   font-family: "Lucida Console", Monaco, monospace;
+}
+
+button:focus {
+  outline: 0;
 }
 
 button:hover {
@@ -39,7 +63,7 @@ button.rw {
   opacity: 0.65;
 }
 
-button.tc-hideButton {
-  margin: 0 2px 0 20px;
+button.hideButton {
+  margin: 0 2px 0 15px;
   opacity: 0.5;
 }
