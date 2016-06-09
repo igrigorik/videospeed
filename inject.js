@@ -180,7 +180,10 @@ chrome.extension.sendMessage({}, function(response) {
       }
       var observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-          forEach.call(mutation.addedNodes, function(node) {
+          mutation.addedNodes.forEach(node => {
+            if (typeof node === "function")
+              return;
+
             checkForVideo(node, node.parentNode || mutation.target);
           })
         });
