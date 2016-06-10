@@ -11,6 +11,11 @@
   opacity: 0;
 }
 
+.ytp-autohide .vcs-show {
+  visibility: visible;
+  opacity: 1.0;
+}
+
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
 .full-frame .html5-video-player:not(.ytp-fullscreen) .vsc-controller {

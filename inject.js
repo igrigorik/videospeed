@@ -15,7 +15,6 @@ chrome.extension.sendMessage({}, function(response) {
     }
   };
 
-  var controllerAnimation;
   chrome.storage.sync.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.speedStep = Number(storage.speedStep);
@@ -209,8 +208,7 @@ chrome.extension.sendMessage({}, function(response) {
 
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
-      var controller = document.querySelector(`div[data-vscid="${id}"]`)
-        .shadowRoot.querySelector('#controller');
+      var controller = document.querySelector(`div[data-vscid="${id}"]`);
 
       if (keyboard)
         showController(controller);
@@ -240,23 +238,19 @@ chrome.extension.sendMessage({}, function(response) {
     });
   }
 
+  var timer;
+  var animation = false;
   function showController(controller) {
-    controller.style.visibility = 'visible';
-    if (controllerAnimation != null
-        && controllerAnimation.playState != 'finished') {
-      controllerAnimation.cancel();
-    }
+    controller.classList.add('vcs-show');
 
-    // TODO : if controller is visible, do not start animation.
-    controllerAnimation = controller.animate([
-      {opacity: 0.3},
-      {opacity: 0.3},
-      {opacity: 0.0},
-    ], {
-      duration: 2000,
-      iterations: 1,
-      delay: 0
-    });
+    if (animation)
+      clearTimeout(timer);
+
+    animation = true;
+    timer = setTimeout(function() {
+      controller.classList.remove('vcs-show');
+      animation = false;
+    }, 2000);
   }
 
   initializeWhenReady(document);
