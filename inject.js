@@ -122,7 +122,7 @@ chrome.extension.sendMessage({}, function(response) {
 
   function initializeWhenReady(document) {
     var readyStateCheckInterval = setInterval(function() {
-      if (document.readyState === 'complete') {
+      if (document && document.readyState === 'complete') {
         clearInterval(readyStateCheckInterval);
         initializeNow(document);
       }
