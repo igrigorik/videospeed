@@ -28,6 +28,8 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
   });
 
+  var forEach = Array.prototype.forEach;
+
   function defineVideoController() {
     tc.videoController = function(target, parent) {
       this.video = target;
@@ -100,7 +102,7 @@ chrome.extension.sendMessage({}, function(response) {
         </div>
       `;
       shadow.innerHTML = shadowTemplate;
-      shadow.querySelectorAll('button').forEach(button => {
+      forEach.call(shadow.querySelectorAll('button'), function(button) {
         button.onclick = (e) => {
           runAction(e.target.dataset['action'], document);
         }
@@ -164,7 +166,6 @@ chrome.extension.sendMessage({}, function(response) {
         return false;
       }, true);
 
-      var forEach = Array.prototype.forEach;
       function checkForVideo(node, parent) {
         if (node.nodeName === 'VIDEO') {
           if (!node.classList.contains('vsc-initialized')) {
@@ -179,7 +180,7 @@ chrome.extension.sendMessage({}, function(response) {
       }
       var observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-          mutation.addedNodes.forEach(node => {
+          forEach.call(mutation.addedNodes, function(node) {
             if (typeof node === "function")
               return;
 
