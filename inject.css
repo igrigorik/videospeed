@@ -2,7 +2,8 @@
 
 /* YouTube player */
 .ytp-hide-info-bar .vsc-controller {
-  margin-top: 10px;
+  position: relative;
+  top: 10px;
 }
 
 .ytp-autohide .vsc-controller {
@@ -19,12 +20,14 @@
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
 .full-frame .html5-video-player:not(.ytp-fullscreen) .vsc-controller {
-  margin-top: 45px;
+  position: relative;
+  top: 45px;
 }
 
 .ytp-fullscreen .vsc-controller {
   display: block;
-  margin-top: 60px;
+  position: relative;
+  top: 60px;
 }
 
 /* shift controller on vine.co */
