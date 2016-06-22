@@ -34,6 +34,15 @@
   margin-left: 1em;
 }
 
+#controller.dragging {
+  opacity: 0.7;
+  cursor: -webkit-grabbing;
+}
+
+#controller.dragging #controls {
+  display: inline;
+}
+
 button {
   cursor: pointer;
   color: black;
@@ -66,4 +75,12 @@ button.rw {
 button.hideButton {
   margin: 0 2px 0 15px;
   opacity: 0.5;
+}
+
+button.dragButton {
+  cursor: -webkit-grab;
+}
+
+button.dragButton:active {
+  cursor: -webkit-grabbing;
 }

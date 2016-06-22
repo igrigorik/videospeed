@@ -50,3 +50,7 @@
 div.video-wrapper + div.target {
   height: 0;
 }
+
+.vcs-dragging {
+  cursor: -webkit-grabbing;
+}

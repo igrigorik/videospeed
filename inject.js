@@ -98,13 +98,20 @@ chrome.extension.sendMessage({}, function(response) {
             <button data-action="faster">+</button>
             <button data-action="advance" class="rw">»</button>
             <button data-action="close" class="hideButton">x</button>
+            <button data-action="drag" class="dragButton"><></button>
           </span>
         </div>
       `;
       shadow.innerHTML = shadowTemplate;
       forEach.call(shadow.querySelectorAll('button'), function(button) {
-        button.onclick = (e) => {
-          runAction(e.target.dataset['action'], document);
+        if (button.dataset['action'] === 'drag') {
+          button.addEventListener('mousedown', (e) => {
+            runAction(e.target.dataset['action'], document);
+          });
+        } else {
+          button.onclick = (e) => {
+            runAction(e.target.dataset['action'], document);
+          }
         }
       });
 
@@ -234,9 +241,47 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
+        } else if (action === 'drag') {
+          handleDrag(v, controller);
         }
       }
     });
+  }
+
+  function handleDrag(video, controller) {
+    const parentElement = controller.parentElement,
+      boundingRect = parentElement.getBoundingClientRect(),
+      shadowController = controller.shadowRoot.querySelector('#controller'),
+      dragButton = shadowController.querySelector('.dragButton'),
+
+      maxWidth = video.offsetWidth - shadowController.offsetWidth - 100,
+      maxHeight = video.offsetHeight - shadowController.offsetHeight - 100,
+
+      offsetLeft = boundingRect.left + dragButton.offsetLeft + dragButton.offsetWidth,
+      offsetTop = boundingRect.top + dragButton.offsetTop + dragButton.offsetHeight;
+
+    video.classList.add('vcs-dragging');
+    shadowController.classList.add('dragging');
+
+    const startDragging = (e) => {
+      let newLeft = Math.min(maxWidth, Math.max(0, e.clientX - offsetLeft));
+      let newTop = Math.min(maxHeight, Math.max(0, e.clientY - offsetTop));
+
+      shadowController.style.left = newLeft + 'px';
+      shadowController.style.top = newTop + 'px';
+    }
+    const stopDragging = () => {
+      parentElement.removeEventListener('mousemove', startDragging);
+      parentElement.removeEventListener('mouseup', stopDragging);
+      parentElement.removeEventListener('mouseleave', stopDragging);
+
+      shadowController.classList.remove('dragging');
+      video.classList.remove('vcs-dragging');
+    }
+
+    parentElement.addEventListener('mouseup',stopDragging);
+    parentElement.addEventListener('mouseleave',stopDragging);
+    parentElement.addEventListener('mousemove', startDragging);
   }
 
   var timer;
