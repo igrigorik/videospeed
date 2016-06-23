@@ -203,7 +203,7 @@ chrome.extension.sendMessage({}, function(response) {
       });
   }
 
-  function runAction(action, document, keyboard = false) {
+  function runAction(action, document, keyboard) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
