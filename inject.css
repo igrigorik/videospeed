@@ -46,7 +46,12 @@
   top: 100px !important;
 }
 
-/* disable Vimeo video overlay*/
+/* disable Vimeo video overlay */
 div.video-wrapper + div.target {
   height: 0;
+}
+
+/* Fix black overlay on Kickstarter */
+div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
+  content: none !important;
 }
