@@ -166,15 +166,23 @@ chrome.extension.sendMessage({}, function(response) {
         return false;
       }, true);
 
-      function checkForVideo(node, parent) {
+      function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
-          if (!node.classList.contains('vsc-initialized')) {
-            new tc.videoController(node, parent);
+          if (added) {
+            if (!node.classList.contains('vsc-initialized')) {
+              new tc.videoController(node, parent);
+            }
+          } else {
+            if (node.classList.contains('vsc-initialized')) {
+              var id = node.dataset['vscid'];
+              document.querySelector(`div[data-vscid="${id}"]`).remove();
+            }
           }
         } else if (node.children != undefined) {
           for (var i = 0; i < node.children.length; i++) {
             checkForVideo(node.children[i],
-                          node.children[i].parentNode || parent);
+                          node.children[i].parentNode || parent,
+                          added);
           }
         }
       }
@@ -183,8 +191,12 @@ chrome.extension.sendMessage({}, function(response) {
           forEach.call(mutation.addedNodes, function(node) {
             if (typeof node === "function")
               return;
-
-            checkForVideo(node, node.parentNode || mutation.target);
+            checkForVideo(node, node.parentNode || mutation.target, true);
+          })
+          forEach.call(mutation.removedNodes, function(node) {
+            if (typeof node === "function")
+              return;
+            checkForVideo(node, node.parentNode || mutation.target, false);
           })
         });
       });
