@@ -156,7 +156,7 @@ chrome.extension.sendMessage({}, function(response) {
       return;
 
     var readyStateCheckInterval = setInterval(function() {
-      if (document.readyState === 'complete') {
+      if (document && document.readyState === 'complete') {
         clearInterval(readyStateCheckInterval);
         initializeNow(document);
       }
