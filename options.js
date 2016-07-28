@@ -8,6 +8,7 @@ var tcDefaults = {
   fasterKeyCode: 68,    // default: D
   rewindKeyCode: 90,    // default: Z
   advanceKeyCode: 88,   // default: X
+  displayKeyCode: 86,   // default: V
   rememberSpeed: false, // default: false
   blacklist: `
     www.instagram.com
@@ -95,6 +96,7 @@ function save_options() {
   var advanceKeyCode = document.getElementById('advanceKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
+  var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var blacklist     = document.getElementById('blacklist').value;
 
@@ -106,6 +108,7 @@ function save_options() {
   advanceKeyCode = isNaN(advanceKeyCode) ? tcDefaults.advanceKeyCode : advanceKeyCode;
   slowerKeyCode = isNaN(slowerKeyCode) ? tcDefaults.slowerKeyCode : slowerKeyCode;
   fasterKeyCode = isNaN(fasterKeyCode) ? tcDefaults.fasterKeyCode : fasterKeyCode;
+  displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
 
   chrome.storage.sync.set({
     speedStep:      speedStep,
@@ -116,6 +119,7 @@ function save_options() {
     advanceKeyCode: advanceKeyCode,
     slowerKeyCode:  slowerKeyCode,
     fasterKeyCode:  fasterKeyCode,
+    displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
     blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
   }, function() {
@@ -139,6 +143,7 @@ function restore_options() {
     updateShortcutInputText('advanceKeyInput', storage.advanceKeyCode);
     updateShortcutInputText('slowerKeyInput', storage.slowerKeyCode);
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
+    updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('blacklist').value = storage.blacklist;
   });
@@ -173,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initShortcutInput('advanceKeyInput');
   initShortcutInput('slowerKeyInput');
   initShortcutInput('fasterKeyInput');
+  initShortcutInput('displayKeyInput');
 
   document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
   document.getElementById('advanceTime').addEventListener('keypress', inputFilterNumbersOnly);

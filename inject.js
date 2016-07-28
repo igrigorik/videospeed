@@ -10,6 +10,7 @@ chrome.extension.sendMessage({}, function(response) {
       fasterKeyCode: 68,    // default: D
       rewindKeyCode: 90,    // default: Z
       advanceKeyCode: 88,   // default: X
+      displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
       blacklist: `
         www.instagram.com
@@ -29,6 +30,7 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
     tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
     tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+    tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.blacklist = String(storage.blacklist);
@@ -192,6 +194,8 @@ chrome.extension.sendMessage({}, function(response) {
           runAction('slower', document, true)
         } else if (keyCode == tc.settings.resetKeyCode) {
           runAction('reset', document, true)
+        } else if (keyCode == tc.settings.displayKeyCode) {
+          runAction('display', document, true)
         }
 
         return false;
@@ -277,6 +281,9 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
+        } else if (action === 'display') {
+          controller.classList.add('vsc-manual');
+          controller.classList.toggle('vsc-hidden');
         }
       }
     });
