@@ -1,14 +1,20 @@
 var tcDefaults = {
-  speed: 1.0,          // default 1x
-  speedStep: 0.1,      // default 0.1x
-  rewindTime: 10,      // default 10s
-  advanceTime: 10,     // default 10s
-  resetKeyCode:  82,   // default: R
-  slowerKeyCode: 83,   // default: S
-  fasterKeyCode: 68,   // default: D
-  rewindKeyCode: 90,   // default: Z
-  advanceKeyCode: 88,  // default: X
-  rememberSpeed: false // default: false
+  speed: 1.0,           // default 1x
+  speedStep: 0.1,       // default 0.1x
+  rewindTime: 10,       // default 10s
+  advanceTime: 10,      // default 10s
+  resetKeyCode:  82,    // default: R
+  slowerKeyCode: 83,    // default: S
+  fasterKeyCode: 68,    // default: D
+  rewindKeyCode: 90,    // default: Z
+  advanceKeyCode: 88,   // default: X
+  rememberSpeed: false, // default: false
+  blacklist: `
+    www.instagram.com
+    www.twitter.com
+    vine.co
+    imgur.com
+  `.replace(/^\s+|\s+$/gm,'')
 };
 
 var keyCodeAliases = {
@@ -90,6 +96,7 @@ function save_options() {
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
+  var blacklist     = document.getElementById('blacklist').value;
 
   speedStep     = isNaN(speedStep) ? tcDefaults.speedStep : Number(speedStep);
   rewindTime    = isNaN(rewindTime) ? tcDefaults.rewindTime : Number(rewindTime);
@@ -109,7 +116,8 @@ function save_options() {
     advanceKeyCode: advanceKeyCode,
     slowerKeyCode:  slowerKeyCode,
     fasterKeyCode:  fasterKeyCode,
-    rememberSpeed:  rememberSpeed
+    rememberSpeed:  rememberSpeed,
+    blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -132,6 +140,7 @@ function restore_options() {
     updateShortcutInputText('slowerKeyInput', storage.slowerKeyCode);
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
+    document.getElementById('blacklist').value = storage.blacklist;
   });
 }
 

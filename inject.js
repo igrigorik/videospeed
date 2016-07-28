@@ -1,17 +1,22 @@
 chrome.extension.sendMessage({}, function(response) {
-
   var tc = {
     settings: {
-      speed: 1.0,          // default 1x
-      speedStep: 0.1,      // default 0.1x
-      rewindTime: 10,      // default 10s
-      advanceTime: 10,     // default 10s
-      resetKeyCode:  82,   // default: R
-      slowerKeyCode: 83,   // default: S
-      fasterKeyCode: 68,   // default: D
-      rewindKeyCode: 90,   // default: Z
-      advanceKeyCode: 88,  // default: X
-      rememberSpeed: false // default: false
+      speed: 1.0,           // default 1x
+      speedStep: 0.1,       // default 0.1x
+      rewindTime: 10,       // default 10s
+      advanceTime: 10,      // default 10s
+      resetKeyCode:  82,    // default: R
+      slowerKeyCode: 83,    // default: S
+      fasterKeyCode: 68,    // default: D
+      rewindKeyCode: 90,    // default: Z
+      advanceKeyCode: 88,   // default: X
+      rememberSpeed: false, // default: false
+      blacklist: `
+        www.instagram.com
+        www.twitter.com
+        vine.co
+        imgur.com
+      `.replace(/^\s+|\s+$/gm,'')
     }
   };
 
@@ -26,6 +31,9 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.blacklist = String(storage.blacklist);
+
+    initializeWhenReady(document);
   });
 
   var forEach = Array.prototype.forEach;
@@ -122,6 +130,29 @@ chrome.extension.sendMessage({}, function(response) {
   }
 
   function initializeWhenReady(document) {
+    escapeStringRegExp.matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
+    function escapeStringRegExp(str) {
+      return str.replace(escapeStringRegExp.matchOperatorsRe, '\\$&');
+    }
+
+    var blacklisted = false;
+    tc.settings.blacklist.split("\n").forEach(match => {
+      match = match.replace(/^\s+|\s+$/g,'')
+      if (match.length == 0) {
+        return;
+      }
+
+      var regexp = new RegExp(escapeStringRegExp(match));
+      if (regexp.test(location.href)) {
+        console.log("SKIP", regexp, location.href)
+        blacklisted = true;
+        return;
+      }
+    })
+
+    if (blacklisted)
+      return;
+
     var readyStateCheckInterval = setInterval(function() {
       if (document.readyState === 'complete') {
         clearInterval(readyStateCheckInterval);
@@ -265,6 +296,4 @@ chrome.extension.sendMessage({}, function(response) {
       animation = false;
     }, 2000);
   }
-
-  initializeWhenReady(document);
 });
