@@ -1,5 +1,10 @@
-/* Origin specific overrides */
+.vsc-hidden { display: none !important; }
+.vsc-manual {
+  visibility: visible !important;
+  opacity: 1.0 !important;
+}
 
+/* Origin specific overrides */
 /* YouTube player */
 .ytp-hide-info-bar .vsc-controller {
   position: relative;
@@ -15,12 +20,6 @@
 .ytp-autohide .vcs-show {
   visibility: visible;
   opacity: 1.0;
-}
-
-.vsc-hidden { display: none !important; }
-.vsc-manual {
-  visibility: visible !important;
-  opacity: 1.0 !important;
 }
 
 /* YouTube embedded player */
@@ -56,6 +55,7 @@
 div.video-wrapper + div.target {
   height: 0;
 }
+
 
 /* Fix black overlay on Kickstarter */
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
