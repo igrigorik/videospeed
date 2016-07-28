@@ -177,6 +177,16 @@ chrome.extension.sendMessage({}, function(response) {
       document.addEventListener('keydown', function(event) {
         var keyCode = event.keyCode;
 
+        // Ignore if following modifier is active.
+        if (event.getModifierState("Alt")
+            || event.getModifierState("Control")
+            || event.getModifierState("Fn")
+            || event.getModifierState("Meta")
+            || event.getModifierState("Hyper")
+            || event.getModifierState("OS")) {
+          return;
+        }
+
         // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
