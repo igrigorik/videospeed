@@ -222,8 +222,11 @@ chrome.extension.sendMessage({}, function(response) {
             }
           } else {
             if (node.classList.contains('vsc-initialized')) {
-              var id = node.dataset['vscid'];
-              document.querySelector(`div[data-vscid="${id}"]`).remove();
+              let id = node.dataset['vscid'];
+              let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
+              if (ctrl) {
+                ctrl.remove();
+              }
             }
           }
         } else if (node.children != undefined) {

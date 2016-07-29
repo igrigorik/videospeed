@@ -61,3 +61,8 @@ div.video-wrapper + div.target {
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
   content: none !important;
 }
+
+/* Fix black overlay on openai.com */
+.Shared-Video-player > .vsc-controller {
+  height: 0;
+}
