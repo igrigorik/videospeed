@@ -22,12 +22,13 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **R** - reset playback speed.
 * **Z** - rewind video by 10 seconds.
 * **X** - advance video by 10 seconds.
+* **V** - show/hide the controller.
 
 Note that you can customize these shortcuts in the extension settings page. Also, a few tips for enabling and forcing HTML5 video:
 
  * YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5).
  * If you're adventurous, try disabling the Flash plugin in Chrome in chrome://plugins/
- * If viewing a video on Wistia, right click to switch to HTML5 video, refresh the page, and the controls will appear. 
+ * If viewing a video on Wistia, right click to switch to HTML5 video, refresh the page, and the controls will appear.
 
 ### FAQ
 

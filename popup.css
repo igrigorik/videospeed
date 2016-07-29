@@ -7,6 +7,7 @@ hr {
   border: 0;
   height: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.3);
+  margin: 0.6em 0;
 }
 
 button {
@@ -20,4 +21,9 @@ button {
   text-shadow: 0 1px 0 rgb(240,240,240);
   font: inherit;
   user-select: none;
+}
+
+.secondary {
+  font-size: 0.95em;
+  margin: 0.15em 0;
 }
