@@ -14,7 +14,7 @@ chrome.extension.sendMessage({}, function(response) {
       rememberSpeed: false, // default: false
       blacklist: `
         www.instagram.com
-        www.twitter.com
+        twitter.com
         vine.co
         imgur.com
       `.replace(/^\s+|\s+$/gm,'')
