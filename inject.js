@@ -193,6 +193,7 @@ chrome.extension.sendMessage({}, function(response) {
         // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
+            || document.activeElement.nodeName === 'TEXTAREA' 
             || document.activeElement.isContentEditable) {
           return false;
         }
