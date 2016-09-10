@@ -193,6 +193,7 @@ chrome.extension.sendMessage({}, function(response) {
         // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
+            || document.activeElement.nodeName === 'TEXTAREA' 
             || document.activeElement.isContentEditable) {
           return false;
         }
@@ -217,7 +218,15 @@ chrome.extension.sendMessage({}, function(response) {
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            if (!node.classList.contains('vsc-initialized')) {
+            if (!node.classList.contains('vsc-initialized') && !node.dataset['vscid']) {
+              new tc.videoController(node, parent);
+            }
+            // if the video has already been initialized, then it has been mutated
+            // we may need to update the controller location to reflect this
+            else {
+              let id = node.dataset['vscid'];
+              let ctrl = document.querySelector(`div[data-vscid="${id}"]`);
+              if (ctrl) ctrl.remove();
               new tc.videoController(node, parent);
             }
           } else {
