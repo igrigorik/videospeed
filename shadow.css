@@ -1,14 +1,14 @@
-* {
+.vsc-controller * {
   line-height: 1.8em;
   font-family: Verdana, Geneva, sans-serif;
   font-size: 13px;
 }
 
-:host(:hover) #controls {
+.vsc-controller:hover #controls {
   display: inline;
 }
 
-#controller {
+.vsc-controller #controller {
   position: absolute;
   top: 0;
   left: 0;
@@ -25,36 +25,36 @@
   opacity: 0.3;
 }
 
-#controller:hover {
+.vsc-controller #controller:hover {
   opacity: 0.7;
 }
 
-#controller:hover > .draggable {
+.vsc-controller #controller:hover > .draggable {
   margin-right: 0.8em;
 }
 
-#controls {
+.vsc-controller #controls {
   display: none;
 }
 
-#controller.dragging {
+.vsc-controller #controller.dragging {
   cursor: -webkit-grabbing;
   opacity: 0.7;
 }
 
-#controller.dragging #controls {
+.vsc-controller #controller.dragging #controls {
   display: inline;
 }
 
-.draggable {
+.vsc-controller .draggable {
   cursor: -webkit-grab;
 }
 
-.draggable:active {
+.vsc-controller .draggable:active {
   cursor: -webkit-grabbing;
 }
 
-button {
+.vsc-controller button {
   cursor: pointer;
   color: black;
   background: white;
@@ -68,23 +68,23 @@ button {
   margin-bottom: 2px;
 }
 
-button:focus {
+.vsc-controller button:focus {
   outline: 0;
 }
 
-button:hover {
+.vsc-controller button:hover {
   opacity: 1.0;
 }
 
-button:active {
+.vsc-controller button:active {
   background: #ccc;
 }
 
-button.rw {
+.vsc-controller button.rw {
   opacity: 0.65;
 }
 
-button.hideButton {
+.vsc-controller button.hideButton {
   margin-right: 2px;
   opacity: 0.5;
 }
