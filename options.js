@@ -110,7 +110,7 @@ function save_options() {
   fasterKeyCode = isNaN(fasterKeyCode) ? tcDefaults.fasterKeyCode : fasterKeyCode;
   displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
 
-  chrome.storage.sync.set({
+  chrome.storage.local.set({
     speedStep:      speedStep,
     rewindTime:     rewindTime,
     advanceTime:    advanceTime,
@@ -134,7 +134,7 @@ function save_options() {
 
 // Restores options from chrome.storage
 function restore_options() {
-  chrome.storage.sync.get(tcDefaults, function(storage) {
+  chrome.storage.local.get(tcDefaults, function(storage) {
     document.getElementById('speedStep').value = storage.speedStep.toFixed(2);
     document.getElementById('rewindTime').value = storage.rewindTime;
     document.getElementById('advanceTime').value = storage.advanceTime;
@@ -150,7 +150,7 @@ function restore_options() {
 }
 
 function restore_defaults() {
-  chrome.storage.sync.set(tcDefaults, function() {
+  chrome.storage.local.set(tcDefaults, function() {
     restore_options();
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -167,7 +167,15 @@ function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('keydown', recordKeyPress);
 }
 
+function reload_once() {
+  if(!window.location.hash) {
+    window.location = window.location + '#loaded';
+    window.location.reload();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  reload_once();
   restore_options();
 
   document.getElementById('save').addEventListener('click', save_options);

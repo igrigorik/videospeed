@@ -1,4 +1,4 @@
-chrome.extension.sendMessage({}, function(response) {
+// chrome.extension.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
@@ -21,7 +21,7 @@ chrome.extension.sendMessage({}, function(response) {
     }
   };
 
-  chrome.storage.sync.get(tc.settings, function(storage) {
+  chrome.storage.local.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.speedStep = Number(storage.speedStep);
     tc.settings.rewindTime = Number(storage.rewindTime);
@@ -62,7 +62,7 @@ chrome.extension.sendMessage({}, function(response) {
         var speed = this.getSpeed();
         this.speedIndicator.textContent = speed;
         tc.settings.speed = speed;
-        chrome.storage.sync.set({'speed': speed});
+        chrome.storage.local.set({'speed': speed});
       }.bind(this));
 
       target.playbackRate = tc.settings.speed;
@@ -94,7 +94,7 @@ chrome.extension.sendMessage({}, function(response) {
       wrapper.addEventListener('mousedown', prevent, true);
       wrapper.addEventListener('click', prevent, true);
 
-      var shadow = wrapper.createShadowRoot();
+      var shadow = wrapper
       var shadowTemplate = `
         <style>
           @import "${chrome.extension.getURL('shadow.css')}";
@@ -364,4 +364,4 @@ chrome.extension.sendMessage({}, function(response) {
       animation = false;
     }, 2000);
   }
-});
+// });
