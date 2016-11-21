@@ -11,13 +11,13 @@
     "128": "icons/icon128.png"
   },
   "permissions": [ "activeTab", "storage" ],
-  "options_page": "options.html",
   "browser_action": {
+    "browser_style": true,
     "default_icon": {
-      "19": "images/icon19.png",
-      "38": "images/icon38.png"
-    },
-    "default_icon": "icons/icon48.png",
+        "19": "icons/icon19.png",
+        "38": "icons/icon38.png",
+        "48": "icons/icon48.png"
+      },
     "default_popup": "popup.html"
   },
   "content_scripts": [{
