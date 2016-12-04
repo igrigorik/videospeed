@@ -193,7 +193,7 @@ chrome.extension.sendMessage({}, function(response) {
         // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
-            || document.activeElement.nodeName === 'TEXTAREA' 
+            || document.activeElement.nodeName === 'TEXTAREA'
             || document.activeElement.isContentEditable) {
           return false;
         }
@@ -311,21 +311,15 @@ chrome.extension.sendMessage({}, function(response) {
 
  function handleDrag(video, controller) {
     const parentElement = controller.parentElement,
-      boundRect = parentElement.getBoundingClientRect(),
-      shadowController = controller.shadowRoot.querySelector('#controller'),
-      drag = shadowController.querySelector('.draggable'),
-      offsetLeft = boundRect.left + drag.offsetLeft + drag.offsetWidth,
-      offsetTop = boundRect.top + drag.offsetTop + drag.offsetHeight;
+      shadowController = controller.shadowRoot.querySelector('#controller');
 
     video.classList.add('vcs-dragging');
     shadowController.classList.add('dragging');
 
     const startDragging = (e) => {
-      let newLeft = Math.max(0, e.clientX - offsetLeft);
-      let newTop = Math.max(0, e.clientY - offsetTop);
-
-      shadowController.style.left = newLeft + 'px';
-      shadowController.style.top = newTop + 'px';
+      let style = shadowController.style;
+      style.left = parseInt(style.left) + e.movementX + 'px';
+      style.top  = parseInt(style.top)  + e.movementY + 'px';
     }
 
     const stopDragging = () => {
