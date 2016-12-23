@@ -10,6 +10,7 @@ var tcDefaults = {
   advanceKeyCode: 88,   // default: X
   displayKeyCode: 86,   // default: V
   rememberSpeed: false, // default: false
+  startHidden: false,   // default: false
   blacklist: `
     www.instagram.com
     twitter.com
@@ -98,6 +99,7 @@ function save_options() {
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
+  var startHidden = document.getElementById('startHidden').checked;
   var blacklist     = document.getElementById('blacklist').value;
 
   speedStep     = isNaN(speedStep) ? tcDefaults.speedStep : Number(speedStep);
@@ -121,6 +123,7 @@ function save_options() {
     fasterKeyCode:  fasterKeyCode,
     displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
+    startHidden:    startHidden,
     blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
   }, function() {
     // Update status to let user know options were saved.
@@ -145,6 +148,7 @@ function restore_options() {
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
     updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
+    document.getElementById('startHidden').checked = storage.startHidden;
     document.getElementById('blacklist').value = storage.blacklist;
   });
 }

@@ -12,6 +12,7 @@ chrome.extension.sendMessage({}, function(response) {
       advanceKeyCode: 88,   // default: X
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      startHidden: false,   // default: false
       blacklist: `
         www.instagram.com
         twitter.com
@@ -33,6 +34,7 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
     initializeWhenReady(document);
@@ -93,6 +95,10 @@ chrome.extension.sendMessage({}, function(response) {
       wrapper.addEventListener('dblclick', prevent, true);
       wrapper.addEventListener('mousedown', prevent, true);
       wrapper.addEventListener('click', prevent, true);
+
+      if (tc.settings.startHidden) {
+        wrapper.classList.add('vsc-hidden');
+      }
 
       var shadow = wrapper.createShadowRoot();
       var shadowTemplate = `
