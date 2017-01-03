@@ -283,8 +283,7 @@ chrome.extension.sendMessage({}, function(response) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
 
-      if (keyboard)
-        showController(controller);
+      showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
