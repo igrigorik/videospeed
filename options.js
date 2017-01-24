@@ -1,6 +1,7 @@
 var tcDefaults = {
   speed: 1.0,           // default 1x
   speedStep: 0.1,       // default 0.1x
+  turboSpeedStep: 3.0,  // default 3.0x
   rewindTime: 10,       // default 10s
   advanceTime: 10,      // default 10s
   resetKeyCode:  82,    // default: R
@@ -90,6 +91,7 @@ function updateShortcutInputText(inputId, keyCode) {
 function save_options() {
 
   var speedStep     = document.getElementById('speedStep').value;
+  var turboSpeedStep = document.getElementById('turboSpeedStep').value;
   var rewindTime    = document.getElementById('rewindTime').value;
   var advanceTime   = document.getElementById('advanceTime').value;
   var resetKeyCode  = document.getElementById('resetKeyInput').keyCode;
@@ -103,6 +105,7 @@ function save_options() {
   var blacklist     = document.getElementById('blacklist').value;
 
   speedStep     = isNaN(speedStep) ? tcDefaults.speedStep : Number(speedStep);
+  turboSpeedStep = Math.max(speedStep, isNaN(turboSpeedStep) ? tcDefaults.turboSpeedStep : Number(turboSpeedStep));
   rewindTime    = isNaN(rewindTime) ? tcDefaults.rewindTime : Number(rewindTime);
   advanceTime   = isNaN(advanceTime) ? tcDefaults.advanceTime : Number(advanceTime);
   resetKeyCode  = isNaN(resetKeyCode) ? tcDefaults.resetKeyCode : resetKeyCode;
@@ -114,6 +117,7 @@ function save_options() {
 
   chrome.storage.sync.set({
     speedStep:      speedStep,
+    turboSpeedStep: turboSpeedStep,
     rewindTime:     rewindTime,
     advanceTime:    advanceTime,
     resetKeyCode:   resetKeyCode,
@@ -139,6 +143,7 @@ function save_options() {
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function(storage) {
     document.getElementById('speedStep').value = storage.speedStep.toFixed(2);
+    document.getElementById('turboSpeedStep').value = storage.turboSpeedStep.toFixed(2);
     document.getElementById('rewindTime').value = storage.rewindTime;
     document.getElementById('advanceTime').value = storage.advanceTime;
     updateShortcutInputText('resetKeyInput',  storage.resetKeyCode);
@@ -187,4 +192,5 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
   document.getElementById('advanceTime').addEventListener('keypress', inputFilterNumbersOnly);
   document.getElementById('speedStep').addEventListener('keypress', inputFilterNumbersOnly);
+  document.getElementById('turboSpeedStep').addEventListener('keypress', inputFilterNumbersOnly);
 })

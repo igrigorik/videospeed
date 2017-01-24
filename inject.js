@@ -3,6 +3,7 @@ chrome.extension.sendMessage({}, function(response) {
     settings: {
       speed: 1.0,           // default 1x
       speedStep: 0.1,       // default 0.1x
+      turboSpeedStep: 3.0,  // default 3.0x
       rewindTime: 10,       // default 10s
       advanceTime: 10,      // default 10s
       resetKeyCode:  82,    // default: R
@@ -25,6 +26,7 @@ chrome.extension.sendMessage({}, function(response) {
   chrome.storage.sync.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.speedStep = Number(storage.speedStep);
+    tc.settings.turboSpeedStep = Number(storage.turboSpeedStep);
     tc.settings.rewindTime = Number(storage.rewindTime);
     tc.settings.advanceTime = Number(storage.advanceTime);
     tc.settings.resetKeyCode = Number(storage.resetKeyCode);
@@ -209,9 +211,17 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (keyCode == tc.settings.advanceKeyCode) {
           runAction('advance', document, true)
         } else if (keyCode == tc.settings.fasterKeyCode) {
-          runAction('faster', document, true)
+          if (event.getModifierState("Shift")) {
+            runAction('turbo-faster', document, true)
+          } else {
+            runAction('faster', document, true)
+          }
         } else if (keyCode == tc.settings.slowerKeyCode) {
-          runAction('slower', document, true)
+          if (event.getModifierState("Shift")) {
+            runAction('turbo-slower', document, true)
+          } else {
+            runAction('slower', document, true)
+          }
         } else if (keyCode == tc.settings.resetKeyCode) {
           runAction('reset', document, true)
         } else if (keyCode == tc.settings.displayKeyCode) {
@@ -290,17 +300,25 @@ chrome.extension.sendMessage({}, function(response) {
           v.currentTime -= tc.settings.rewindTime;
         } else if (action === 'advance') {
           v.currentTime += tc.settings.advanceTime;
-        } else if (action === 'faster') {
+        } else if (action === 'faster' || action === 'turbo-faster') {
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
-          var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
+          if (action === 'turbo-faster') {
+            var s = Math.min(v.playbackRate + tc.settings.turboSpeedStep, 16);
+          } else {
+            var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
+          }
           v.playbackRate = Number(s.toFixed(2));
-        } else if (action === 'slower') {
+        } else if (action === 'slower' || action === 'turbo-slower') {
           // Audio playback is cut at 0.05:
           // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
+          if (action === 'turbo-slower') {
+            var s = Math.max(v.playbackRate - tc.settings.turboSpeedStep, 0.0625);
+          } else {
+            var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
+          }
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           v.playbackRate = 1.0;
