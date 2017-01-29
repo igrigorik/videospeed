@@ -303,7 +303,14 @@ chrome.extension.sendMessage({}, function(response) {
           var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
-          v.playbackRate = 1.0;
+          if(v.playbackRate === 1.0) {
+            if(v.dataset['lastPlaybackRate']) {
+              v.playbackRate = Number(v.dataset['lastPlaybackRate']);
+            }
+          } else {
+            v.dataset['lastPlaybackRate'] = v.playbackRate;
+            v.playbackRate = 1.0;
+          }
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
