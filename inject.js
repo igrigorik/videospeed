@@ -2,6 +2,7 @@ chrome.extension.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
+      resetSpeed: 1.0,      // default 1x
       speedStep: 0.1,       // default 0.1x
       rewindTime: 10,       // default 10s
       advanceTime: 10,      // default 10s
@@ -24,6 +25,7 @@ chrome.extension.sendMessage({}, function(response) {
 
   chrome.storage.sync.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
+    tc.settings.resetSpeed = Number(storage.resetSpeed);
     tc.settings.speedStep = Number(storage.speedStep);
     tc.settings.rewindTime = Number(storage.rewindTime);
     tc.settings.advanceTime = Number(storage.advanceTime);
@@ -50,6 +52,7 @@ chrome.extension.sendMessage({}, function(response) {
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
+        tc.settings.resetSpeed = 1.0;
       }
       this.initializeControls();
 
@@ -304,11 +307,10 @@ chrome.extension.sendMessage({}, function(response) {
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           if(v.playbackRate === 1.0) {
-            if(v.dataset['lastPlaybackRate']) {
-              v.playbackRate = Number(v.dataset['lastPlaybackRate']);
-            }
+            v.playbackRate = tc.settings.resetSpeed;
           } else {
-            v.dataset['lastPlaybackRate'] = v.playbackRate;
+            tc.settings.resetSpeed = v.playbackRate;
+            chrome.storage.sync.set({'resetSpeed': v.playbackRate});
             v.playbackRate = 1.0;
           }
         } else if (action === 'close') {
