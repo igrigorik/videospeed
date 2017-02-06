@@ -306,7 +306,7 @@ chrome.runtime.sendMessage({}, function(response) {
             v.playbackRate = tc.settings.resetSpeed;
           } else {
             tc.settings.resetSpeed = v.playbackRate;
-            chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+            chrome.storage.local.set({'resetSpeed': v.playbackRate});
             v.playbackRate = 1.0;
           }
         } else if (action === 'close') {
