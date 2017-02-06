@@ -320,7 +320,7 @@ chrome.runtime.sendMessage({}, function(response) {
  function handleDrag(video, controller) {
     const parentElement = controller.parentElement,
       boundRect = parentElement.getBoundingClientRect(),
-      shadowController = controller.shadowRoot.querySelector('#controller'),
+      shadowController = controller.querySelector('#controller'),
       drag = shadowController.querySelector('.draggable'),
       offsetLeft = boundRect.left + drag.offsetLeft + drag.offsetWidth,
       offsetTop = boundRect.top + drag.offsetTop + drag.offsetHeight;

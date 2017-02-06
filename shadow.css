@@ -39,6 +39,7 @@
 
 .vsc-controller #controller.dragging {
   cursor: -webkit-grabbing;
+  cursor: -moz-grabbing;
   opacity: 0.7;
 }
 
@@ -48,10 +49,12 @@
 
 .vsc-controller .draggable {
   cursor: -webkit-grab;
+  cursor: -moz-grab;
 }
 
 .vsc-controller .draggable:active {
   cursor: -webkit-grabbing;
+  cursor: -moz-grabbing;
 }
 
 .vsc-controller button {
