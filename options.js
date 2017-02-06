@@ -167,15 +167,15 @@ function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('keydown', recordKeyPress);
 }
 
-function reload_once() {
-  if(!window.location.hash) {
-    window.location = window.location + '#loaded';
-    window.location.reload();
-  }
-}
+// function reload_once() {
+//   if(!window.location.hash) {
+//     window.location = window.location + '#loaded';
+//     window.location.reload();
+//   }
+// }
 
 document.addEventListener('DOMContentLoaded', function () {
-  reload_once();
+  // reload_once();
   restore_options();
 
   document.getElementById('save').addEventListener('click', save_options);
