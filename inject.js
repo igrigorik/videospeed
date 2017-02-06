@@ -90,9 +90,9 @@ chrome.runtime.sendMessage({}, function(response) {
       var wrapper = document.createElement('div');
       wrapper.classList.add('vsc-controller');
       wrapper.dataset['vscid'] = this.id;
-      wrapper.addEventListener('dblclick', prevent, true);
-      wrapper.addEventListener('mousedown', prevent, true);
-      wrapper.addEventListener('click', prevent, true);
+      wrapper.addEventListener('dblclick', prevent, false);
+      wrapper.addEventListener('mousedown', prevent, false);
+      wrapper.addEventListener('click', prevent, false);
 
       var shadow = wrapper
       var shadowTemplate = `
