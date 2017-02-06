@@ -2,6 +2,7 @@ chrome.runtime.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
+      resetSpeed: 1.0,      // default 1x
       speedStep: 0.1,       // default 0.1x
       rewindTime: 10,       // default 10s
       advanceTime: 10,      // default 10s
@@ -12,6 +13,7 @@ chrome.runtime.sendMessage({}, function(response) {
       advanceKeyCode: 88,   // default: X
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      startHidden: false,   // default: false
       blacklist: `
         www.instagram.com
         twitter.com
@@ -23,6 +25,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
   chrome.storage.local.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
+    tc.settings.resetSpeed = Number(storage.resetSpeed);
     tc.settings.speedStep = Number(storage.speedStep);
     tc.settings.rewindTime = Number(storage.rewindTime);
     tc.settings.advanceTime = Number(storage.advanceTime);
@@ -33,6 +36,7 @@ chrome.runtime.sendMessage({}, function(response) {
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
     initializeWhenReady(document);
@@ -48,6 +52,7 @@ chrome.runtime.sendMessage({}, function(response) {
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
+        tc.settings.resetSpeed = 1.0;
       }
       this.initializeControls();
 
@@ -193,7 +198,7 @@ chrome.runtime.sendMessage({}, function(response) {
         // Ignore keydown event if typing in an input box
         if ((document.activeElement.nodeName === 'INPUT'
               && document.activeElement.getAttribute('type') === 'text')
-            || document.activeElement.nodeName === 'TEXTAREA' 
+            || document.activeElement.nodeName === 'TEXTAREA'
             || document.activeElement.isContentEditable) {
           return false;
         }
@@ -218,15 +223,7 @@ chrome.runtime.sendMessage({}, function(response) {
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            if (!node.classList.contains('vsc-initialized') && !node.dataset['vscid']) {
-              new tc.videoController(node, parent);
-            }
-            // if the video has already been initialized, then it has been mutated
-            // we may need to update the controller location to reflect this
-            else {
-              let id = node.dataset['vscid'];
-              let ctrl = document.querySelector(`div[data-vscid="${id}"]`);
-              if (ctrl) ctrl.remove();
+            if (!node.dataset['vscid']) {
               new tc.videoController(node, parent);
             }
           } else {
@@ -235,6 +232,7 @@ chrome.runtime.sendMessage({}, function(response) {
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
                 node.classList.remove('vsc-initialized');
+                delete node.dataset['vscid'];
                 ctrl.remove();
               }
             }
@@ -284,8 +282,7 @@ chrome.runtime.sendMessage({}, function(response) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
 
-      if (keyboard)
-        showController(controller);
+      showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
@@ -294,16 +291,24 @@ chrome.runtime.sendMessage({}, function(response) {
           v.currentTime += tc.settings.advanceTime;
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
-          // https://code.google.com/p/chromium/codesearch#chromium/src/media/blink/webmediaplayer_impl.cc&l=64
+          // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
           var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
           // Audio playback is cut at 0.05:
-          // https://code.google.com/p/chromium/codesearch#chromium/src/media/filters/audio_renderer_algorithm.cc&l=49
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0);
+          // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
+          // Video min rate is 0.0625:
+          // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
+          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
-          v.playbackRate = 1.0;
+          if(v.playbackRate === 1.0) {
+            v.playbackRate = tc.settings.resetSpeed;
+          } else {
+            tc.settings.resetSpeed = v.playbackRate;
+            chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+            v.playbackRate = 1.0;
+          }
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
@@ -329,11 +334,9 @@ chrome.runtime.sendMessage({}, function(response) {
     shadowController.classList.add('dragging');
 
     const startDragging = (e) => {
-      let newLeft = Math.max(0, e.clientX - offsetLeft);
-      let newTop = Math.max(0, e.clientY - offsetTop);
-
-      shadowController.style.left = newLeft + 'px';
-      shadowController.style.top = newTop + 'px';
+      let style = shadowController.style;
+      style.left = parseInt(style.left) + e.movementX + 'px';
+      style.top  = parseInt(style.top)  + e.movementY + 'px';
     }
 
     const stopDragging = () => {

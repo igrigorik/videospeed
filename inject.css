@@ -44,7 +44,7 @@
 /* shift YT 3D controller down */
 /* e.g. https://www.youtube.com/watch?v=erftYPflJzQ */
 .ytp-webgl-spherical-control {
-  top: 50px !important;
+  top: 60px !important;
 }
 
 .ytp-fullscreen .ytp-webgl-spherical-control {
