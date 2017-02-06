@@ -1,4 +1,4 @@
-// chrome.extension.sendMessage({}, function(response) {
+chrome.runtime.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
@@ -364,4 +364,4 @@
       animation = false;
     }, 2000);
   }
-// });
+});
