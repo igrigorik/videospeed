@@ -24,15 +24,9 @@
 
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
-.full-frame .html5-video-player:not(.ytp-fullscreen) .vsc-controller {
+.html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
   position: relative;
-  top: 45px;
-}
-
-.ytp-fullscreen .vsc-controller {
-  display: block;
-  position: relative;
-  top: 60px;
+  top: 40px;
 }
 
 /* shift controller on vine.co */
