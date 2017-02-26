@@ -29,6 +29,12 @@
   top: 40px;
 }
 
+/* Netflix player */
+#netflix-player:not(.player-cinema-mode) .vsc-controller {
+  position: relative;
+  top: 85px;
+}
+
 /* shift controller on vine.co */
 /* e.g. https://vine.co/v/OrJj39YlL57 */
 .video-container .vine-video-container .vsc-controller {
