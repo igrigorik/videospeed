@@ -121,6 +121,13 @@ chrome.extension.sendMessage({}, function(response) {
         </div>
       `;
       shadow.innerHTML = shadowTemplate;
+      shadow.querySelector('#controller').addEventListener('wheel', (e) => {
+        runAction(e.wheelDelta > 0 ? 'faster' : 'slower', document);
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+
       shadow.querySelector('.draggable').addEventListener('mousedown', (e) => {
         runAction(e.target.dataset['action'], document);
       });
