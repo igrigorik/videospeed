@@ -11,7 +11,7 @@ Many viewers report that [accelerated viewing keeps their attention longer](http
 
 HTML5 video provides a native API to accelerate playback of any video. The problem is, many players either hide, or limit this functionality. For best results playback speed adjustments should be easy and frequent to match the pace and content being covered: we don't read at a fixed speed, and similarly, we need an easy way to accelerate the video, slow it down, and quickly rewind the last point to listen to it a few more times.
 
-![Player](https://lh5.googleusercontent.com/ubqr74funulW1oj_SEDFQBpj_hE26j3aR5G9wfoAZlo1u029_vM9_tlV_f27AvTVWXcB2Hfy81I=s640)
+![Player](https://cloud.githubusercontent.com/assets/2400185/24076745/5723e6ae-0c41-11e7-820c-1d8e814a2888.png)
 
 #### *[Install Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk)*
 
