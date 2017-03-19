@@ -27,7 +27,6 @@
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/hangouts/*",
         "https://teamtreehouse.com/*",
-        "https://www.lynda.com/*",
         "http://www.hitbox.tv/*"
       ],
       "css": [ "inject.css" ],
