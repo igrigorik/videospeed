@@ -296,7 +296,7 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
-          var s = Math.min(v.playbackRate + tc.settings.speedStep, 16);
+          var s = Math.min( (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + tc.settings.speedStep, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
           // Audio playback is cut at 0.05:
