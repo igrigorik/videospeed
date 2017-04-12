@@ -56,6 +56,18 @@ chrome.extension.sendMessage({}, function(response) {
       }
       this.initializeControls();
 
+      //Save the speed of current tab's video before leaving the page
+      //(ie. reloading page or going Backward/Forward in history)
+      //so that it doesn't restore the speed set by a video in another tab
+      //but instead, keeps the current tab's video speed the same,
+      //until changed by user or browser quits.
+      window.onbeforeunload = function(e) {
+        if (target.readyState === 0) {
+          return;
+        }
+        chrome.storage.sync.set({'speed': this.getSpeed()});
+      }.bind(this);
+
       target.addEventListener('play', function(event) {
         target.playbackRate = tc.settings.speed;
       });
