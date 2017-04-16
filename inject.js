@@ -334,7 +334,7 @@ chrome.extension.sendMessage({}, function(response) {
 
   // CONTRACT: video has a way to set the playback rate.
   function playVideoAtFastSpeed(video) {
-    video.playbackRate = 2.5;
+    video.playbackRate = tc.settings.fastSpeed;
   }
 
  function handleDrag(video, controller) {
