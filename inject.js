@@ -222,7 +222,7 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (keyCode == tc.settings.displayKeyCode) {
           runAction('display', document, true)
         } else if (keyCode == tc.settings.playAtFastSpeedKeyCode) {
-          playVideoAtFastSpeed();
+          runAction('fast', document, true);
         }
 
         return false;
@@ -325,13 +325,15 @@ chrome.extension.sendMessage({}, function(response) {
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'drag') {
           handleDrag(v, controller);
+        } else if (action === 'fast') {
+          playVideoAtFastSpeed(v);
         }
       }
     });
   }
 
-  function playVideoAtFastSpeed() {
-    console.log("playVideoAtFastSpeed");
+  function playVideoAtFastSpeed(videoDomElement) {
+    console.log("playVideoAtFastSpeed", videoDomElement);
   }
 
  function handleDrag(video, controller) {
