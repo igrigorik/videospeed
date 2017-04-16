@@ -13,7 +13,7 @@ chrome.extension.sendMessage({}, function(response) {
       rewindKeyCode: 90,    // default: Z
       advanceKeyCode: 88,   // default: X
       displayKeyCode: 86,   // default: V
-      playAtFastSpeedKeyCode: 70,    // default: F
+      playAtFastSpeedKeyCode: 71,    // default: G
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
       blacklist: `
