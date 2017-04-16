@@ -221,6 +221,8 @@ chrome.extension.sendMessage({}, function(response) {
           runAction('reset', document, true)
         } else if (keyCode == tc.settings.displayKeyCode) {
           runAction('display', document, true)
+        } else if (keyCode == tc.settings.playAtFastSpeedKeyCode) {
+          playVideoAtFastSpeed();
         }
 
         return false;
@@ -326,6 +328,10 @@ chrome.extension.sendMessage({}, function(response) {
         }
       }
     });
+  }
+
+  function playVideoAtFastSpeed() {
+    console.log("playVideoAtFastSpeed");
   }
 
  function handleDrag(video, controller) {
