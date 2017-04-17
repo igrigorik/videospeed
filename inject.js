@@ -13,7 +13,7 @@ chrome.extension.sendMessage({}, function(response) {
       rewindKeyCode: 90,             // default: Z
       advanceKeyCode: 88,            // default: X
       displayKeyCode: 86,            // default: V
-      playAtFastSpeedKeyCode: 71,    // default: G
+      fastKeyCode: 71,               // default: G
       rememberSpeed: false,          // default: false
       startHidden: false,            // default: false
       blacklist: `
@@ -221,7 +221,7 @@ chrome.extension.sendMessage({}, function(response) {
           runAction('reset', document, true)
         } else if (keyCode == tc.settings.displayKeyCode) {
           runAction('display', document, true)
-        } else if (keyCode == tc.settings.playAtFastSpeedKeyCode) {
+        } else if (keyCode == tc.settings.fastKeyCode) {
           runAction('fast', document, true);
         }
 
