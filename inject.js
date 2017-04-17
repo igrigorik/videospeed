@@ -29,6 +29,7 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.resetSpeed = Number(storage.resetSpeed);
     tc.settings.speedStep = Number(storage.speedStep);
+    tc.settings.fastSpeed = Number(storage.fastSpeed);
     tc.settings.rewindTime = Number(storage.rewindTime);
     tc.settings.advanceTime = Number(storage.advanceTime);
     tc.settings.resetKeyCode = Number(storage.resetKeyCode);
