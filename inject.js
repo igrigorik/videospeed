@@ -4,7 +4,7 @@ chrome.extension.sendMessage({}, function(response) {
       speed: 1.0,                    // default 1x
       resetSpeed: 1.0,               // default 1x
       speedStep: 0.1,                // default 0.1x
-      fastSpeed: 2.5,                // default 2.5x
+      fastSpeed: 1.75,               // default 1.75x
       rewindTime: 10,                // default 10s
       advanceTime: 10,               // default 10s
       resetKeyCode:  82,             // default: R
