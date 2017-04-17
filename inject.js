@@ -35,6 +35,7 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
     tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
     tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+    tc.settings.fastKeyCode = Number(storage.fastKeyCode);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);

@@ -6,6 +6,7 @@ var tcDefaults = {
   resetKeyCode:  82,    // default: R
   slowerKeyCode: 83,    // default: S
   fasterKeyCode: 68,    // default: D
+  fastKeyCode: 71,      // default: G
   rewindKeyCode: 90,    // default: Z
   advanceKeyCode: 88,   // default: X
   displayKeyCode: 86,   // default: V
@@ -97,6 +98,7 @@ function save_options() {
   var advanceKeyCode = document.getElementById('advanceKeyInput').keyCode;
   var slowerKeyCode = document.getElementById('slowerKeyInput').keyCode;
   var fasterKeyCode = document.getElementById('fasterKeyInput').keyCode;
+  var fastKeyCode   = document.getElementById('fastKeyInput').keyCode;
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var startHidden = document.getElementById('startHidden').checked;
@@ -110,6 +112,7 @@ function save_options() {
   advanceKeyCode = isNaN(advanceKeyCode) ? tcDefaults.advanceKeyCode : advanceKeyCode;
   slowerKeyCode = isNaN(slowerKeyCode) ? tcDefaults.slowerKeyCode : slowerKeyCode;
   fasterKeyCode = isNaN(fasterKeyCode) ? tcDefaults.fasterKeyCode : fasterKeyCode;
+  fastKeyCode   = isNaN(fastKeyCode) ? tcDefaults.fastKeyCode : fastKeyCode;
   displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
 
   chrome.storage.sync.set({
@@ -121,6 +124,7 @@ function save_options() {
     advanceKeyCode: advanceKeyCode,
     slowerKeyCode:  slowerKeyCode,
     fasterKeyCode:  fasterKeyCode,
+    fastKeyCode:    fastKeyCode,
     displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
     startHidden:    startHidden,
@@ -146,6 +150,7 @@ function restore_options() {
     updateShortcutInputText('advanceKeyInput', storage.advanceKeyCode);
     updateShortcutInputText('slowerKeyInput', storage.slowerKeyCode);
     updateShortcutInputText('fasterKeyInput', storage.fasterKeyCode);
+    updateShortcutInputText('fastKeyInput', storage.fastKeyCode);
     updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('startHidden').checked = storage.startHidden;
@@ -182,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initShortcutInput('advanceKeyInput');
   initShortcutInput('slowerKeyInput');
   initShortcutInput('fasterKeyInput');
+  initShortcutInput('fastKeyInput');
   initShortcutInput('displayKeyInput');
 
   document.getElementById('rewindTime').addEventListener('keypress', inputFilterNumbersOnly);
