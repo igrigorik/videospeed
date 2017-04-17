@@ -3,7 +3,7 @@ var tcDefaults = {
   speedStep: 0.1,       // default 0.1x
   rewindTime: 10,       // default 10s
   advanceTime: 10,      // default 10s
-  fastSpeed: 1.75,      // default 1.75x
+  fastSpeed: 1.8,       // default 1.8x
   resetKeyCode:  82,    // default: R
   slowerKeyCode: 83,    // default: S
   fasterKeyCode: 68,    // default: D
