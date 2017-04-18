@@ -4,6 +4,7 @@ chrome.extension.sendMessage({}, function(response) {
       speed: 1.0,           // default 1x
       resetSpeed: 1.0,      // default 1x
       speedStep: 0.1,       // default 0.1x
+      fastSpeed: 1.8,       // default 1.8x
       rewindTime: 10,       // default 10s
       advanceTime: 10,      // default 10s
       resetKeyCode:  82,    // default: R
@@ -12,6 +13,7 @@ chrome.extension.sendMessage({}, function(response) {
       rewindKeyCode: 90,    // default: Z
       advanceKeyCode: 88,   // default: X
       displayKeyCode: 86,   // default: V
+      fastKeyCode: 71,      // default: G
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
       blacklist: `
@@ -27,12 +29,14 @@ chrome.extension.sendMessage({}, function(response) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.resetSpeed = Number(storage.resetSpeed);
     tc.settings.speedStep = Number(storage.speedStep);
+    tc.settings.fastSpeed = Number(storage.fastSpeed);
     tc.settings.rewindTime = Number(storage.rewindTime);
     tc.settings.advanceTime = Number(storage.advanceTime);
     tc.settings.resetKeyCode = Number(storage.resetKeyCode);
     tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
     tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
     tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
+    tc.settings.fastKeyCode = Number(storage.fastKeyCode);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
@@ -226,6 +230,8 @@ chrome.extension.sendMessage({}, function(response) {
           runAction('reset', document, true)
         } else if (keyCode == tc.settings.displayKeyCode) {
           runAction('display', document, true)
+        } else if (keyCode == tc.settings.fastKeyCode) {
+          runAction('fast', document, true);
         }
 
         return false;
@@ -328,9 +334,15 @@ chrome.extension.sendMessage({}, function(response) {
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'drag') {
           handleDrag(v, controller);
+        } else if (action === 'fast') {
+          playVideoAtFastSpeed(v);
         }
       }
     });
+  }
+
+  function playVideoAtFastSpeed(video) {
+    video.playbackRate = tc.settings.fastSpeed;
   }
 
  function handleDrag(video, controller) {
