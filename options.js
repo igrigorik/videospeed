@@ -51,6 +51,9 @@ var keyCodeAliases = {
   222: '\'',
 }
 
+var whiteList = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'Home', 'End',
+  'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']
+
 function recordKeyPress(e) {
   if (
     (e.keyCode >= 48 && e.keyCode <= 57)    // Numbers 0-9
@@ -68,7 +71,10 @@ function recordKeyPress(e) {
 };
 
 function inputFilterNumbersOnly(e) {
-  var char = String.fromCharCode(e.keyCode);
+  var char = e.key;
+  if (whiteList.includes(char)) {
+    return
+  }
   if (!/[\d\.]$/.test(char) || !/^\d+(\.\d*)?$/.test(e.target.value + char)) {
     e.preventDefault();
     e.stopPropagation();
