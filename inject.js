@@ -125,6 +125,23 @@ chrome.extension.sendMessage({}, function(response) {
         </div>
       `;
       shadow.innerHTML = shadowTemplate;
+      shadow.querySelector('#controller').addEventListener('mouseover', (e) => {
+        let adjustSpeedOnScroll = (e) => {
+          runAction(e.wheelDelta > 0 ? 'faster' : 'slower', document);
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
+        let listenerTimeout = setTimeout(() => {
+          shadow.querySelector('#controller').addEventListener('wheel', adjustSpeedOnScroll)
+        }, 500)
+
+        shadow.querySelector('#controller').addEventListener('mouseout', (e) => {
+          clearTimeout(listenerTimeout)
+          shadow.querySelector('#controller').removeEventListener('wheel', adjustSpeedOnScroll)
+        });
+      });
+
       shadow.querySelector('.draggable').addEventListener('mousedown', (e) => {
         runAction(e.target.dataset['action'], document);
       });
