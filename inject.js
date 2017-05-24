@@ -56,7 +56,7 @@ chrome.extension.sendMessage({}, function(response) {
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
-        tc.settings.resetSpeed = 1.0;
+        tc.settings.resetSpeed = tc.settings.fastSpeed;
       }
       this.initializeControls();
 
