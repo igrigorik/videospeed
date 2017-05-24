@@ -334,8 +334,14 @@ chrome.extension.sendMessage({}, function(response) {
     });
   }
 
+  var oldSpeed = 1.0;
   function playVideoAtFastSpeed(video) {
-    video.playbackRate = tc.settings.fastSpeed;
+    if(video.playbackRate == tc.settings.fastSpeed) {
+      video.playbackRate = oldSpeed;
+    } else {
+  	  oldSpeed = video.playbackRate;
+      video.playbackRate = tc.settings.fastSpeed;
+    }
   }
 
  function handleDrag(video, controller) {
