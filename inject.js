@@ -312,13 +312,7 @@ chrome.extension.sendMessage({}, function(response) {
           var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
-          if(v.playbackRate === 1.0) {
-            v.playbackRate = tc.settings.resetSpeed;
-          } else {
-            tc.settings.resetSpeed = v.playbackRate;
-            chrome.storage.sync.set({'resetSpeed': v.playbackRate});
-            v.playbackRate = 1.0;
-          }
+          resetSpeed(v, 1.0);
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
@@ -328,19 +322,19 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'drag') {
           handleDrag(v, controller);
         } else if (action === 'fast') {
-          playVideoAtFastSpeed(v);
+          resetSpeed(v, tc.settings.fastSpeed);
         }
       }
     });
   }
 
-  var oldSpeed = 1.0;
-  function playVideoAtFastSpeed(video) {
-    if(video.playbackRate == tc.settings.fastSpeed) {
-      video.playbackRate = oldSpeed;
+  function resetSpeed(v, target) {
+    if (v.playbackRate === target) {
+      v.playbackRate = tc.settings.resetSpeed;
     } else {
-  	  oldSpeed = video.playbackRate;
-      video.playbackRate = tc.settings.fastSpeed;
+      tc.settings.resetSpeed = v.playbackRate;
+      chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+      v.playbackRate = target;
     }
   }
 
