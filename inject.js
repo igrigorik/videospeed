@@ -330,7 +330,14 @@ chrome.extension.sendMessage({}, function(response) {
 
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
-      v.playbackRate = tc.settings.resetSpeed;
+      if(v.playbackRate === tc.settings.resetSpeed)
+      {
+        v.playbackRate = (target!==1.0)? 1.0 : tc.settings.fastSpeed;
+      }
+      else
+      {
+        v.playbackRate = tc.settings.resetSpeed;
+      }
     } else {
       tc.settings.resetSpeed = v.playbackRate;
       chrome.storage.sync.set({'resetSpeed': v.playbackRate});
