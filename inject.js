@@ -271,7 +271,7 @@ chrome.extension.sendMessage({}, function(response) {
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.getElementsByTagName('video');
+      var videoTags = getVideoElements();
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);
       });
@@ -285,7 +285,7 @@ chrome.extension.sendMessage({}, function(response) {
   }
 
   function runAction(action, document, keyboard) {
-    var videoTags = document.getElementsByTagName('video');
+    var videoTags = getVideoElements();
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {
@@ -327,6 +327,12 @@ chrome.extension.sendMessage({}, function(response) {
       }
     });
   }
+ function getArrayFromTag(tagname) {
+    return Array.prototype.slice.call(document.getElementsByTagName(tagname));
+ }
+ function getVideoElements() {
+    return getArrayFromTag('video').concat(getArrayFromTag('audio'));
+ }
 
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
