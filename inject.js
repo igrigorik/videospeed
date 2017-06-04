@@ -60,6 +60,79 @@ chrome.extension.sendMessage({}, function(response) {
       }
       this.initializeControls();
 
+      let calcDurations = function(target) {
+        let from = Number(target.dataset['playFrom']);
+        let to = Number(target.dataset['playTo']);
+        let rate = Number(target.dataset['playRate']);
+        let spentDuration = Number(target.dataset['spentDuration']) || 0;
+        let playedDuration = Number(target.dataset['playedDuration']) || 0;
+        if (target.dataset['playStatus'] === "playing") {
+          to = Date.now();
+          rate = target.playbackRate;
+        }
+        return {
+          spentDuration: spentDuration + (to-from),
+          playedDuration: playedDuration + (to-from)*rate,
+        }
+      }
+
+      let formatDuration = function(seconds) {
+        let h = Math.floor(seconds/3600);
+        let m = Math.floor((seconds - 3600*h) / 60);
+        let s = Math.floor(seconds - 3600*h - 60*m);
+        if (h === 0 && m === 0) {
+          return `${s}s`;
+        } else if (h === 0) {
+          return `${m}m${s}s`;
+        } else {
+          return `${h}h${m}m${s}s`;
+        }
+      }
+
+      let timerBegin = function(e) {
+        e.target.dataset['playStatus'] = "playing";
+        e.target.dataset['playFrom'] = Date.now();
+        e.target.dataset['playRate'] = e.target.playbackRate;
+        e.target.dataset['interval'] = setInterval(function() {
+          let t = calcDurations(e.target);
+          let diff = Math.floor((t.playedDuration-t.spentDuration)/1000.0);
+          if (diff > 0) {
+            this.savedDurationIndicator.textContent = `${formatDuration(diff)} saved`;
+          } else if (diff < 0) {
+            this.savedDurationIndicator.textContent = `${formatDuration(-diff)} more time`;
+          } else {
+            this.savedDurationIndicator.textContent = "";
+          }
+        }.bind(this), 500);
+      }
+
+      let timerEnd = function(e) {
+        if(e.target.dataset['playStatus'] !== "playing") {
+          return;
+        }
+        clearInterval(e.target.dataset['interval']);
+        delete e.target.dataset['interval'];
+        delete e.target.dataset['playStatus'];
+        e.target.dataset['playTo'] = Date.now();
+
+        let t = calcDurations(e.target);
+        e.target.dataset['playedDuration'] = t.playedDuration;
+        e.target.dataset['spentDuration'] = t.spentDuration;
+      }
+
+      let timerRateChanging = function(e) {
+        if (e.target.dataset['playStatus'] !== "playing") {
+          return;
+        }
+        timerEnd(e);
+        timerBegin.bind(this)(e);
+      }.bind(this);
+
+      target.addEventListener('playing', timerBegin.bind(this));
+      target.addEventListener('pause', timerEnd);
+      target.addEventListener('waiting', timerEnd);
+      target.addEventListener('ratechange', timerRateChanging);
+
       target.addEventListener('play', function(event) {
         target.playbackRate = tc.settings.speed;
       });
@@ -89,7 +162,8 @@ chrome.extension.sendMessage({}, function(response) {
       var document = this.document;
       var speed = parseFloat(tc.settings.speed).toFixed(2),
         top = Math.max(this.video.offsetTop, 0) + "px",
-        left = Math.max(this.video.offsetLeft, 0) + "px";
+        left = Math.max(this.video.offsetLeft, 0) + "px",
+        savedDuration = "";
 
       var prevent = function(e) {
         e.preventDefault();
@@ -121,6 +195,7 @@ chrome.extension.sendMessage({}, function(response) {
             <button data-action="faster">+</button>
             <button data-action="advance" class="rw">»</button>
             <button data-action="close" class="hideButton">x</button>
+            <span id="savedDuration" class="draggable">${savedDuration}</span>
           </span>
         </div>
       `;
@@ -136,6 +211,7 @@ chrome.extension.sendMessage({}, function(response) {
       });
 
       this.speedIndicator = shadow.querySelector('span');
+      this.savedDurationIndicator = shadow.querySelector('#savedDuration')
       var fragment = document.createDocumentFragment();
       fragment.appendChild(wrapper);
 
