@@ -58,6 +58,11 @@ chrome.extension.sendMessage({}, function(response) {
         tc.settings.speed = 1.0;
         tc.settings.resetSpeed = tc.settings.fastSpeed;
       }
+      else
+      {
+        var s = Math.max(tc.settings.speed, 0.0625);
+        tc.settings.speed = Number(s.toFixed(2));
+      }
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
@@ -309,7 +314,7 @@ chrome.extension.sendMessage({}, function(response) {
           // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
+          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
