@@ -65,9 +65,6 @@ chrome.extension.sendMessage({}, function(response) {
       });
 
       target.addEventListener('ratechange', function(event) {
-        if (target.readyState === 0) {
-          return;
-        }
         var speed = this.getSpeed();
         this.speedIndicator.textContent = speed;
         tc.settings.speed = speed;
