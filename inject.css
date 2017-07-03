@@ -36,7 +36,7 @@ a[aria-label^="Video"] .vsc-controller {
   top: 35px;
 }
 /* Google Photos full-screen view */
-#player .html5-video-container .vsc-controller {
+#player:not(.ytd-watch) .html5-video-container .vsc-controller {
   position: relative;
   top: 50px;
 }
