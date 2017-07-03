@@ -50,6 +50,10 @@ chrome.extension.sendMessage({}, function(response) {
 
   function defineVideoController() {
     tc.videoController = function(target, parent) {
+      if (target.dataset['vscid']) {
+        return;
+      }
+
       this.video = target;
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
@@ -244,9 +248,7 @@ chrome.extension.sendMessage({}, function(response) {
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            if (!node.dataset['vscid']) {
-              new tc.videoController(node, parent);
-            }
+            new tc.videoController(node, parent);
           } else {
             if (node.classList.contains('vsc-initialized')) {
               let id = node.dataset['vscid'];
