@@ -195,6 +195,13 @@ chrome.extension.sendMessage({}, function(response) {
   }
 
   function initializeNow(document) {
+      // in theory, this should only run once, in practice..
+      // that's not guaranteed, hence we enforce own init-once.
+      if (document.body.classList.contains('vsc-initialized')) {
+        return;
+      }
+      document.body.classList.add('vsc-initialized');
+
       if (document === window.document) {
         defineVideoController();
       } else {
