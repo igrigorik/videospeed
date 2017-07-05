@@ -69,10 +69,16 @@ chrome.extension.sendMessage({}, function(response) {
       });
 
       target.addEventListener('ratechange', function(event) {
-        var speed = this.getSpeed();
-        this.speedIndicator.textContent = speed;
-        tc.settings.speed = speed;
-        chrome.storage.sync.set({'speed': speed});
+        // Ignore ratechange events on unitialized videos.
+        // 0 == No information is available about the media resource.
+        if (event.target.readyState > 0) {
+          var speed = this.getSpeed();
+          this.speedIndicator.textContent = speed;
+          tc.settings.speed = speed;
+          chrome.storage.sync.set({'speed': speed}, function() {
+            console.log('Speed setting saved: ' + speed);
+          });
+        }
       }.bind(this));
 
       target.playbackRate = tc.settings.speed;
