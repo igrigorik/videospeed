@@ -103,24 +103,58 @@ chrome.runtime.sendMessage({}, function(response) {
       wrapper.addEventListener('mousedown', prevent, false);
       wrapper.addEventListener('click', prevent, false);
 
-      var shadow = wrapper
-      var shadowTemplate = `
-        <style>
-          @import "${chrome.extension.getURL('shadow.css')}";
-        </style>
+      var styleElem = document.createElement('style')
+      var shadowCSS = chrome.runtime.getURL('shadow.css')
+      var textElem = document.createTextNode(`@import "${shadowCSS}";`)
+      styleElem.appendChild(textElem)
+      wrapper.appendChild(styleElem)
 
-        <div id="controller" style="top:${top}; left:${left}">
-          <span data-action="drag" class="draggable">${speed}</span>
-          <span id="controls">
-            <button data-action="rewind" class="rw">«</button>
-            <button data-action="slower">-</button>
-            <button data-action="faster">+</button>
-            <button data-action="advance" class="rw">»</button>
-            <button data-action="close" class="hideButton">x</button>
-          </span>
-        </div>
-      `;
-      shadow.innerHTML = shadowTemplate;
+      var divElem = document.createElement('div')
+      divElem.setAttribute('id', 'controller')
+      divElem.setAttribute('style', `top:${top}; left:${left};`)
+
+      var spanElem1 = document.createElement('span')
+      spanElem1.setAttribute('data-action', 'drag')
+      spanElem1.setAttribute('class', 'draggable')
+      spanElem1.appendChild(document.createTextNode(speed.toString()))
+      divElem.appendChild(spanElem1)
+
+      var spanElem2 = document.createElement('span')
+      spanElem2.setAttribute('id', 'controls')
+
+      var buttonElem1 = document.createElement('button')
+      buttonElem1.setAttribute('data-action', 'rewind')
+      buttonElem1.setAttribute('class', 'rw')
+      buttonElem1.appendChild(document.createTextNode('«'))
+      spanElem2.appendChild(buttonElem1)
+
+      var buttonElem2 = document.createElement('button')
+      buttonElem2.setAttribute('data-action', 'slower')
+      buttonElem2.appendChild(document.createTextNode('-'))
+      spanElem2.appendChild(buttonElem2)
+
+      var buttonElem3 = document.createElement('button')
+      buttonElem3.setAttribute('data-action', 'faster')
+      buttonElem3.appendChild(document.createTextNode('+'))
+      spanElem2.appendChild(buttonElem3)
+
+      var buttonElem4 = document.createElement('button')
+      buttonElem4.setAttribute('data-action', 'advance')
+      buttonElem4.setAttribute('class', 'rw')
+      buttonElem4.appendChild(document.createTextNode('»'))
+      spanElem2.appendChild(buttonElem4)
+
+      var buttonElem5 = document.createElement('button')
+      buttonElem5.setAttribute('data-action', 'close')
+      buttonElem5.setAttribute('class', 'hideButton')
+      buttonElem5.appendChild(document.createTextNode('x'))
+      spanElem2.appendChild(buttonElem5)
+
+      divElem.appendChild(spanElem2)
+      wrapper.appendChild(divElem)
+
+      var shadow = wrapper
+
       shadow.querySelector('.draggable').addEventListener('mousedown', (e) => {
         runAction(e.target.dataset['action'], document);
       });

@@ -68,7 +68,7 @@
   line-height: 14px;
   border: 1px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin-bottom: 2px;
+  margin: 2px;
 }
 
 .vsc-controller button:focus {
