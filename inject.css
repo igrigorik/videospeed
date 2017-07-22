@@ -29,18 +29,6 @@
   top: 40px;
 }
 
-/* Google Photos player */
-/* Inline preview doesn't have any additional hooks, relying on Aria label */ 
-a[aria-label^="Video"] .vsc-controller {
-  position: relative;
-  top: 35px;
-}
-/* Google Photos full-screen view */
-#player:not(.ytd-watch) .html5-video-container .vsc-controller {
-  position: relative;
-  top: 50px;
-}
-
 /* Netflix player */
 #netflix-player:not(.player-cinema-mode) .vsc-controller {
   position: relative;
