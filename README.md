@@ -13,7 +13,7 @@ HTML5 video provides a native API to accelerate playback of any video. The probl
 
 ![Player](https://cloud.githubusercontent.com/assets/2400185/24076745/5723e6ae-0c41-11e7-820c-1d8e814a2888.png)
 
-#### *[Install Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk)*
+#### *Install [Chrome](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk) or [Firefox](https://addons.mozilla.org/en-us/firefox/addon/videospeed/) Extension*
 
 Once the extension is installed simply navigate to any page that offers HTML5 video ([example](http://www.youtube.com/watch?v=E9FxNzv1Tr8)), and you'll see a speed indicator in top left corner. Hover over the indicator to reveal the controls to accelerate, slowdown, and quickly rewind or advance the video. Or, even better, simply use your keyboard:
 
@@ -28,17 +28,7 @@ _Note: you can customize these shortcut keys in the extension settings page._
 
 ### FAQ
 
-**The video controls are not showing up?** This extension is only compatible with HTML5 video. If you don't see the controls showing up, chances are you are viewing a Flash video. If you want to confirm, try right-clicking on the video and inspect the menu: if it mentions flash, then that's the issue. That said, most sites will fallback to HTML5 if they detect that Flash it not available. You can try manually disabling Flash plugin in Chrome:
-
-* In a new tab, navigate to `chrome://plugins`
-* Disable "Adobe Flash Player"
-* Restart your browser and try playing your video again
-
-**The speed controls are not showing up for local videos?** To enable playback of local media (e.g. File > Open File), you need to grant additional permissions to the extension.
-
-* In a new tab, navigate to `chrome://extensions`
-* Find "Video Speed Controller" extension in the list and enable "Allow access to file URLs"
-* Open a new tab and try opening a local file, the controls should show up
+**The video controls are not showing up?** This extension is only compatible with HTML5 video. If you don't see the controls showing up, chances are you are viewing a Flash video. If you want to confirm, try right-clicking on the video and inspect the menu: if it mentions flash, then that's the issue. That said, most sites will fallback to HTML5 if they detect that Flash it not available. You can try manually disabling Flash plugin in browser.
 
 ### License
 
