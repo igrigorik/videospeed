@@ -1,10 +1,10 @@
 # The science of accelerated playback
 
-**TL;DR: faster playback translates to quick progress, better engagement, and retention.**
+**TL;DR: faster playback translates to better engagement and retention.**
 
-Average adult reads prose text at [250 to 300 words per minute](http://www.paperbecause.com/PIOP/files/f7/f7bb6bc5-2c4a-466f-9ae7-b483a2c0dca4.pdf) (wpm). By contrast, the average rate of speech for English speakers is ~150 wpm, with slide presentations often closer to 100 wpm. As a result, when given the choice, many viewers [speed up video playback to ~1.3~1.5 its recorded rate](http://research.microsoft.com/en-us/um/redmond/groups/coet/compression/chi99/paper.pdf) to compensate for the difference.
+Average adult reads prose text at [250 to 300 words per minute](http://www.paperbecause.com/PIOP/files/f7/f7bb6bc5-2c4a-466f-9ae7-b483a2c0dca4.pdf) (wpm). By contrast, the average rate of speech for English speakers is ~150 wpm, with slide presentations often closer to 100 wpm. As a result, when given the choice, many viewers [speed up video playback to ~1.3\~1.5 its recorded rate](http://research.microsoft.com/en-us/um/redmond/groups/coet/compression/chi99/paper.pdf) to compensate for the difference.
 
-Many viewers report that [accelerated viewing keeps their attention longer](http://www.enounce.com/docs/BYUPaper020319.pdf): faster delivery keeps the viewer more engaged with the content. In fact, with a little training many end up watching videos at 2x+ the recorded speed. Some studies report that after being exposed to accelerated playback, [listeners become uncomfortable](http://xenia.media.mit.edu/~barons/html/avios92.html#beasleyalteredspeech) if they are forced to return to normal rate of presentation.
+Many viewers report that [accelerated viewing keeps their attention longer](http://www.enounce.com/docs/BYUPaper020319.pdf): faster delivery keeps the viewer more engaged with the content. In fact, with a little training many end up watching videos at 2x+ the recorded speed. Some studies report that after being exposed to accelerated playback, [listeners become uncomfortable](http://alumni.media.mit.edu/~barons/html/avios92.html#beasleyalteredspeech) if they are forced to return to normal rate of presentation.
 
 
 ## Faster HTML5 Video
@@ -24,11 +24,7 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **X** - advance video by 10 seconds.
 * **V** - show/hide the controller.
 
-Note that you can customize these shortcuts in the extension settings page. Also, a few tips for enabling and forcing HTML5 video:
-
- * YouTube: make sure you [enable the HTML5 opt-in experiment](http://www.youtube.com/html5).
- * If you're adventurous, try disabling the Flash plugin in Chrome in chrome://plugins/
- * If viewing a video on Wistia, right click to switch to HTML5 video, refresh the page, and the controls will appear.
+_Note: you can customize these shortcut keys in the extension settings page._
 
 ### FAQ
 

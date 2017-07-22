@@ -50,13 +50,17 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function defineVideoController() {
     tc.videoController = function(target, parent) {
+      if (target.dataset['vscid']) {
+        return;
+      }
+
       this.video = target;
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
-        tc.settings.resetSpeed = 1.0;
+        tc.settings.resetSpeed = tc.settings.fastSpeed;
       }
       this.initializeControls();
 
@@ -65,9 +69,6 @@ chrome.runtime.sendMessage({}, function(response) {
       });
 
       target.addEventListener('ratechange', function(event) {
-        if (target.readyState === 0) {
-          return;
-        }
         var speed = this.getSpeed();
         this.speedIndicator.textContent = speed;
         tc.settings.speed = speed;
@@ -102,6 +103,10 @@ chrome.runtime.sendMessage({}, function(response) {
       wrapper.addEventListener('dblclick', prevent, false);
       wrapper.addEventListener('mousedown', prevent, false);
       wrapper.addEventListener('click', prevent, false);
+
+      if (tc.settings.startHidden) {
+        wrapper.classList.add('vsc-hidden');
+      }
 
       var styleElem = document.createElement('style')
       var shadowCSS = chrome.runtime.getURL('shadow.css')
@@ -169,12 +174,26 @@ chrome.runtime.sendMessage({}, function(response) {
       var fragment = document.createDocumentFragment();
       fragment.appendChild(wrapper);
 
-      // Note: when triggered via a MutationRecord, it's possible that the
-      // target is not the immediate parent. This appends the controller as
-      // the first element of the target, which may not be the parent.
-      this.parent.insertBefore(fragment, this.parent.firstChild);
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
+
+      switch (location.hostname) {
+        case 'www.amazon.com':
+          // insert before parent to bypass overlay
+          this.parent.parentElement.insertBefore(fragment, this.parent);
+          break;
+
+        case 'www.facebook.com':
+          // set stacking context to same as parent's parent.
+          // + default fallthrough
+          this.parent.style.zIndex = 'auto';
+
+        default:
+          // Note: when triggered via a MutationRecord, it's possible that the
+          // target is not the immediate parent. This appends the controller as
+          // the first element of the target, which may not be the parent.
+          this.parent.insertBefore(fragment, this.parent.firstChild);
+      }
     }
   }
 
@@ -210,6 +229,13 @@ chrome.runtime.sendMessage({}, function(response) {
   }
 
   function initializeNow(document) {
+      // in theory, this should only run once, in practice..
+      // that's not guaranteed, hence we enforce own init-once.
+      if (document.body.classList.contains('vsc-initialized')) {
+        return;
+      }
+      document.body.classList.add('vsc-initialized');
+
       if (document === window.document) {
         defineVideoController();
       } else {
@@ -263,9 +289,7 @@ chrome.runtime.sendMessage({}, function(response) {
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            if (!node.dataset['vscid']) {
-              new tc.videoController(node, parent);
-            }
+            new tc.videoController(node, parent);
           } else {
             if (node.classList.contains('vsc-initialized')) {
               let id = node.dataset['vscid'];
@@ -342,13 +366,7 @@ chrome.runtime.sendMessage({}, function(response) {
           var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
-          if(v.playbackRate === 1.0) {
-            v.playbackRate = tc.settings.resetSpeed;
-          } else {
-            tc.settings.resetSpeed = v.playbackRate;
-            chrome.storage.local.set({'resetSpeed': v.playbackRate});
-            v.playbackRate = 1.0;
-          }
+          resetSpeed(v, 1.0);
         } else if (action === 'close') {
           v.classList.add('vsc-cancelled');
           controller.remove();
@@ -358,23 +376,25 @@ chrome.runtime.sendMessage({}, function(response) {
         } else if (action === 'drag') {
           handleDrag(v, controller);
         } else if (action === 'fast') {
-          playVideoAtFastSpeed(v);
+          resetSpeed(v, tc.settings.fastSpeed);
         }
       }
     });
   }
 
-  function playVideoAtFastSpeed(video) {
-    video.playbackRate = tc.settings.fastSpeed;
+  function resetSpeed(v, target) {
+    if (v.playbackRate === target) {
+      v.playbackRate = tc.settings.resetSpeed;
+    } else {
+      tc.settings.resetSpeed = v.playbackRate;
+      chrome.storage.local.set({'resetSpeed': v.playbackRate});
+      v.playbackRate = target;
+    }
   }
 
  function handleDrag(video, controller) {
     const parentElement = controller.parentElement,
-      boundRect = parentElement.getBoundingClientRect(),
-      shadowController = controller.querySelector('#controller'),
-      drag = shadowController.querySelector('.draggable'),
-      offsetLeft = boundRect.left + drag.offsetLeft + drag.offsetWidth,
-      offsetTop = boundRect.top + drag.offsetTop + drag.offsetHeight;
+      shadowController = controller.querySelector('#controller');
 
     video.classList.add('vcs-dragging');
     shadowController.classList.add('dragging');
