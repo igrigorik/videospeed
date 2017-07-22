@@ -240,7 +240,7 @@ chrome.runtime.sendMessage({}, function(response) {
         defineVideoController();
       } else {
         var link = document.createElement('link');
-        link.href = chrome.extension.getURL('inject.css');
+        link.href = chrome.runtime.getURL('inject.css');
         link.type = 'text/css';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
