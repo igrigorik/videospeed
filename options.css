@@ -81,7 +81,6 @@ input[type="text"] {
 label {
     display: inline-block;
     width: 170px;
-    vertical-align: top;
 }
 
 label[for=rememberSpeed] {
