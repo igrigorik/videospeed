@@ -331,7 +331,7 @@ chrome.extension.sendMessage({}, function(response) {
           userAction = true;
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
-          var currentRate = event.target.readyState > 0 ? v.playbackRate : tc.settings.speed;
+          var currentRate = event.target.readyState > 0 ? v.playbackRate : parseFloat(tc.settings.speed);
           var s = Math.min( (currentRate < 0.1 ? 0.0 : currentRate) + tc.settings.speedStep, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
@@ -340,7 +340,7 @@ chrome.extension.sendMessage({}, function(response) {
           // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
-          var currentRate = event.target.readyState > 0 ? v.playbackRate : tc.settings.speed;
+          var currentRate = event.target.readyState > 0 ? v.playbackRate : parseFloat(tc.settings.speed);
           var s = Math.max(currentRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
