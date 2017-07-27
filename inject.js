@@ -71,7 +71,8 @@ chrome.extension.sendMessage({}, function(response) {
       target.addEventListener('ratechange', function(event) {
         // Ignore ratechange events on unitialized videos.
         // 0 == No information is available about the media resource.
-        if (event.target.readyState > 0) {
+        if (event.target.readyState > 0 || userAction) {
+          userAction = false;
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
           tc.settings.speed = speed;
@@ -310,6 +311,7 @@ chrome.extension.sendMessage({}, function(response) {
       });
   }
 
+  var userAction = false;
   function runAction(action, document, keyboard) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
@@ -326,16 +328,20 @@ chrome.extension.sendMessage({}, function(response) {
         } else if (action === 'advance') {
           v.currentTime += tc.settings.advanceTime;
         } else if (action === 'faster') {
+          userAction = true;
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
-          var s = Math.min( (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + tc.settings.speedStep, 16);
+          var currentRate = event.target.readyState > 0 ? v.playbackRate : tc.settings.speed;
+          var s = Math.min( (currentRate < 0.1 ? 0.0 : currentRate) + tc.settings.speedStep, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
+          userAction = true;
           // Audio playback is cut at 0.05:
           // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
+          var currentRate = event.target.readyState > 0 ? v.playbackRate : tc.settings.speed;
+          var s = Math.max(currentRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
@@ -355,6 +361,7 @@ chrome.extension.sendMessage({}, function(response) {
   }
 
   function resetSpeed(v, target) {
+    userAction = true;
     if (v.playbackRate === target) {
       v.playbackRate = tc.settings.resetSpeed;
     } else {
