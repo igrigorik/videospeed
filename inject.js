@@ -186,17 +186,22 @@ chrome.extension.sendMessage({}, function(response) {
     if (blacklisted)
       return;
 
-    var readyStateCheckInterval = setInterval(function() {
-      if (document && document.readyState === 'complete') {
-        clearInterval(readyStateCheckInterval);
+    window.onload = () => initializeNow(document);
+    if (document) {
+      if (document.readyState === "complete") {
         initializeNow(document);
+      } else {
+        document.onreadystatechange = () => {
+          if (document.readyState === "complete") {
+            initializeNow(document);
+          }
+        }
       }
-    }, 10);
+    }
   }
 
   function initializeNow(document) {
-      // in theory, this should only run once, in practice..
-      // that's not guaranteed, hence we enforce own init-once.
+      // enforce init-once due to redundant callers
       if (document.body.classList.contains('vsc-initialized')) {
         return;
       }
