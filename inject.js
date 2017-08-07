@@ -149,14 +149,19 @@ chrome.extension.sendMessage({}, function(response) {
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
 
-      if (location.hostname == 'www.facebook.com') {
-         // set stacking context to same as parent's parent.
-          // + default fallthrough
-          this.parent.style.zIndex = 'auto';
-      } else if (location.hostname == 'www.amazon.com' || location.hostname.match('www\.hbogo\.*') {
+      switch (true) {
+        case (location.hostname == 'www.amazon.com'):
+		    case (/www\.hbogo\./).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
-      } else {
+          break;
+
+        case (location.hostname == 'www.facebook.com'):
+          // set stacking context to same as parent's parent.
+          // + default fallthrough
+          this.parent.style.zIndex = 'auto';
+
+        default:
           // Note: when triggered via a MutationRecord, it's possible that the
           // target is not the immediate parent. This appends the controller as
           // the first element of the target, which may not be the parent.
