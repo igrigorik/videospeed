@@ -222,7 +222,8 @@ chrome.extension.sendMessage({}, function(response) {
         var keyCode = event.keyCode;
 
         // Ignore if following modifier is active.
-        if (event.getModifierState("Alt")
+        if (!event.getModifierState
+            || event.getModifierState("Alt")
             || event.getModifierState("Control")
             || event.getModifierState("Fn")
             || event.getModifierState("Meta")
