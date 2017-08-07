@@ -151,7 +151,7 @@ chrome.extension.sendMessage({}, function(response) {
 
       switch (true) {
         case (location.hostname == 'www.amazon.com'):
-		    case (/www\.hbogo\./).test(location.hostname):
+        case (/www\.hbogo\./).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
