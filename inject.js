@@ -149,13 +149,14 @@ chrome.extension.sendMessage({}, function(response) {
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
 
-      switch (location.hostname) {
-        case 'www.amazon.com':
+      switch (true) {
+        case (location.hostname == 'www.amazon.com'):
+        case (/www\.hbogo\./).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
 
-        case 'www.facebook.com':
+        case (location.hostname == 'www.facebook.com'):
           // set stacking context to same as parent's parent.
           // + default fallthrough
           this.parent.style.zIndex = 'auto';
