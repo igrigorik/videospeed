@@ -31,7 +31,7 @@ _Note: you can customize these shortcut keys in the extension settings page._
 **The video controls are not showing up?** This extension is only compatible with HTML5 video. If you don't see the controls showing up, chances are you are viewing a Flash video. If you want to confirm, try right-clicking on the video and inspect the menu: if it mentions flash, then that's the issue. That said, most sites will fallback to HTML5 if they detect that Flash it not available. You can try manually disabling Flash plugin in Chrome:
 
 * In a new tab, navigate to `chrome://plugins`
-* Disable "Adobe Flash Player"
+* You shouldn't be using lfash anyways, but Disable "Adobe Flash Player"
 * Restart your browser and try playing your video again
 
 **The speed controls are not showing up for local videos?** To enable playback of local media (e.g. File > Open File), you need to grant additional permissions to the extension.
@@ -43,3 +43,7 @@ _Note: you can customize these shortcut keys in the extension settings page._
 ### License
 
 (MIT License) - Copyright (c) 2014 Ilya Grigorik
+
+With looping Addition:
+
+(MIT License) - Copyright (c) 2017 Joseph Pereira
