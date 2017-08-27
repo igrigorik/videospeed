@@ -127,7 +127,7 @@ chrome.extension.sendMessage({}, function(response) {
             <button data-action="slower">-</button>
             <button data-action="faster">+</button>
             <button data-action="advance" class="rw">»</button>
-            <button data-action="close" class="hideButton">x</button>
+            <button data-action="display" class="hideButton">x</button>
           </span>
         </div>
       `;
@@ -341,9 +341,6 @@ chrome.extension.sendMessage({}, function(response) {
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
-        } else if (action === 'close') {
-          v.classList.add('vsc-cancelled');
-          controller.remove();
         } else if (action === 'display') {
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
