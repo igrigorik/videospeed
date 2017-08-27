@@ -30,13 +30,13 @@
 }
 
 /* Google Photos player */
-/* Inline preview doesn't have any additional hooks, relying on Aria label */ 
+/* Inline preview doesn't have any additional hooks, relying on Aria label */
 a[aria-label^="Video"] .vsc-controller {
   position: relative;
   top: 35px;
 }
 /* Google Photos full-screen view */
-#player:not(.ytd-watch) .html5-video-container .vsc-controller {
+#player .house-brand .vsc-controller {
   position: relative;
   top: 50px;
 }
@@ -67,7 +67,6 @@ a[aria-label^="Video"] .vsc-controller {
 div.video-wrapper + div.target {
   height: 0;
 }
-
 
 /* Fix black overlay on Kickstarter */
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
