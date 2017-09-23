@@ -29,6 +29,18 @@
   top: 40px;
 }
 
+/* Google Photos player */
+/* Inline preview doesn't have any additional hooks, relying on Aria label */
+a[aria-label^="Video"] .vsc-controller {
+  position: relative;
+  top: 35px;
+}
+/* Google Photos full-screen view */
+#player .house-brand .vsc-controller {
+  position: relative;
+  top: 50px;
+}
+
 /* Netflix player */
 #netflix-player:not(.player-cinema-mode) .vsc-controller {
   position: relative;
@@ -55,7 +67,6 @@
 div.video-wrapper + div.target {
   height: 0;
 }
-
 
 /* Fix black overlay on Kickstarter */
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {

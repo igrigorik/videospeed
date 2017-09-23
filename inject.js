@@ -69,10 +69,16 @@ chrome.runtime.sendMessage({}, function(response) {
       });
 
       target.addEventListener('ratechange', function(event) {
-        var speed = this.getSpeed();
-        this.speedIndicator.textContent = speed;
-        tc.settings.speed = speed;
-        chrome.storage.local.set({'speed': speed});
+        // Ignore ratechange events on unitialized videos.
+        // 0 == No information is available about the media resource.
+        if (event.target.readyState > 0) {
+          var speed = this.getSpeed();
+          this.speedIndicator.textContent = speed;
+          tc.settings.speed = speed;
+          chrome.storage.local.set({'speed': speed}, function() {
+            console.log('Speed setting saved: ' + speed);
+          });
+        }
       }.bind(this));
 
       target.playbackRate = tc.settings.speed;
@@ -150,7 +156,7 @@ chrome.runtime.sendMessage({}, function(response) {
       spanElem2.appendChild(buttonElem4)
 
       var buttonElem5 = document.createElement('button')
-      buttonElem5.setAttribute('data-action', 'close')
+      buttonElem5.setAttribute('data-action', 'display')
       buttonElem5.setAttribute('class', 'hideButton')
       buttonElem5.appendChild(document.createTextNode('x'))
       spanElem2.appendChild(buttonElem5)
@@ -177,16 +183,12 @@ chrome.runtime.sendMessage({}, function(response) {
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
 
-      switch (location.hostname) {
-        case 'www.amazon.com':
+      switch (true) {
+        case (location.hostname == 'www.amazon.com'):
+        case (/www\.hbogo\./).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
-
-        case 'www.facebook.com':
-          // set stacking context to same as parent's parent.
-          // + default fallthrough
-          this.parent.style.zIndex = 'auto';
 
         default:
           // Note: when triggered via a MutationRecord, it's possible that the
@@ -220,17 +222,22 @@ chrome.runtime.sendMessage({}, function(response) {
     if (blacklisted)
       return;
 
-    var readyStateCheckInterval = setInterval(function() {
-      if (document && document.readyState === 'complete') {
-        clearInterval(readyStateCheckInterval);
+    window.onload = () => initializeNow(document);
+    if (document) {
+      if (document.readyState === "complete") {
         initializeNow(document);
+      } else {
+        document.onreadystatechange = () => {
+          if (document.readyState === "complete") {
+            initializeNow(document);
+          }
+        }
       }
-    }, 10);
+    }
   }
 
   function initializeNow(document) {
-      // in theory, this should only run once, in practice..
-      // that's not guaranteed, hence we enforce own init-once.
+      // enforce init-once due to redundant callers
       if (document.body.classList.contains('vsc-initialized')) {
         return;
       }
@@ -250,7 +257,8 @@ chrome.runtime.sendMessage({}, function(response) {
         var keyCode = event.keyCode;
 
         // Ignore if following modifier is active.
-        if (event.getModifierState("Alt")
+        if (!event.getModifierState
+            || event.getModifierState("Alt")
             || event.getModifierState("Control")
             || event.getModifierState("Fn")
             || event.getModifierState("Meta")
@@ -367,9 +375,6 @@ chrome.runtime.sendMessage({}, function(response) {
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
-        } else if (action === 'close') {
-          v.classList.add('vsc-cancelled');
-          controller.remove();
         } else if (action === 'display') {
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
