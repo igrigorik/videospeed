@@ -270,9 +270,9 @@ chrome.extension.sendMessage({}, function(response) {
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
                 node.classList.remove('vsc-initialized');
-                delete node.dataset['vscid'];
                 ctrl.remove();
               }
+              delete node.dataset['vscid'];
             }
           }
         } else if (node.children != undefined) {
