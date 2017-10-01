@@ -267,9 +267,9 @@ chrome.extension.sendMessage({}, function(response) {
               let id = node.dataset['vscid'];
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
-                node.classList.remove('vsc-initialized');
                 ctrl.remove();
               }
+              node.classList.remove('vsc-initialized');
               delete node.dataset['vscid'];
             }
           }
