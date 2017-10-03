@@ -1,4 +1,4 @@
-chrome.extension.sendMessage({}, function(response) {
+chrome.runtime.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
@@ -117,7 +117,7 @@ chrome.extension.sendMessage({}, function(response) {
       var shadow = wrapper.createShadowRoot();
       var shadowTemplate = `
         <style>
-          @import "${chrome.extension.getURL('shadow.css')}";
+          @import "${chrome.runtime.getURL('shadow.css')}";
         </style>
 
         <div id="controller" style="top:${top}; left:${left}">
@@ -213,7 +213,7 @@ chrome.extension.sendMessage({}, function(response) {
         defineVideoController();
       } else {
         var link = document.createElement('link');
-        link.href = chrome.extension.getURL('inject.css');
+        link.href = chrome.runtime.getURL('inject.css');
         link.type = 'text/css';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
