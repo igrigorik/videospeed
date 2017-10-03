@@ -12,7 +12,6 @@
   },
   "permissions": [ "activeTab", "storage" ],
   "browser_action": {
-    "browser_style": true,
     "default_icon": {
       "19": "icons/icon19.png",
       "38": "icons/icon38.png",
