@@ -185,7 +185,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
       switch (true) {
         case (location.hostname == 'www.amazon.com'):
-        case (/www\.hbogo\./).test(location.hostname):
+        case (/hbogo\./).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
@@ -303,10 +303,10 @@ chrome.runtime.sendMessage({}, function(response) {
               let id = node.dataset['vscid'];
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
-                node.classList.remove('vsc-initialized');
-                delete node.dataset['vscid'];
                 ctrl.remove();
               }
+              node.classList.remove('vsc-initialized');
+              delete node.dataset['vscid'];
             }
           }
         } else if (node.children != undefined) {
