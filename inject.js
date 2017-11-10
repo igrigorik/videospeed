@@ -25,21 +25,7 @@ chrome.runtime.sendMessage({}, function(response) {
     }
   };
 
-  // Keep settings as we transition to storage.sync.
-  // Copy settings from chrome.storage.local to chrome.storage.sync
-  // and clear the contents of chrome.storage.local.
-  chrome.storage.local.get(null, function(storage){
-    function is_empty(obj) {
-      return Object.keys(obj).length === 0 && obj.constructor === Object
-    }
-
-    if (!is_empty(storage)) {
-      chrome.storage.sync.set(storage);
-      chrome.storage.local.clear();
-    }
-  });
-
-  chrome.storage.sync.get(tc.settings, function(storage) {
+  chrome.storage.local.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.resetSpeed = Number(storage.resetSpeed);
     tc.settings.speedStep = Number(storage.speedStep);
@@ -89,7 +75,7 @@ chrome.runtime.sendMessage({}, function(response) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
           tc.settings.speed = speed;
-          chrome.storage.sync.set({'speed': speed}, function() {
+          chrome.storage.local.set({'speed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
         }
@@ -406,7 +392,7 @@ chrome.runtime.sendMessage({}, function(response) {
       v.playbackRate = tc.settings.resetSpeed;
     } else {
       tc.settings.resetSpeed = v.playbackRate;
-      chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+      chrome.storage.local.set({'resetSpeed': v.playbackRate});
       v.playbackRate = target;
     }
   }
