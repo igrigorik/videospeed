@@ -25,6 +25,22 @@ chrome.runtime.sendMessage({}, function(response) {
     }
   };
 
+  // Keep settings from storage.sync as we transition back to storage.local.
+  // Copy settings from chrome.storage.sync to chrome.storage.local
+  // and clear the contents of chrome.storage.sync.
+  chrome.storage.sync.get(null, function(storage){
+    function is_empty(obj) {
+      return Object.keys(obj).length === 0 && obj.constructor === Object
+    }
+
+    if (!chrome.runtime.lastError) {
+      if(storage && !is_empty(storage)) {
+        chrome.storage.local.set(storage);
+        chrome.storage.sync.clear();
+      }
+    }
+  });
+
   chrome.storage.local.get(tc.settings, function(storage) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.resetSpeed = Number(storage.resetSpeed);
