@@ -5,11 +5,6 @@
   "manifest_version": 2,
   "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
   "homepage_url": "https://github.com/codebicycle/videospeed",
-  "applications": {
-    "gecko": {
-      "id": "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}"
-    }
-  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
