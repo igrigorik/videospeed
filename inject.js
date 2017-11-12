@@ -133,12 +133,12 @@ chrome.runtime.sendMessage({}, function(response) {
       `;
       shadow.innerHTML = shadowTemplate;
       shadow.querySelector('.draggable').addEventListener('mousedown', (e) => {
-        runAction(e.target.dataset['action'], document);
+        runAction(e.target.dataset['action'], document, false, e);
       });
 
       forEach.call(shadow.querySelectorAll('button'), function(button) {
         button.onclick = (e) => {
-          runAction(e.target.dataset['action'], document);
+          runAction(e.target.dataset['action'], document, false, e);
         }
       });
 
@@ -312,7 +312,7 @@ chrome.runtime.sendMessage({}, function(response) {
       });
   }
 
-  function runAction(action, document, keyboard) {
+  function runAction(action, document, keyboard, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
@@ -345,7 +345,7 @@ chrome.runtime.sendMessage({}, function(response) {
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'drag') {
-          handleDrag(v, controller);
+          handleDrag(v, controller, e);
         } else if (action === 'fast') {
           resetSpeed(v, tc.settings.fastSpeed);
         }
@@ -363,17 +363,32 @@ chrome.runtime.sendMessage({}, function(response) {
     }
   }
 
- function handleDrag(video, controller) {
-    const parentElement = controller.parentElement,
-      shadowController = controller.shadowRoot.querySelector('#controller');
+  function handleDrag(video, controller, e) {
+    const shadowController = controller.shadowRoot.querySelector('#controller');
+
+    // Find nearest parent of same size as video parent.
+    var parentElement = controller.parentElement;
+    while (parentElement.parentNode &&
+      parentElement.parentNode.offsetHeight === parentElement.offsetHeight &&
+      parentElement.parentNode.offsetWidth === parentElement.offsetWidth) {
+      parentElement = parentElement.parentNode;
+    }
 
     video.classList.add('vcs-dragging');
     shadowController.classList.add('dragging');
 
+    const initialMouseXY = [e.clientX, e.clientY];
+    const initialControllerXY = [
+      parseInt(shadowController.style.left),
+      parseInt(shadowController.style.top)
+    ];
+
     const startDragging = (e) => {
       let style = shadowController.style;
-      style.left = parseInt(style.left) + e.movementX + 'px';
-      style.top  = parseInt(style.top)  + e.movementY + 'px';
+      let dx = e.clientX - initialMouseXY[0];
+      let dy = e.clientY -initialMouseXY[1];
+      style.left = (initialControllerXY[0] + dx) + 'px';
+      style.top  = (initialControllerXY[1] + dy) + 'px';
     }
 
     const stopDragging = () => {
