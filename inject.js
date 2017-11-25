@@ -222,7 +222,10 @@ chrome.runtime.sendMessage({}, function(response) {
     if (blacklisted)
       return;
 
-    window.onload = () => initializeNow(document);
+    window.addEventListener('load', function () {
+      initializeNow(document);
+    }, false);
+
     if (document) {
       if (document.readyState === "complete") {
         initializeNow(document);
