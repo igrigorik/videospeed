@@ -189,7 +189,7 @@ chrome.runtime.sendMessage({}, function(response) {
       return;
 
     window.onload = () => initializeNow(document);
-    if (document) {
+    if (document && document.doctype.name == "html") {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
