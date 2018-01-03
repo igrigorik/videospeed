@@ -24,6 +24,8 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **X** - advance video by 10 seconds.
 * **V** - show/hide the controller.
 
+_Note: Vimeo's allocation of **S** as a keyboard shortcut for sharing videos clashes with this, however you can still decrease playback speed via **Shift+S**._ 
+
 _Note: you can customize these shortcut keys in the extension settings page and even make the extension remember your current playback speed._
 
 ### FAQ
