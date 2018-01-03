@@ -73,11 +73,9 @@ chrome.runtime.sendMessage({}, function(response) {
         // 0 == No information is available about the media resource.
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
-          this.speedIndicator.textContent = speed;
-          tc.settings.speed = speed;
-          chrome.storage.sync.set({'speed': speed}, function() {
-            console.log('Speed setting saved: ' + speed);
-          });
+          if (tc.settings.speed !== speed) {
+            setSpeed(this.speedIndicator, speed);
+          }
         }
       }.bind(this));
 
@@ -330,15 +328,21 @@ chrome.runtime.sendMessage({}, function(response) {
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
-          var s = Math.min( (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + tc.settings.speedStep, 16);
-          v.playbackRate = Number(s.toFixed(2));
+          var currentRate = v.readyState > 0 ? v.playbackRate : parseFloat(tc.settings.speed);
+          var s = Math.min( (currentRate < 0.1 ? 0.0 : currentRate) + tc.settings.speedStep, 16).toFixed(2);
+          var speedIndicator = controller.shadowRoot.querySelector('span');
+          v.playbackRate = Number(s);
+          setSpeed(speedIndicator, s);
         } else if (action === 'slower') {
           // Audio playback is cut at 0.05:
           // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
-          v.playbackRate = Number(s.toFixed(2));
+          var currentRate = v.readyState > 0 ? v.playbackRate : parseFloat(tc.settings.speed);
+          var s = Math.max(currentRate - tc.settings.speedStep, 0.0625).toFixed(2);
+          var speedIndicator = controller.shadowRoot.querySelector('span');
+          v.playbackRate = Number(s);
+          setSpeed(speedIndicator, s);
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
         } else if (action === 'display') {
@@ -350,6 +354,14 @@ chrome.runtime.sendMessage({}, function(response) {
           resetSpeed(v, tc.settings.fastSpeed);
         }
       }
+    });
+  }
+
+  function setSpeed(speedIndicator, speed) {
+    speedIndicator.textContent = speed;
+    tc.settings.speed = speed;
+    chrome.storage.sync.set({'speed': speed}, function() {
+      console.log('Speed setting saved: ' + speed);
     });
   }
 
