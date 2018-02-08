@@ -188,8 +188,10 @@ chrome.runtime.sendMessage({}, function(response) {
     if (blacklisted)
       return;
 
-    window.onload = () => initializeNow(document);
-    if (document && document.doctype.name == "html") {
+    window.onload = () => {
+      initializeNow(window.document)
+    };
+    if (document && document.doctype && document.doctype.name == "html") {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
