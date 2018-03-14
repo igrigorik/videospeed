@@ -49,6 +49,9 @@ var keyCodeAliases = {
   220: '\\',
   221: ']',
   222: '\'',
+  59:  ';',
+  173: '-',
+  61:  '+',
 }
 
 var whiteList = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'Home', 'End',
@@ -186,7 +189,6 @@ function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('blur', inputBlur);
   document.getElementById(inputId).addEventListener('keydown', recordKeyPress);
 }
-
 
 document.addEventListener('DOMContentLoaded', function () {
   restore_options();
