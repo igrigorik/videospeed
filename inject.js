@@ -285,18 +285,29 @@ chrome.runtime.sendMessage({}, function(response) {
           }
         }
       }
+
+      // Process the DOM nodes lazily
+      function enqueueCheckNodes(node, parent, added) {
+        const checkNodes = _ => checkForVideo(node, parent, added);
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(checkNodes, {timeout: 1000});
+        } else {
+          checkNodes();
+        }
+      }
+
       var observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           forEach.call(mutation.addedNodes, function(node) {
             if (typeof node === "function")
               return;
-            checkForVideo(node, node.parentNode || mutation.target, true);
-          })
+            enqueueCheckNodes(node, node.parentNode || mutation.target, true);
+          });
           forEach.call(mutation.removedNodes, function(node) {
             if (typeof node === "function")
               return;
-            checkForVideo(node, node.parentNode || mutation.target, false);
-          })
+            enqueueCheckNodes(node, node.parentNode || mutation.target, false);
+          });
         });
       });
       observer.observe(document, { childList: true, subtree: true });
