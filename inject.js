@@ -279,9 +279,8 @@ chrome.runtime.sendMessage({}, function(response) {
           }
         } else if (node.children != undefined) {
           for (var i = 0; i < node.children.length; i++) {
-            checkForVideo(node.children[i],
-                          node.children[i].parentNode || parent,
-                          added);
+            const child = node.children[i];
+            checkForVideo(child, child.parentNode || parent, added);
           }
         }
       }
