@@ -286,29 +286,22 @@ chrome.runtime.sendMessage({}, function(response) {
         }
       }
 
-      // Process the DOM nodes lazily
-      function enqueueCheckNodes(node, parent, added) {
-        const checkNodes = _ => checkForVideo(node, parent, added);
-        if ('requestIdleCallback' in window) {
-          requestIdleCallback(checkNodes, {timeout: 1000});
-        } else {
-          checkNodes();
-        }
-      }
-
       var observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-          forEach.call(mutation.addedNodes, function(node) {
-            if (typeof node === "function")
-              return;
-            enqueueCheckNodes(node, node.parentNode || mutation.target, true);
+        // Process the DOM nodes lazily
+        requestIdleCallback(_ => {
+          mutations.forEach(function(mutation) {
+            forEach.call(mutation.addedNodes, function(node) {
+              if (typeof node === "function")
+                return;
+              checkForVideo(node, node.parentNode || mutation.target, true);
+            });
+            forEach.call(mutation.removedNodes, function(node) {
+              if (typeof node === "function")
+                return;
+              checkForVideo(node, node.parentNode || mutation.target, false);
+            });
           });
-          forEach.call(mutation.removedNodes, function(node) {
-            if (typeof node === "function")
-              return;
-            enqueueCheckNodes(node, node.parentNode || mutation.target, false);
-          });
-        });
+        }, {timeout: 1000});
       });
       observer.observe(document, { childList: true, subtree: true });
 
