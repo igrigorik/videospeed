@@ -167,12 +167,12 @@ chrome.runtime.sendMessage({}, function(response) {
       var shadow = wrapper
 
       shadow.querySelector('.draggable').addEventListener('mousedown', (e) => {
-        runAction(e.target.dataset['action'], document);
+        runAction(e.target.dataset['action'], document, false, e);
       });
 
       forEach.call(shadow.querySelectorAll('button'), function(button) {
         button.onclick = (e) => {
-          runAction(e.target.dataset['action'], document);
+          runAction(e.target.dataset['action'], document, false, e);
         }
       });
 
@@ -223,10 +223,10 @@ chrome.runtime.sendMessage({}, function(response) {
       return;
 
     window.addEventListener('load', function () {
-      initializeNow(document);
+      initializeNow(window.document);
     }, false);
 
-    if (document) {
+    if (document && document.doctype && document.doctype.name == "html") {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
@@ -314,25 +314,28 @@ chrome.runtime.sendMessage({}, function(response) {
           }
         } else if (node.children != undefined) {
           for (var i = 0; i < node.children.length; i++) {
-            checkForVideo(node.children[i],
-                          node.children[i].parentNode || parent,
-                          added);
+            const child = node.children[i];
+            checkForVideo(child, child.parentNode || parent, added);
           }
         }
       }
+
       var observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-          forEach.call(mutation.addedNodes, function(node) {
-            if (typeof node === "function")
-              return;
-            checkForVideo(node, node.parentNode || mutation.target, true);
-          })
-          forEach.call(mutation.removedNodes, function(node) {
-            if (typeof node === "function")
-              return;
-            checkForVideo(node, node.parentNode || mutation.target, false);
-          })
-        });
+        // Process the DOM nodes lazily
+        requestIdleCallback(_ => {
+          mutations.forEach(function(mutation) {
+            forEach.call(mutation.addedNodes, function(node) {
+              if (typeof node === "function")
+                return;
+              checkForVideo(node, node.parentNode || mutation.target, true);
+            });
+            forEach.call(mutation.removedNodes, function(node) {
+              if (typeof node === "function")
+                return;
+              checkForVideo(node, node.parentNode || mutation.target, false);
+            });
+          });
+        }, {timeout: 1000});
       });
       observer.observe(document, { childList: true, subtree: true });
 
@@ -349,7 +352,7 @@ chrome.runtime.sendMessage({}, function(response) {
       });
   }
 
-  function runAction(action, document, keyboard) {
+  function runAction(action, document, keyboard, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
@@ -366,14 +369,12 @@ chrome.runtime.sendMessage({}, function(response) {
           v.currentTime += tc.settings.advanceTime;
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
-          // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=103
+          // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=168
           var s = Math.min( (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + tc.settings.speedStep, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
-          // Audio playback is cut at 0.05:
-          // https://cs.chromium.org/chromium/src/media/filters/audio_renderer_algorithm.cc?l=49
           // Video min rate is 0.0625:
-          // https://cs.chromium.org/chromium/src/media/blink/webmediaplayer_impl.cc?l=102
+          // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=167
           var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
@@ -382,7 +383,7 @@ chrome.runtime.sendMessage({}, function(response) {
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'drag') {
-          handleDrag(v, controller);
+          handleDrag(v, controller, e);
         } else if (action === 'fast') {
           resetSpeed(v, tc.settings.fastSpeed);
         }
@@ -400,17 +401,32 @@ chrome.runtime.sendMessage({}, function(response) {
     }
   }
 
- function handleDrag(video, controller) {
-    const parentElement = controller.parentElement,
-      shadowController = controller.querySelector('#controller');
+  function handleDrag(video, controller, e) {
+    const shadowController = controller.querySelector('#controller');
+
+    // Find nearest parent of same size as video parent.
+    var parentElement = controller.parentElement;
+    while (parentElement.parentNode &&
+      parentElement.parentNode.offsetHeight === parentElement.offsetHeight &&
+      parentElement.parentNode.offsetWidth === parentElement.offsetWidth) {
+      parentElement = parentElement.parentNode;
+    }
 
     video.classList.add('vcs-dragging');
     shadowController.classList.add('dragging');
 
+    const initialMouseXY = [e.clientX, e.clientY];
+    const initialControllerXY = [
+      parseInt(shadowController.style.left),
+      parseInt(shadowController.style.top)
+    ];
+
     const startDragging = (e) => {
       let style = shadowController.style;
-      style.left = parseInt(style.left) + e.movementX + 'px';
-      style.top  = parseInt(style.top)  + e.movementY + 'px';
+      let dx = e.clientX - initialMouseXY[0];
+      let dy = e.clientY -initialMouseXY[1];
+      style.left = (initialControllerXY[0] + dx) + 'px';
+      style.top  = (initialControllerXY[1] + dy) + 'px';
     }
 
     const stopDragging = () => {

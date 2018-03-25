@@ -24,7 +24,7 @@ Once the extension is installed simply navigate to any page that offers HTML5 vi
 * **X** - advance video by 10 seconds.
 * **V** - show/hide the controller.
 
-_Note: you can customize these shortcut keys in the extension settings page._
+_Note: you can customize these shortcut keys in the extension settings page and even make the extension remember your current playback speed._
 
 ### FAQ
 
