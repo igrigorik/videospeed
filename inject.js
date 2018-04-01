@@ -103,8 +103,8 @@ chrome.extension.sendMessage({}, function(response) {
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
       var speed = parseFloat(tc.settings.speed).toFixed(2),
-        top = Math.max(this.video.offsetTop, 0) + "px",
-        left = Math.max(this.video.offsetLeft, 0) + "px";
+        top = "0px",
+        left = "0px";
 
       var prevent = function(e) {
         e.preventDefault();
