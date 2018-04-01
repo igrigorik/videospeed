@@ -332,7 +332,11 @@ chrome.extension.sendMessage({}, function(response) {
     if (v.playbackRate === target) {
       if(v.playbackRate === tc.settings.resetSpeed)
       {
-        v.playbackRate = (target!==1.0)? 1.0 : tc.settings.fastSpeed;
+        if (target !== 1.0) {
+          v.playbackRate = 1.0;
+        } else {
+          v.playbackRate = tc.settings.fastSpeed;
+        }
       }
       else
       {
