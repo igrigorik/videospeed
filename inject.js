@@ -191,7 +191,7 @@ chrome.runtime.sendMessage({}, function(response) {
     window.onload = () => {
       initializeNow(window.document)
     };
-    if (document && document.doctype && document.doctype.name == "html") {
+    if (document) {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
