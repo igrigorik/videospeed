@@ -95,8 +95,8 @@ chrome.runtime.sendMessage({}, function(response) {
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
       var speed = parseFloat(tc.settings.speed).toFixed(2),
-        top = "0px",
-        left = "0px";
+        top = Math.max(this.video.offsetTop, 0) + "px",
+        left = Math.max(this.video.offsetLeft, 0) + "px";
 
       var prevent = function(e) {
         e.preventDefault();
