@@ -358,7 +358,18 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
-      v.playbackRate = tc.settings.resetSpeed;
+      if(v.playbackRate === tc.settings.resetSpeed)
+      {
+        if (target !== 1.0) {
+          v.playbackRate = 1.0;
+        } else {
+          v.playbackRate = tc.settings.fastSpeed;
+        }
+      }
+      else
+      {
+        v.playbackRate = tc.settings.resetSpeed;
+      }
     } else {
       tc.settings.resetSpeed = v.playbackRate;
       chrome.storage.sync.set({'resetSpeed': v.playbackRate});
