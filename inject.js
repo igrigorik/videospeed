@@ -191,7 +191,7 @@ chrome.runtime.sendMessage({}, function(response) {
     window.onload = () => {
       initializeNow(window.document)
     };
-    if (document && document.doctype && document.doctype.name == "html") {
+    if (document) {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
@@ -206,7 +206,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function initializeNow(document) {
       // enforce init-once due to redundant callers
-      if (document.body.classList.contains('vsc-initialized')) {
+      if (!document.body || document.body.classList.contains('vsc-initialized')) {
         return;
       }
       document.body.classList.add('vsc-initialized');
