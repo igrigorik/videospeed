@@ -226,7 +226,7 @@ chrome.runtime.sendMessage({}, function(response) {
       initializeNow(window.document);
     }, false);
 
-    if (document && document.doctype && document.doctype.name == "html") {
+    if (document) {
       if (document.readyState === "complete") {
         initializeNow(document);
       } else {
@@ -241,7 +241,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function initializeNow(document) {
       // enforce init-once due to redundant callers
-      if (document.body.classList.contains('vsc-initialized')) {
+      if (!document.body || document.body.classList.contains('vsc-initialized')) {
         return;
       }
       document.body.classList.add('vsc-initialized');
@@ -380,7 +380,7 @@ chrome.runtime.sendMessage({}, function(response) {
         } else if (action === 'slower') {
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=167
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.0625);
+          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.07);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
@@ -398,7 +398,18 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
-      v.playbackRate = tc.settings.resetSpeed;
+      if(v.playbackRate === tc.settings.resetSpeed)
+      {
+        if (target !== 1.0) {
+          v.playbackRate = 1.0;
+        } else {
+          v.playbackRate = tc.settings.fastSpeed;
+        }
+      }
+      else
+      {
+        v.playbackRate = tc.settings.resetSpeed;
+      }
     } else {
       tc.settings.resetSpeed = v.playbackRate;
       chrome.storage.local.set({'resetSpeed': v.playbackRate});
