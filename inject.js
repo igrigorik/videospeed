@@ -321,8 +321,7 @@ chrome.runtime.sendMessage({}, function(response) {
       }
 
       var observer = new MutationObserver(function(mutations) {
-        // Process the DOM nodes lazily
-        requestIdleCallback(_ => {
+        function mutationObserverHandler() {
           mutations.forEach(function(mutation) {
             forEach.call(mutation.addedNodes, function(node) {
               if (typeof node === "function")
@@ -335,7 +334,13 @@ chrome.runtime.sendMessage({}, function(response) {
               checkForVideo(node, node.parentNode || mutation.target, false);
             });
           });
-        }, {timeout: 1000});
+        }
+        // Process the DOM nodes lazily
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(mutationObserverHandler, {timeout: 1000});
+        } else {
+          mutationObserverHandler();
+        }
       });
       observer.observe(document, { childList: true, subtree: true });
 
