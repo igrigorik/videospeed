@@ -45,7 +45,12 @@ chrome.runtime.sendMessage({}, function(response) {
 
     initializeWhenReady(document);
   });
-
+  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+	//Register a listener for messages from background with keypress
+    if(request.vscKeyCode){
+		handleKeyCode(request.vscKeyCode);
+	}
+  });
   var forEach = Array.prototype.forEach;
 
   function defineVideoController() {
@@ -203,7 +208,28 @@ chrome.runtime.sendMessage({}, function(response) {
       }
     }
   }
-
+  
+  function handleKeyCode(keyCode){
+	  //Increase the scope of key press handling
+	  if (keyCode == tc.settings.rewindKeyCode) {
+        runAction('rewind', document, true)
+      } else if (keyCode == tc.settings.advanceKeyCode) {
+        runAction('advance', document, true)
+      } else if (keyCode == tc.settings.fasterKeyCode) {
+        runAction('faster', document, true)
+      } else if (keyCode == tc.settings.slowerKeyCode) {
+        runAction('slower', document, true)
+      } else if (keyCode == tc.settings.resetKeyCode) {
+        runAction('reset', document, true)
+      } else if (keyCode == tc.settings.displayKeyCode) {
+        runAction('display', document, true)
+      } else if (keyCode == tc.settings.fastKeyCode) {
+        runAction('fast', document, true);
+      }
+	  
+      return false;
+  }
+  
   function initializeNow(document) {
       // enforce init-once due to redundant callers
       if (!document.body || document.body.classList.contains('vsc-initialized')) {
@@ -242,24 +268,9 @@ chrome.runtime.sendMessage({}, function(response) {
             || document.activeElement.isContentEditable) {
           return false;
         }
-
-        if (keyCode == tc.settings.rewindKeyCode) {
-          runAction('rewind', document, true)
-        } else if (keyCode == tc.settings.advanceKeyCode) {
-          runAction('advance', document, true)
-        } else if (keyCode == tc.settings.fasterKeyCode) {
-          runAction('faster', document, true)
-        } else if (keyCode == tc.settings.slowerKeyCode) {
-          runAction('slower', document, true)
-        } else if (keyCode == tc.settings.resetKeyCode) {
-          runAction('reset', document, true)
-        } else if (keyCode == tc.settings.displayKeyCode) {
-          runAction('display', document, true)
-        } else if (keyCode == tc.settings.fastKeyCode) {
-          runAction('fast', document, true);
-        }
-
-        return false;
+		//Send message to background to pass the keyCode back to all instances
+		chrome.runtime.sendMessage({"vscKeyCode": keyCode});
+        
       }, true);
 
       function checkForVideo(node, parent, added) {
