@@ -20,6 +20,7 @@
     },
     "default_popup": "popup.html"
   },
+  "background": {"scripts":["bg.js"]},
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*", "file:///*" ],
