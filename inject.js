@@ -203,7 +203,13 @@ chrome.runtime.sendMessage({}, function(response) {
       }
     }
   }
-
+  inIframe () {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  }
   function initializeNow(document) {
       // enforce init-once due to redundant callers
       if (!document.body || document.body.classList.contains('vsc-initialized')) {
@@ -220,47 +226,52 @@ chrome.runtime.sendMessage({}, function(response) {
         link.rel = 'stylesheet';
         document.head.appendChild(link);
       }
+      var docs = Array(document)
+      if(inIframe())
+        docs.push(window.top.document);
+    
+      docs.forEach(function(doc) {
+        doc.addEventListener('keydown', function(event) {
+          var keyCode = event.keyCode;
 
-      document.addEventListener('keydown', function(event) {
-        var keyCode = event.keyCode;
+          // Ignore if following modifier is active.
+          if (!event.getModifierState
+              || event.getModifierState("Alt")
+              || event.getModifierState("Control")
+              || event.getModifierState("Fn")
+              || event.getModifierState("Meta")
+              || event.getModifierState("Hyper")
+              || event.getModifierState("OS")) {
+            return;
+          }
 
-        // Ignore if following modifier is active.
-        if (!event.getModifierState
-            || event.getModifierState("Alt")
-            || event.getModifierState("Control")
-            || event.getModifierState("Fn")
-            || event.getModifierState("Meta")
-            || event.getModifierState("Hyper")
-            || event.getModifierState("OS")) {
-          return;
-        }
+          // Ignore keydown event if typing in an input box
+          if ((document.activeElement.nodeName === 'INPUT'
+                && document.activeElement.getAttribute('type') === 'text')
+              || document.activeElement.nodeName === 'TEXTAREA'
+              || document.activeElement.isContentEditable) {
+            return false;
+          }
 
-        // Ignore keydown event if typing in an input box
-        if ((document.activeElement.nodeName === 'INPUT'
-              && document.activeElement.getAttribute('type') === 'text')
-            || document.activeElement.nodeName === 'TEXTAREA'
-            || document.activeElement.isContentEditable) {
+          if (keyCode == tc.settings.rewindKeyCode) {
+            runAction('rewind', document, true)
+          } else if (keyCode == tc.settings.advanceKeyCode) {
+            runAction('advance', document, true)
+          } else if (keyCode == tc.settings.fasterKeyCode) {
+            runAction('faster', document, true)
+          } else if (keyCode == tc.settings.slowerKeyCode) {
+            runAction('slower', document, true)
+          } else if (keyCode == tc.settings.resetKeyCode) {
+            runAction('reset', document, true)
+          } else if (keyCode == tc.settings.displayKeyCode) {
+            runAction('display', document, true)
+          } else if (keyCode == tc.settings.fastKeyCode) {
+            runAction('fast', document, true);
+          }
+
           return false;
-        }
-
-        if (keyCode == tc.settings.rewindKeyCode) {
-          runAction('rewind', document, true)
-        } else if (keyCode == tc.settings.advanceKeyCode) {
-          runAction('advance', document, true)
-        } else if (keyCode == tc.settings.fasterKeyCode) {
-          runAction('faster', document, true)
-        } else if (keyCode == tc.settings.slowerKeyCode) {
-          runAction('slower', document, true)
-        } else if (keyCode == tc.settings.resetKeyCode) {
-          runAction('reset', document, true)
-        } else if (keyCode == tc.settings.displayKeyCode) {
-          runAction('display', document, true)
-        } else if (keyCode == tc.settings.fastKeyCode) {
-          runAction('fast', document, true);
-        }
-
-        return false;
-      }, true);
+        }, true);
+      });
 
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
