@@ -53,7 +53,7 @@ chrome.extension.sendMessage({}, function(response) {
       if (target.dataset['vscid']) {
         return;
       }
-      if (location.hostname == 'vk.com' && target.networkState == 0) {
+      if (target.networkState == 0) {
         return;
       }
 
