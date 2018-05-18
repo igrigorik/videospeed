@@ -204,7 +204,7 @@ chrome.runtime.sendMessage({}, function(response) {
       }
     }
   }
-  inIframe () {
+  function inIframe () {
     try {
       return window.self !== window.top;
     } catch (e) {
