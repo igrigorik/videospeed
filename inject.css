@@ -24,15 +24,27 @@
 
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
-.full-frame .html5-video-player:not(.ytp-fullscreen) .vsc-controller {
+.html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
   position: relative;
-  top: 45px;
+  top: 40px;
 }
 
-.ytp-fullscreen .vsc-controller {
-  display: block;
+/* Google Photos player */
+/* Inline preview doesn't have any additional hooks, relying on Aria label */
+a[aria-label^="Video"] .vsc-controller {
   position: relative;
-  top: 60px;
+  top: 35px;
+}
+/* Google Photos full-screen view */
+#player .house-brand .vsc-controller {
+  position: relative;
+  top: 50px;
+}
+
+/* Netflix player */
+#netflix-player:not(.player-cinema-mode) .vsc-controller {
+  position: relative;
+  top: 85px;
 }
 
 /* shift controller on vine.co */
@@ -55,7 +67,6 @@
 div.video-wrapper + div.target {
   height: 0;
 }
-
 
 /* Fix black overlay on Kickstarter */
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
