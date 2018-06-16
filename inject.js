@@ -228,8 +228,11 @@ chrome.runtime.sendMessage({}, function(response) {
         document.head.appendChild(link);
       }
       var docs = Array(document)
-      if(inIframe())
-        docs.push(window.top.document);
+      try {
+        if (inIframe())
+          docs.push(window.top.document);
+      } catch (e) {
+      }
     
       docs.forEach(function(doc) {
         doc.addEventListener('keydown', function(event) {
