@@ -117,6 +117,10 @@ function save_options() {
   fasterKeyCode = isNaN(fasterKeyCode) ? tcDefaults.fasterKeyCode : fasterKeyCode;
   fastKeyCode   = isNaN(fastKeyCode) ? tcDefaults.fastKeyCode : fastKeyCode;
   displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
+  // var keyBindings = [ // whattodo-keyCode-value-force
+	//   ["faster", 70, 0.15, 1], //f
+	//   ["slower", 72, 0.15, 1] //g
+  // ];;
 
   chrome.storage.sync.set({
     speedStep:      speedStep,
@@ -132,6 +136,7 @@ function save_options() {
     displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
     startHidden:    startHidden,
+    keyBindings:    keyBindings,
     blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
   }, function() {
     // Update status to let user know options were saved.
