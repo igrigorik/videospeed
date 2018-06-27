@@ -21,18 +21,18 @@
     "default_popup": "popup.html"
   },
   "content_scripts": [{
-      "all_frames": true,
-      "matches": [ "http://*/*", "https://*/*", "file:///*" ],
-      "exclude_matches": [
-        "https://plus.google.com/hangouts/*",
-        "https://hangouts.google.com/hangouts/*",
-        "https://meet.google.com/*",
-        "https://teamtreehouse.com/*",
-        "http://www.hitbox.tv/*"
-      ],
-      "css": [ "inject.css" ],
-      "js":  [ "inject.js" ]
-    }
+    "all_frames": true,
+    "matches": [ "http://*/*", "https://*/*", "file:///*" ],
+    "exclude_matches": [
+      "https://plus.google.com/hangouts/*",
+      "https://hangouts.google.com/hangouts/*",
+      "https://meet.google.com/*",
+      "https://teamtreehouse.com/*",
+      "http://www.hitbox.tv/*"
+    ],
+    "css": [ "inject.css" ],
+    "js":  [ "inject.js" ]
+  }
   ],
   "web_accessible_resources": [
     "inject.css", "shadow.css"
