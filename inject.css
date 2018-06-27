@@ -1,79 +1,79 @@
 .vsc-hidden { display: none !important; }
 .vsc-manual {
-  visibility: visible !important;
-  opacity: 1.0 !important;
+    visibility: visible !important;
+    opacity: 1.0 !important;
 }
 
 /* Origin specific overrides */
 /* YouTube player */
 .ytp-hide-info-bar .vsc-controller {
-  position: relative;
-  top: 10px;
+    position: relative;
+    top: 10px;
 }
 
 .ytp-autohide .vsc-controller {
-  visibility: hidden;
-  transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
-  opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
+    opacity: 0;
 }
 
 .ytp-autohide .vcs-show {
-  visibility: visible;
-  opacity: 1.0;
+    visibility: visible;
+    opacity: 1.0;
 }
 
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
 .html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
-  position: relative;
-  top: 40px;
+    position: relative;
+    top: 40px;
 }
 
 /* Google Photos player */
 /* Inline preview doesn't have any additional hooks, relying on Aria label */
 a[aria-label^="Video"] .vsc-controller {
-  position: relative;
-  top: 35px;
+    position: relative;
+    top: 35px;
 }
 /* Google Photos full-screen view */
 #player .house-brand .vsc-controller {
-  position: relative;
-  top: 50px;
+    position: relative;
+    top: 50px;
 }
 
 /* Netflix player */
 #netflix-player:not(.player-cinema-mode) .vsc-controller {
-  position: relative;
-  top: 85px;
+    position: relative;
+    top: 85px;
 }
 
 /* shift controller on vine.co */
 /* e.g. https://vine.co/v/OrJj39YlL57 */
 .video-container .vine-video-container .vsc-controller {
-  margin-left: 40px;
+    margin-left: 40px;
 }
 
 /* shift YT 3D controller down */
 /* e.g. https://www.youtube.com/watch?v=erftYPflJzQ */
 .ytp-webgl-spherical-control {
-  top: 60px !important;
+    top: 60px !important;
 }
 
 .ytp-fullscreen .ytp-webgl-spherical-control {
-  top: 100px !important;
+    top: 100px !important;
 }
 
 /* disable Vimeo video overlay */
 div.video-wrapper + div.target {
-  height: 0;
+    height: 0;
 }
 
 /* Fix black overlay on Kickstarter */
 div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
-  content: none !important;
+    content: none !important;
 }
 
 /* Fix black overlay on openai.com */
 .Shared-Video-player > .vsc-controller {
-  height: 0;
+    height: 0;
 }

@@ -1,14 +1,13 @@
 chrome.runtime.sendMessage({}, function (response) {
 	var tc = {
 		settings: {
-			version: null,
 			speed: 1.0,           // default 1x
 
 			/**
 			 * these are not used
 			 * but should be stay there because chrome.storage.sync.get needs them.
 			 */
-			resetSpeed: null,      // default 1x
+			resetSpeed: 1.0,      // default 1.0
 			speedStep: null,       // default 0.1x just for buttons
 			fastSpeed: null,       // default 1.8x
 			rewindTime: null,       // default 10s just for buttons
@@ -24,10 +23,11 @@ chrome.runtime.sendMessage({}, function (response) {
 			 * but should be stay there because chrome.storage.sync.get needs them.
 			 */
 
-
 			displayKeyCode: 86,   // default: V
 			rememberSpeed: false, // default: false
 			startHidden: false,   // default: false
+        	keyBindings: [], // whattodo-keyCode-value-force
+			version: null,
 			blacklist: `
         www.instagram.com
         twitter.com
@@ -37,39 +37,22 @@ chrome.runtime.sendMessage({}, function (response) {
 		}
 	};
 
-
-	tc.settings.keyBindings = [ // whattodo-keyCode-value-force
-		// ["faster", 70, 0.15, 1], //f
-		// ["slower", 72, 0.15, 1] //g
-	];
-
 	chrome.storage.sync.get(tc.settings, function (storage) {
 		tc.settings.keyBindings = storage.keyBindings; // Array
 		tc.settings.version = String(storage.version);
 		if (!storage.version) // if version is lower than 0.5.2 or first initialization
 		{
-			tc.settings.keyBindings.push(["reset", Number(storage.resetKeyCode) || 82, Number(storage.resetSpeed) || 1.0, 0]); // default: R
 			tc.settings.keyBindings.push(["slower", Number(storage.slowerKeyCode) || 83, Number(storage.speedStep) || 0.1, 0]); // default S
 			tc.settings.keyBindings.push(["faster", Number(storage.fasterKeyCode) || 68, Number(storage.speedStep) || 0.1, 0]); // default: D
-			tc.settings.keyBindings.push(["faster", Number(storage.fastKeyCode) || 71, Number(storage.fastSpeed) || 1.8, 0]); // default: G
 			tc.settings.keyBindings.push(["rewind", Number(storage.rewindKeyCode) || 90, Number(storage.rewindTime) || 10, 0]); // default: Z
 			tc.settings.keyBindings.push(["advance", Number(storage.advanceKeyCode) || 88, Number(storage.advanceTime) || 10, 0]); // default: X
+			tc.settings.keyBindings.push(["reset", Number(storage.resetKeyCode) || 82, 1.0, 0]); // default: R
+			tc.settings.keyBindings.push(["fast", Number(storage.fastKeyCode) || 71, Number(storage.fastSpeed) || 1.8, 0]); // default: G
 			tc.settings.version = "0.5.3";
 
-			console.log("tc.settings about to changed")
 			chrome.storage.sync.set({
 				keyBindings: tc.settings.keyBindings,
 				version: tc.settings.version,
-				// speedStep: speedStep,
-				// rewindTime: rewindTime,
-				// advanceTime: advanceTime,
-				// fastSpeed: fastSpeed,
-				// resetKeyCode: resetKeyCode,
-				// rewindKeyCode: rewindKeyCode,
-				// slowerKeyCode: slowerKeyCode,
-				// fasterKeyCode: fasterKeyCode,
-				// fastKeyCode: fastKeyCode,
-				// advanceKeyCode: advanceKeyCode,
 				displayKeyCode: tc.settings.displayKeyCode,
 				rememberSpeed: tc.settings.rememberSpeed,
 				startHidden: tc.settings.startHidden,
@@ -77,25 +60,15 @@ chrome.runtime.sendMessage({}, function (response) {
 			}, function () {
 				console.log("tc.settings changed")
 				console.log(tc.settings)
+				console.log(tc.settings.keyBindings)
 			});
 		}
 		tc.settings.speed = Number(storage.speed);
-		// tc.settings.resetSpeed = Number(storage.resetSpeed);
-		// tc.settings.speedStep = Number(storage.speedStep);
-		// tc.settings.fastSpeed = Number(storage.fastSpeed);
-		// tc.settings.rewindTime = Number(storage.rewindTime);
-		// tc.settings.advanceTime = Number(storage.advanceTime);
-		// tc.settings.resetKeyCode = Number(storage.resetKeyCode);
-		// tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
-		// tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
-		// tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
-		// tc.settings.fastKeyCode = Number(storage.fastKeyCode);
 		tc.settings.displayKeyCode = Number(storage.displayKeyCode);
-		// tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
 		tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
 		tc.settings.startHidden = Boolean(storage.startHidden);
 		tc.settings.blacklist = String(storage.blacklist);
-		console.log(tc.settings)
+		// console.log(tc.settings)
 		initializeWhenReady(document);
 	});
 
@@ -113,7 +86,7 @@ chrome.runtime.sendMessage({}, function (response) {
 			this.id = Math.random().toString(36).substr(2, 9);
 			if (!tc.settings.rememberSpeed) {
 				tc.settings.speed = 1.0;
-				tc.settings.resetSpeed = tc.settings.fastSpeed;
+				tc.settings.keyBindings[4][2] = tc.settings.keyBindings[5][2]; // resetSpeed = fastSpeed
 			}
 			this.initializeControls();
 
@@ -267,10 +240,6 @@ chrome.runtime.sendMessage({}, function (response) {
 		}
 	}
 
-	function initializeFrames(topDocument) {
-
-	}
-
 	function initializeNow(document) {
 		// console.log(document)
 		// enforce init-once due to redundant callers
@@ -317,32 +286,14 @@ chrome.runtime.sendMessage({}, function (response) {
 					return false;
 				}
 
-				if (keyCode == tc.settings.rewindKeyCode) {
-					runAction('rewind', document, true)
-				} else if (keyCode == tc.settings.advanceKeyCode) {
-					runAction('advance', document, true)
-				} else if (keyCode == tc.settings.fasterKeyCode) {
-					runAction('faster', document, true)
-				} else if (keyCode == tc.settings.slowerKeyCode) {
-					runAction('slower', document, true)
-				} else if (keyCode == tc.settings.resetKeyCode) {
-					runAction('reset', document, true)
-				} else if (keyCode == tc.settings.displayKeyCode) {
+				if (keyCode == tc.settings.displayKeyCode) {
 					runAction('display', document, true)
-				} else if (keyCode == tc.settings.fastKeyCode) {
-					runAction('fast', document, true);
 				}
-
 				tc.settings.keyBindings.forEach(function (element) {
-					if (keyCode === element[1])//check if keyCode same with settings
+					if (keyCode === element[1]) // check if keyCode same with some of settings
 					{
 						runAction(element[0], document, element[2]);
-						console.log("done element:");
-						console.log(element);
-						if (element[3]) {
-							event.preventDefault();
-							console.log("preventDefault");
-						}
+						if (element[3]) event.preventDefault(); // disable websites key bindings
 					}
 				});
 
@@ -443,6 +394,8 @@ chrome.runtime.sendMessage({}, function (response) {
 					handleDrag(v, controller, e);
 				} else if (action === 'fast') {
 					resetSpeed(v, value);
+				} else if (action === 'muted') {
+					muted(v, value);
 				}
 			}
 		});
@@ -450,21 +403,38 @@ chrome.runtime.sendMessage({}, function (response) {
 
 	function resetSpeed(v, target) {
 		if (v.playbackRate === target) {
-			if (v.playbackRate === tc.settings.resetSpeed) {
+			if (v.playbackRate === tc.settings.keyBindings[4][2]) { // resetSpeed
 				if (target !== 1.0) {
 					v.playbackRate = 1.0;
 				} else {
-					v.playbackRate = tc.settings.fastSpeed;
+					v.playbackRate = tc.settings.keyBindings[5][2] // fastSpeed
 				}
 			}
 			else {
-				v.playbackRate = tc.settings.resetSpeed;
+				v.playbackRate = tc.settings.keyBindings[4][2]; // resetSpeed
 			}
 		} else {
-			tc.settings.resetSpeed = v.playbackRate;
-			chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+          tc.settings.keyBindings[4][2] = v.playbackRate;// resetSpeed
+			// chrome.storage.sync.set({'resetSpeed': v.playbackRate});
 			v.playbackRate = target;
 		}
+	}
+
+	function muted(v, value) {
+      v.muted = v.muted !== true; //reverse muted status
+      /* this can be used if someone wants just mute button
+		switch (value) {
+			case 2:
+				v.muted = false;
+				break;
+			case 1:
+				v.muted = true;
+				break;
+			default:
+				v.muted = v.muted !== true;
+				break;
+		}
+		*/
 	}
 
 	function handleDrag(video, controller, e) {
