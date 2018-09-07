@@ -29,6 +29,12 @@
   top: 40px;
 }
 
+/* Facebook player */
+#facebook .vsc-controller {
+ position: relative;
+ top: 40px;
+}
+
 /* Google Photos player */
 /* Inline preview doesn't have any additional hooks, relying on Aria label */
 a[aria-label^="Video"] .vsc-controller {
