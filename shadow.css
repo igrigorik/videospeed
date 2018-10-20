@@ -8,7 +8,41 @@
   display: inline;
 }
 
-#controller {
+    .balance-text {
+        text-wrap: balanced;   /* Apply (proposed) CSS style */
+    }
+
+	
+	div#subs1{
+    position: absolute;
+    bottom: 6%;
+    left: 0;
+    right: 0;
+    position: absolute;
+	text-align: center;
+    background-color: transparent;
+    color: #ffff00;
+    font-family: Segoe UI;
+    font-size: 573%;
+    font-weight: bold;
+    text-shadow: 1px 4px black, 6px 2px black, -7px -1px black, 7px 4px black;
+    z-index: 2147483647;
+    -webkit-transform: scale(0.9,1);
+}
+	
+
+#subti, script#subtitle{
+position:fixed;
+z-index:9999999;
+width:250px;
+height:100px;
+background-color:red;
+background-size:600px 800px;
+}
+
+
+
+#controller.vsc_ctl_mod{
   position: absolute;
   top: 0;
   left: 0;
@@ -54,7 +88,7 @@
   cursor: -webkit-grabbing;
 }
 
-button {
+button.vsc_btn_mod {
   cursor: pointer;
   color: black;
   background: white;
@@ -64,7 +98,7 @@ button {
   font-size: 14px;
   line-height: 14px;
   border: 1px solid white;
-  font-family: "Lucida Console", Monaco, monospace;
+font-family: "Lucida Console", Monaco, monospace;
   margin-bottom: 2px;
 }
 

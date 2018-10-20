@@ -12,9 +12,13 @@
 }
 
 .ytp-autohide .vsc-controller {
+    position: relative;
+  top: 10px;
+  /*
   visibility: hidden;
   transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
   opacity: 0;
+  */
 }
 
 .ytp-autohide .vcs-show {
@@ -27,12 +31,6 @@
 .html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
   position: relative;
   top: 40px;
-}
-
-/* Facebook player */
-#facebook .vsc-controller {
- position: relative;
- top: 40px;
 }
 
 /* Google Photos player */

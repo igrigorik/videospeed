@@ -1,40 +1,33 @@
 {
-  "name": "Video Speed Controller",
-  "short_name": "videospeed",
-  "version": "0.5.2",
-  "manifest_version": 2,
-  "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
-  "homepage_url": "https://github.com/igrigorik/videospeed",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "permissions": [ "activeTab", "storage" ],
-  "options_page": "options.html",
-  "browser_action": {
-    "default_icon": {
-      "19": "icons/icon19.png",
-      "38": "icons/icon38.png",
-      "48": "icons/icon48.png"
-    },
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [{
+   "browser_action": {
+      "default_icon": {
+         "19": "icons/icon19.png",
+         "38": "icons/icon38.png",
+         "48": "icons/icon48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "content_scripts": [ {
       "all_frames": true,
-      "matches": [ "http://*/*", "https://*/*", "file:///*" ],
-      "exclude_matches": [
-        "https://plus.google.com/hangouts/*",
-        "https://hangouts.google.com/*",
-        "https://meet.google.com/*",
-        "https://teamtreehouse.com/*",
-        "http://www.hitbox.tv/*"
-      ],
       "css": [ "inject.css" ],
-      "js":  [ "inject.js" ]
-    }
-  ],
-  "web_accessible_resources": [
-    "inject.css", "shadow.css"
-  ]
+      "exclude_matches": [ "https://plus.google.com/hangouts/*", "https://hangouts.google.com/hangouts/*", "https://meet.google.com/*", "https://teamtreehouse.com/*", "http://www.hitbox.tv/*" ],
+      "js": ["inject.js"],
+      "matches": [ "http://*/*", "https://*/*", "file:///*" ]
+   } ],
+   "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
+   "homepage_url": "https://github.com/igrigorik/videospeed",
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlJ+jYyuxedzdiVTnuq32j7ywDdo8aQWP6MuGARBwloAkMtoRKPj+PnL14AYPgJ/WqsXBZ3xn9p5k+ZwmK7sXW88ULaNm+valQJwukYlxb6M/Ma2DrSpxBmjt61umLletnMyuSSFtJcHpKT2BbLh8tkIZ7GSZtUhYhf1/FjGJ1P38e4kwYXx/mCD2KBTMVZoYRSslBfIGfGWF3Hu+u2KQpunEGArGVqGUxWITppJrgOVKFpEOGqFWtBGVsGihZe1psSI+NEGQvUL2BWR1yllGzq22HdAwDeHONvdbMvL+qeGBk1CWl9smmPg2v4Jg1K+DBnvjPp9W9K29vyiPX2tLiQIDAQAB",
+   "manifest_version": 2,
+   "name": "Video Speed Controller",
+   "options_page": "options.html",
+   "permissions": [ "activeTab", "storage" ],
+   "short_name": "videospeed",
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.5.2",
+   "web_accessible_resources": [ "inject.css", "shadow.css" ]
 }
