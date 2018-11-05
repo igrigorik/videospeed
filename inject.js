@@ -114,7 +114,7 @@ chrome.runtime.sendMessage({}, function(response) {
         wrapper.classList.add('vsc-hidden');
       }
 
-      var shadow = wrapper.createShadowRoot();
+      var shadow = wrapper.attachShadow({ mode: 'open' });
       var shadowTemplate = `
         <style>
           @import "${chrome.runtime.getURL('shadow.css')}";
