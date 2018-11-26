@@ -4,14 +4,13 @@ var tcDefaults = {
   rememberSpeed: false, // default: false
   startHidden: false,   // default: false
   keyBindings: [
-    ["slower", 83, 0.1, 0], // default: S 0.1
-    ["faster", 68, 0.1, 0], // default: D 0.1
-    ["rewind", 90, 10, 0], // default: Z 0.1
-    ["advance", 88, 10, 0], // default: X 0.1
-    ["reset", 82, 1, 0], // default: R 1
-    ["fast", 71, 1.8, 0] // default: G 1.8
+    {action: "slower", key: 83, value: 0.1, force: false, predefined: true}, // S
+    {action: "faster", key: 68, value: 0.1, force: false, predefined: true}, // D
+    {action: "rewind", key: 90, value: 10, force: false, predefined: true}, // Z
+    {action: "advance", key: 88, value: 10, force: false, predefined: true}, // X
+    {action: "reset", key: 82, value: 1, force: false, predefined: true}, // R
+    {action: "fast", key: 71, value: 1.8, force: false, predefined: true} // G
   ],
-  version: "0.5.3",     // default: 0.5.3
   blacklist: `
     www.instagram.com
     twitter.com
@@ -20,11 +19,12 @@ var tcDefaults = {
   `.replace(/^\s+|\s+$/gm, '')
 };
 
-var keyBindings = []; // whattodo-keyCode-value-force
+var keyBindings = [];
 
 var keyCodeAliases = {
   0: 'null',
   null: 'null',
+  undefined: 'null',
   32: 'Space',
   96: 'Num 0',
   97: 'Num 1',
@@ -100,23 +100,23 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
 }
 
 function add_shortcut() {
-  var html = '<select class="customDo">' +
-    '<option value="slower">Decrease speed</option>' +
-    '<option value="faster">Increase speed</option>' +
-    '<option value="rewind">Rewind</option>' +
-    '<option value="advance">Advance</option>' +
-    // '<option value="reset">Reset speed</option>' +
-    '<option value="fast">Preferred speed</option>' +
-    '<option value="muted">Muted</option>' +
-    '<option value="fast">Pause</option>' +
-    '</select> ' +
-    '<input class="customKey" type="text" placeholder="press a key"/> ' +
-    '<input class="customValue" type="text" placeholder="value (0.10)"/> ' +
-    '<select class="customReturn">' +
-    '<option value="0">Do not disable website key bindings</option>' +
-    '<option value="1">Disable websites key bindings</option>' +
-    '</select>' +
-    '<button class="removeParent">X</button>';
+  var html = `<select class="customDo">
+    <option value="slower">Decrease speed</option>
+    <option value="faster">Increase speed</option>
+    <option value="rewind">Rewind</option>
+    <option value="advance">Advance</option>
+    <option value="reset">Reset speed</option>
+    <option value="fast">Preferred speed</option>
+    <option value="muted">Muted</option>
+    <option value="pause">Pause</option>
+    </select> 
+    <input class="customKey" type="text" placeholder="press a key"/> 
+    <input class="customValue" type="text" placeholder="value (0.10)"/> 
+    <select class="customForce">
+    <option value="0">Do not disable website key bindings</option>
+    <option value="1">Disable websites key bindings</option>
+    </select>
+    <button class="removeParent">X</button>`;
   var div = document.createElement('div');
   div.setAttribute('class', 'row customs');
   div.innerHTML = html;
@@ -124,35 +124,34 @@ function add_shortcut() {
   customs_element.insertBefore(div, customs_element.children[customs_element.childElementCount - 1]);
 }
 
-function createKeyBindings() {
-  var doo = $(this).find(".customDo").val();
-  var key = $(this).find(".customKey")[0].keyCode;
-  var val = Number($(this).find(".customValue").val());
-  var ret = Number($(this).find(".customReturn").val());
+function createKeyBindings(item) {
+  const action = item.querySelector(".customDo").value;
+  const key = item.querySelector(".customKey").keyCode;
+  const value = Number(item.querySelector(".customValue").value);
+  const force = item.querySelector(".customForce").value;
+  const predefined = !!item.id;//item.id ? true : false;
 
-  keyBindings.push([doo, key, val, ret]);
+  keyBindings.push({action: action, key: key, value: value, force: force, predefined: predefined});
 }
 
 // Saves options to chrome.storage
 function save_options() {
   keyBindings = [];
-  $(".customs").each(createKeyBindings)
+  Array.from(document.querySelectorAll(".customs")).forEach(item => createKeyBindings(item)); // Remove added shortcuts
 
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var startHidden = document.getElementById('startHidden').checked;
   var blacklist = document.getElementById('blacklist').value;
-  var version = tcDefaults.version;
 
   displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
 
-  chrome.storage.sync.clear();
+  chrome.storage.sync.remove(["resetSpeed", "speedStep", "fastSpeed", "rewindTime", "advanceTime", "resetKeyCode", "slowerKeyCode", "fasterKeyCode", "rewindKeyCode", "advanceKeyCode", "fastKeyCode"]);
   chrome.storage.sync.set({
     displayKeyCode: displayKeyCode,
     rememberSpeed: rememberSpeed,
     startHidden: startHidden,
     keyBindings: keyBindings,
-    version: version,
     blacklist: blacklist.replace(/^\s+|\s+$/gm, '')
   }, function () {
     // Update status to let user know options were saved.
@@ -174,29 +173,25 @@ function restore_options() {
 
     for (let i in storage.keyBindings) {
       var item = storage.keyBindings[i];
-      if (i < 6) {
-        //do pre-defined ones because their value needed for overlay
-        $(".customDo").get(i).value = item[0]
-        updateCustomShortcutInputText($(".customKey").get(i), item[1]);
-        $(".customValue").get(i).value = item[2]
-        $(".customReturn").get(i).value = item[3]
+      if (item.predefined) {
+        //do predefined ones because their value needed for overlay
+        // document.querySelector("#" + item["action"] + " .customDo").value = item["action"];
+        updateCustomShortcutInputText(document.querySelector("#" + item["action"] + " .customKey"), item["key"]);
+        document.querySelector("#" + item["action"] + " .customValue").value = item["value"];
+        document.querySelector("#" + item["action"] + " .customForce").value = item["force"];
       }
       else {
         // new ones
         add_shortcut();
+        const dom = document.querySelector(".customs:last-of-type")
+        dom.querySelector(".customDo").value = item["action"];
 
-        $(".customDo")[i].value = item[0];
+        if (item["action"] === "pause" || item["action"] === "muted")
+          dom.querySelector(".customValue").disabled = true;
 
-        if (item[0] == "fast" && item[2] == 0.0) // Pause
-        {
-          $(".customDo").eq(i).children().last().attr("selected", "selected");
-          $(".customValue").eq(i).attr("disabled", true);
-        }
-        else if (item[0] == "muted") // Muted
-          $(".customValue").eq(i).attr("disabled", true);
-        updateCustomShortcutInputText($(".customKey")[i], item[1]);
-        $(".customValue")[i].value = item[2];
-        $(".customReturn")[i].value = item[3];
+        updateCustomShortcutInputText(dom.querySelector(".customKey"), item["key"]);
+        dom.querySelector(".customValue").value = item["value"];
+        dom.querySelector(".customForce").value = item["force"];
       }
       console.log(storage.keyBindings[i]);
     }
@@ -206,7 +201,7 @@ function restore_options() {
 function restore_defaults() {
   chrome.storage.sync.set(tcDefaults, function () {
     restore_options();
-    $(".removeParent").click(); // Remove added shortcuts
+    document.querySelectorAll(".removeParent").forEach(button => button.click()); // Remove added shortcuts
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
     status.textContent = 'Default options restored';

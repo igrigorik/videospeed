@@ -26,8 +26,7 @@ chrome.runtime.sendMessage({}, function (response) {
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
-      keyBindings: [], // whattodo-keyCode-value-force
-      version: null,
+      keyBindings: [],
       blacklist: `
         www.instagram.com
         twitter.com
@@ -39,15 +38,51 @@ chrome.runtime.sendMessage({}, function (response) {
 
   chrome.storage.sync.get(tc.settings, function (storage) {
     tc.settings.keyBindings = storage.keyBindings; // Array
-    tc.settings.version = String(storage.version);
-    if (!storage.version) // if version is lower than 0.5.2 or first initialization
+    if (storage.keyBindings.length == 0) // if first initialization of 0.5.3
     {
-      tc.settings.keyBindings.push(["slower", Number(storage.slowerKeyCode) || 83, Number(storage.speedStep) || 0.1, 0]); // default S
-      tc.settings.keyBindings.push(["faster", Number(storage.fasterKeyCode) || 68, Number(storage.speedStep) || 0.1, 0]); // default: D
-      tc.settings.keyBindings.push(["rewind", Number(storage.rewindKeyCode) || 90, Number(storage.rewindTime) || 10, 0]); // default: Z
-      tc.settings.keyBindings.push(["advance", Number(storage.advanceKeyCode) || 88, Number(storage.advanceTime) || 10, 0]); // default: X
-      tc.settings.keyBindings.push(["reset", Number(storage.resetKeyCode) || 82, 1.0, 0]); // default: R
-      tc.settings.keyBindings.push(["fast", Number(storage.fastKeyCode) || 71, Number(storage.fastSpeed) || 1.8, 0]); // default: G
+      console.log("update")
+      tc.settings.keyBindings.push({
+        action: "slower",
+        key: Number(storage.slowerKeyCode) || 83,
+        value: Number(storage.speedStep) || 0.1,
+        force: false,
+        predefined: true
+      }); // default S
+      tc.settings.keyBindings.push({
+        action: "faster",
+        key: Number(storage.fasterKeyCode) || 68,
+        value: Number(storage.speedStep) || 0.1,
+        force: false,
+        predefined: true
+      }); // default: D
+      tc.settings.keyBindings.push({
+        action: "rewind",
+        key: Number(storage.rewindKeyCode) || 90,
+        value: Number(storage.rewindTime) || 10,
+        force: false,
+        predefined: true
+      }); // default: Z
+      tc.settings.keyBindings.push({
+        action: "advance",
+        key: Number(storage.advanceKeyCode) || 88,
+        value: Number(storage.advanceTime) || 10,
+        force: false,
+        predefined: true
+      }); // default: X
+      tc.settings.keyBindings.push({
+        action: "reset",
+        key: Number(storage.resetKeyCode) || 82,
+        value: 1.0,
+        force: false,
+        predefined: true
+      }); // default: R
+      tc.settings.keyBindings.push({
+        action: "fast",
+        key: Number(storage.fastKeyCode) || 71,
+        value: Number(storage.fastSpeed) || 1.8,
+        force: false,
+        predefined: true
+      }); // default: G
       tc.settings.version = "0.5.3";
 
       chrome.storage.sync.set({
@@ -74,6 +109,14 @@ chrome.runtime.sendMessage({}, function (response) {
 
   var forEach = Array.prototype.forEach;
 
+  function getKeyBindings(action, what = "value") {
+    return tc.settings.keyBindings.find(item => item.action === action)[what];
+  }
+
+  function setKeyBindings(action, value) {
+    tc.settings.keyBindings.find(item => item.action === action)["value"] = value;
+  }
+
   function defineVideoController() {
     tc.videoController = function (target, parent) {
       if (target.dataset['vscid']) {
@@ -86,7 +129,7 @@ chrome.runtime.sendMessage({}, function (response) {
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
-        tc.settings.keyBindings[4][2] = tc.settings.keyBindings[5][2]; // resetSpeed = fastSpeed
+        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       }
       this.initializeControls();
 
@@ -289,13 +332,11 @@ chrome.runtime.sendMessage({}, function (response) {
         if (keyCode == tc.settings.displayKeyCode) {
           runAction('display', document, true)
         }
-        tc.settings.keyBindings.forEach(function (element) {
-          if (keyCode === element[1]) // check if keyCode same with some of settings
-          {
-            runAction(element[0], document, element[2]);
-            if (element[3]) event.preventDefault(); // disable websites key bindings
-          }
-        });
+        var item = tc.settings.keyBindings.find(item => item.key === keyCode);
+        if (item) {
+          runAction(item.action, document, item.value);
+          if (item.force) event.preventDefault(); // disable websites key bindings
+        }
 
         return false;
       }, true);
@@ -394,6 +435,8 @@ chrome.runtime.sendMessage({}, function (response) {
           handleDrag(v, controller, e);
         } else if (action === 'fast') {
           resetSpeed(v, value);
+        } else if (action === 'pause') {
+          pauseSpeed(v, value);
         } else if (action === 'muted') {
           muted(v, value);
         }
@@ -401,20 +444,29 @@ chrome.runtime.sendMessage({}, function (response) {
     });
   }
 
+  function pauseSpeed(v, target) {
+    // not working as expected in youtube for now
+    // if (v.playbackRate === target) {
+    //   v.play()
+    // }
+    resetSpeed(v, target)
+  }
+
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
-      if (v.playbackRate === tc.settings.keyBindings[4][2]) { // resetSpeed
+      if (v.playbackRate === getKeyBindings("reset")) { // resetSpeed
         if (target !== 1.0) {
           v.playbackRate = 1.0;
+          console.log("best")
         } else {
-          v.playbackRate = tc.settings.keyBindings[5][2] // fastSpeed
+          v.playbackRate = getKeyBindings("fast"); // fastSpeed
         }
       }
       else {
-        v.playbackRate = tc.settings.keyBindings[4][2]; // resetSpeed
+        v.playbackRate = getKeyBindings("reset"); // resetSpeed
       }
     } else {
-      tc.settings.keyBindings[4][2] = v.playbackRate;// resetSpeed
+      setKeyBindings("reset", v.playbackRate);// resetSpeed
       // chrome.storage.sync.set({'resetSpeed': v.playbackRate});
       v.playbackRate = target;
     }
