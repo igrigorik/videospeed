@@ -335,7 +335,10 @@ chrome.runtime.sendMessage({}, function (response) {
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {
           runAction(item.action, document, item.value);
-          if (item.force) event.preventDefault(); // disable websites key bindings
+          if (item.force) {// disable websites key bindings
+            event.preventDefault();
+            event.stopPropagation();
+          }
         }
 
         return false;
