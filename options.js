@@ -226,21 +226,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initShortcutInput('displayKeyInput');
 
-  $(document).on("keypress", ".customValue", inputFilterNumbersOnly);
-  $(document).on("focus", ".customKey", inputFocus);
-  $(document).on("blur", ".customKey", inputBlur);
-  $(document).on("keydown", ".customKey", recordKeyPress);
-  $(document).on("click", ".removeParent", function () {
-    $(this).parent().remove()
-  });
-  $(document).on('change', '.customDo', function () {
-    switch ($(this).find(":selected").text()) {
-      case "Muted":
-      case "Pause":
-        $(this).next().next().attr("disabled", true).val("0.0");
-        break;
-      default:
-        $(this).next().next().attr("disabled", false)
+  function eventCaller(event, className, funcName) {
+    if (!event.target.classList.contains(className)) {
+      return
     }
+    funcName(event);
+  }
+
+  document.addEventListener('keypress', (event) => {
+    eventCaller(event, "customValue", inputFilterNumbersOnly)
+  });
+  document.addEventListener('focus', (event) => {
+    eventCaller(event, "customKey", inputFocus)
+  });
+  document.addEventListener('blur', (event) => {
+    eventCaller(event, "customKey", inputBlur)
+  });
+  document.addEventListener('keydown', (event) => {
+    eventCaller(event, "customKey", recordKeyPress)
+  });
+  document.addEventListener('click', (event) => {
+    eventCaller(event, "removeParent", function () {
+      event.target.parentNode.remove()
+    })
+  });
+  document.addEventListener('change', (event) => {
+    eventCaller(event, "customDo", function () {
+      switch (event.target.value) {
+        case "muted":
+        case "pause":
+          event.target.nextElementSibling.nextElementSibling.disabled = true;
+          event.target.nextElementSibling.nextElementSibling.value = 0;
+          break;
+        default:
+          event.target.nextElementSibling.nextElementSibling.disabled = false;
+      }
+    })
   });
 })
