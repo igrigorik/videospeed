@@ -322,10 +322,9 @@ chrome.runtime.sendMessage({}, function (response) {
         }
 
         // Ignore keydown event if typing in an input box
-        if ((document.activeElement.nodeName === 'INPUT'
-          && document.activeElement.getAttribute('type') === 'text')
-          || document.activeElement.nodeName === 'TEXTAREA'
-          || document.activeElement.isContentEditable) {
+        if (document.activeElement.nodeName === 'INPUT'
+            || document.activeElement.nodeName === 'TEXTAREA'
+            || document.activeElement.isContentEditable) {
           return false;
         }
 
@@ -335,7 +334,7 @@ chrome.runtime.sendMessage({}, function (response) {
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {
           runAction(item.action, document, item.value);
-          if (item.force) {// disable websites key bindings
+          if (item.force === "true") {// disable websites key bindings
             event.preventDefault();
             event.stopPropagation();
           }
@@ -449,9 +448,9 @@ chrome.runtime.sendMessage({}, function (response) {
 
   function pauseSpeed(v, target) {
     // not working as expected in youtube for now
-    // if (v.playbackRate === target) {
-    //   v.play()
-    // }
+    if (v.playbackRate === target) {
+      v.play()
+    }
     resetSpeed(v, target)
   }
 

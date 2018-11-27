@@ -97,3 +97,7 @@ label {
 select {
 	width: 170px;
 }
+
+.customForce {
+	display: none;
+}
