@@ -113,8 +113,8 @@ function add_shortcut() {
     <input class="customKey" type="text" placeholder="press a key"/> 
     <input class="customValue" type="text" placeholder="value (0.10)"/> 
     <select class="customForce">
-    <option value="0">Do not disable website key bindings</option>
-    <option value="1">Disable websites key bindings</option>
+    <option value="false">Do not disable website key bindings</option>
+    <option value="true">Disable websites key bindings</option>
     </select>
     <button class="removeParent">X</button>`;
   var div = document.createElement('div');
