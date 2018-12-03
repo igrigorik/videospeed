@@ -211,6 +211,10 @@ function restore_defaults() {
   });
 }
 
+function show_experimental() {
+  document.querySelectorAll(".customForce").forEach(item => item.style.display = 'inline-block');
+}
+
 function initShortcutInput(inputId) {
   document.getElementById(inputId).addEventListener('focus', inputFocus);
   document.getElementById(inputId).addEventListener('blur', inputBlur);
@@ -223,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('save').addEventListener('click', save_options);
   document.getElementById('add').addEventListener('click', add_shortcut);
   document.getElementById('restore').addEventListener('click', restore_defaults);
+  document.getElementById('experimental').addEventListener('click', show_experimental);
 
   initShortcutInput('displayKeyInput');
 

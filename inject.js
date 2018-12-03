@@ -4,8 +4,8 @@ chrome.runtime.sendMessage({}, function (response) {
       speed: 1.0,           // default 1x
 
       /**
-       * these are not used
-       * but should be stay there because chrome.storage.sync.get needs them.
+       * these are not used and deprecated, will be removed in next update
+       * but should be stay there because chrome.storage.sync.get needs them
        */
       resetSpeed: 1.0,      // default 1.0
       speedStep: null,       // default 0.1x just for buttons
@@ -19,7 +19,7 @@ chrome.runtime.sendMessage({}, function (response) {
       advanceKeyCode: null,   // default: X
       fastKeyCode: null,      // default: G
       /**
-       * these are not used
+       * these(above) are not used and deprecated, will be removed in next update
        * but should be stay there because chrome.storage.sync.get needs them.
        */
 
