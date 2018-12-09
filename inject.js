@@ -110,7 +110,11 @@ chrome.runtime.sendMessage({}, function (response) {
   var forEach = Array.prototype.forEach;
 
   function getKeyBindings(action, what = "value") {
-    return tc.settings.keyBindings.find(item => item.action === action)[what];
+    try {
+      return tc.settings.keyBindings.find(item => item.action === action)[what];
+    } catch (e) {
+      return false;
+    }
   }
 
   function setKeyBindings(action, value) {
