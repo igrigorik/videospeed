@@ -107,7 +107,7 @@ function add_shortcut() {
     <option value="advance">Advance</option>
     <option value="reset">Reset speed</option>
     <option value="fast">Preferred speed</option>
-    <option value="muted">Muted</option>
+    <option value="muted">Mute</option>
     <option value="pause">Pause</option>
     </select> 
     <input class="customKey" type="text" placeholder="press a key"/> 
