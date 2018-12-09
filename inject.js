@@ -207,7 +207,7 @@ chrome.runtime.sendMessage({}, function (response) {
 
       forEach.call(shadow.querySelectorAll('button'), function (button) {
         button.onclick = (e) => {
-          runAction(e.target.dataset['action'], document, false, e);
+          runAction(e.target.dataset['action'], document, getKeyBindings(e.target.dataset['action']), e);
         }
       });
 
