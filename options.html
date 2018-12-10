@@ -10,59 +10,81 @@
 			<h1>Video Speed Controller</h1>
 		</header>
 
-    <section>
+    <section id="customs">
       <h3>Shortcuts</h3>
-      <div class="row">
-        <label for="rewindKeyInput">Rewind</label>
-        <input id="rewindKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
-      <div class="row">
-        <label for="advanceKeyInput">Advance</label>
-        <input id="advanceKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
-      <div class="row">
-        <label for="resetKeyInput">Reset speed</label>
-        <input id="resetKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
-      <div class="row">
-        <label for="slowerKeyInput">Decrease speed</label>
-        <input id="slowerKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
-      <div class="row">
-        <label for="fasterKeyInput">Increase speed</label>
-        <input id="fasterKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
-      <div class="row">
-        <label for="fastKeyInput">Preferred speed</label>
-        <input id="fastKeyInput" placeholder="press a key" type="text" value=""/>
-      </div>
       <div class="row">
         <label for="displayKeyInput">Show/hide controller</label>
         <input id="displayKeyInput" placeholder="press a key" type="text" value=""/>
       </div>
-      <div class="row">
-          <label for="startHidden">Hide controller by default</label>
-          <input id="startHidden" type="checkbox"/>
-      </div>
+        <div class="row customs" id="slower">
+            <select class="customDo">
+                <option value="slower">Decrease speed</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+            <input class="customValue" type="text" placeholder="value (0.10)">
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+        <div class="row customs" id="faster">
+            <select class="customDo">
+                <option value="faster">Increase speed</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+                <input class="customValue" type="text" placeholder="value (0.10)">
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+        <div class="row customs" id="rewind">
+            <select class="customDo">
+                <option value="rewind">Rewind</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+            <input class="customValue" type="text" placeholder="value (10)">
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+        <div class="row customs" id="advance">
+            <select class="customDo">
+                <option value="advance">Advance</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+            <input class="customValue" type="text" placeholder="value (10)">
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+        <div class="row customs" id="reset">
+            <select class="customDo">
+                <option value="reset">Reset speed</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+            <input class="customValue" type="text" placeholder="value (1.00)" disabled>
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+        <div class="row customs" id="fast">
+            <select class="customDo">
+                <option value="fast">Preferred speed</option>
+            </select>
+            <input class="customKey" type="text" value="" placeholder="press a key">
+            <input class="customValue" type="text" placeholder="value (1.80)">
+            <select class="customForce">
+                <option value="false">Do not disable website key bindings</option>
+                <option value="true">Disable websites key bindings</option>
+            </select></div>
+
+        <button id="add">Add New</button>
     </section>
 
     <section>
 			<h3>Other</h3>
-  		<div class="row">
-          <label for="rewindTime">Rewind Time (s)</label>
-          <input id="rewindTime" type="text" value=""/>
-      </div>
-  	<div class="row">
-          <label for="advanceTime">Advance Time (s)</label>
-          <input id="advanceTime" type="text" value=""/>
-      </div>
-      <div class="row">
-          <label for="speedStep">Speed Change Step</label>
-          <input id="speedStep" type="text" value=""/>
-      </div>
-      <div class="row">
-          <label for="fastSpeed">Preferred Speed (x)</label>
-          <input id="fastSpeed" type="text" value=""/>
+		<div class="row">
+        <label for="startHidden">Hide controller by default</label>
+        <input id="startHidden" type="checkbox"/>
       </div>
       <div class="row">
           <label for="rememberSpeed">Remember Playback Speed</label>
@@ -75,7 +97,8 @@
     </section>
 
     <button id="save">Save</button>
-		<button id="restore">Restore Defaults</button>
+    <button id="restore">Restore Defaults</button>
+    <button id="experimental">Show experimental features</button>
 
     <div id="status"></div>
 
