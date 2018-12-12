@@ -98,17 +98,9 @@ chrome.runtime.sendMessage({}, function(response) {
         top = Math.max(this.video.offsetTop, 0) + "px",
         left = Math.max(this.video.offsetLeft, 0) + "px";
 
-      var prevent = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
       var wrapper = document.createElement('div');
       wrapper.classList.add('vsc-controller');
       wrapper.dataset['vscid'] = this.id;
-      wrapper.addEventListener('dblclick', prevent, true);
-      wrapper.addEventListener('mousedown', prevent, true);
-      wrapper.addEventListener('click', prevent, true);
 
       if (tc.settings.startHidden) {
         wrapper.classList.add('vsc-hidden');
