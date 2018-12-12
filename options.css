@@ -84,10 +84,6 @@ label {
     vertical-align: top;
 }
 
-label[for=rememberSpeed] {
-  width: 200px;
-}
-
 #status {
     color: #9D9D9D;
     display: inline-block;
@@ -96,4 +92,12 @@ label[for=rememberSpeed] {
 
 #faq {
 	margin-top: 2em;
+}
+
+select {
+	width: 170px;
+}
+
+.customForce {
+	display: none;
 }

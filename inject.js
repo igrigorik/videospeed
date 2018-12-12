@@ -2,20 +2,31 @@ chrome.runtime.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
-      resetSpeed: 1.0,      // default 1x
-      speedStep: 0.1,       // default 0.1x
-      fastSpeed: 1.8,       // default 1.8x
-      rewindTime: 10,       // default 10s
-      advanceTime: 10,      // default 10s
-      resetKeyCode:  82,    // default: R
-      slowerKeyCode: 83,    // default: S
-      fasterKeyCode: 68,    // default: D
-      rewindKeyCode: 90,    // default: Z
-      advanceKeyCode: 88,   // default: X
+
+      /**
+       * these are not used and deprecated, will be removed in next update
+       * but should be stay there because chrome.storage.sync.get needs them
+       */
+      resetSpeed: 1.0,      // default 1.0
+      speedStep: null,       // default 0.1x just for buttons
+      fastSpeed: null,       // default 1.8x
+      rewindTime: null,       // default 10s just for buttons
+      advanceTime: null,      // default 10s just for buttons
+      resetKeyCode: null,    // default: R
+      slowerKeyCode: null,    // default: S
+      fasterKeyCode: null,    // default: D
+      rewindKeyCode: null,    // default: Z
+      advanceKeyCode: null,   // default: X
+      fastKeyCode: null,      // default: G
+      /**
+       * these(above) are not used and deprecated, will be removed in next update
+       * but should be stay there because chrome.storage.sync.get needs them.
+       */
+
       displayKeyCode: 86,   // default: V
-      fastKeyCode: 71,      // default: G
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
+      keyBindings: [],
       blacklist: `
         www.instagram.com
         twitter.com
@@ -25,20 +36,66 @@ chrome.runtime.sendMessage({}, function(response) {
     }
   };
 
-  chrome.storage.sync.get(tc.settings, function(storage) {
+  chrome.storage.sync.get(tc.settings, function (storage) {
+    tc.settings.keyBindings = storage.keyBindings; // Array
+    if (storage.keyBindings.length == 0) // if first initialization of 0.5.3
+    {
+      // UPDATE
+      tc.settings.keyBindings.push({
+        action: "slower",
+        key: Number(storage.slowerKeyCode) || 83,
+        value: Number(storage.speedStep) || 0.1,
+        force: false,
+        predefined: true
+      }); // default S
+      tc.settings.keyBindings.push({
+        action: "faster",
+        key: Number(storage.fasterKeyCode) || 68,
+        value: Number(storage.speedStep) || 0.1,
+        force: false,
+        predefined: true
+      }); // default: D
+      tc.settings.keyBindings.push({
+        action: "rewind",
+        key: Number(storage.rewindKeyCode) || 90,
+        value: Number(storage.rewindTime) || 10,
+        force: false,
+        predefined: true
+      }); // default: Z
+      tc.settings.keyBindings.push({
+        action: "advance",
+        key: Number(storage.advanceKeyCode) || 88,
+        value: Number(storage.advanceTime) || 10,
+        force: false,
+        predefined: true
+      }); // default: X
+      tc.settings.keyBindings.push({
+        action: "reset",
+        key: Number(storage.resetKeyCode) || 82,
+        value: 1.0,
+        force: false,
+        predefined: true
+      }); // default: R
+      tc.settings.keyBindings.push({
+        action: "fast",
+        key: Number(storage.fastKeyCode) || 71,
+        value: Number(storage.fastSpeed) || 1.8,
+        force: false,
+        predefined: true
+      }); // default: G
+      tc.settings.version = "0.5.3";
+
+      chrome.storage.sync.set({
+        keyBindings: tc.settings.keyBindings,
+        version: tc.settings.version,
+        displayKeyCode: tc.settings.displayKeyCode,
+        rememberSpeed: tc.settings.rememberSpeed,
+        startHidden: tc.settings.startHidden,
+        blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
+      });
+    }
     tc.settings.speed = Number(storage.speed);
-    tc.settings.resetSpeed = Number(storage.resetSpeed);
-    tc.settings.speedStep = Number(storage.speedStep);
-    tc.settings.fastSpeed = Number(storage.fastSpeed);
-    tc.settings.rewindTime = Number(storage.rewindTime);
-    tc.settings.advanceTime = Number(storage.advanceTime);
-    tc.settings.resetKeyCode = Number(storage.resetKeyCode);
-    tc.settings.rewindKeyCode = Number(storage.rewindKeyCode);
-    tc.settings.slowerKeyCode = Number(storage.slowerKeyCode);
-    tc.settings.fasterKeyCode = Number(storage.fasterKeyCode);
-    tc.settings.fastKeyCode = Number(storage.fastKeyCode);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
-    tc.settings.advanceKeyCode = Number(storage.advanceKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
@@ -47,6 +104,18 @@ chrome.runtime.sendMessage({}, function(response) {
   });
 
   var forEach = Array.prototype.forEach;
+
+  function getKeyBindings(action, what = "value") {
+    try {
+      return tc.settings.keyBindings.find(item => item.action === action)[what];
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setKeyBindings(action, value) {
+    tc.settings.keyBindings.find(item => item.action === action)["value"] = value;
+  }
 
   function defineVideoController() {
     tc.videoController = function(target, parent) {
@@ -60,7 +129,7 @@ chrome.runtime.sendMessage({}, function(response) {
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
-        tc.settings.resetSpeed = tc.settings.fastSpeed;
+        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       }
       this.initializeControls();
 
@@ -130,7 +199,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
       forEach.call(shadow.querySelectorAll('button'), function(button) {
         button.onclick = (e) => {
-          runAction(e.target.dataset['action'], document, false, e);
+          runAction(e.target.dataset['action'], document, getKeyBindings(e.target.dataset['action']), e);
         }
       });
 
@@ -225,7 +294,7 @@ chrome.runtime.sendMessage({}, function(response) {
           docs.push(window.top.document);
       } catch (e) {
       }
-    
+
       docs.forEach(function(doc) {
         doc.addEventListener('keydown', function(event) {
           var keyCode = event.keyCode;
@@ -242,28 +311,23 @@ chrome.runtime.sendMessage({}, function(response) {
           }
 
           // Ignore keydown event if typing in an input box
-          if ((document.activeElement.nodeName === 'INPUT'
-                && document.activeElement.getAttribute('type') === 'text')
+          if (document.activeElement.nodeName === 'INPUT'
               || document.activeElement.nodeName === 'TEXTAREA'
               || document.activeElement.isContentEditable) {
             return false;
           }
 
-          if (keyCode == tc.settings.rewindKeyCode) {
-            runAction('rewind', document, true)
-          } else if (keyCode == tc.settings.advanceKeyCode) {
-            runAction('advance', document, true)
-          } else if (keyCode == tc.settings.fasterKeyCode) {
-            runAction('faster', document, true)
-          } else if (keyCode == tc.settings.slowerKeyCode) {
-            runAction('slower', document, true)
-          } else if (keyCode == tc.settings.resetKeyCode) {
-            runAction('reset', document, true)
-          } else if (keyCode == tc.settings.displayKeyCode) {
+          if (keyCode == tc.settings.displayKeyCode) {
             runAction('display', document, true)
-          } else if (keyCode == tc.settings.fastKeyCode) {
-            runAction('fast', document, true);
           }
+        var item = tc.settings.keyBindings.find(item => item.key === keyCode);
+        if (item) {
+          runAction(item.action, document, item.value);
+          if (item.force === "true") {// disable websites key bindings
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
 
           return false;
         }, true);
@@ -324,7 +388,7 @@ chrome.runtime.sendMessage({}, function(response) {
       });
   }
 
-  function runAction(action, document, keyboard, e) {
+  function runAction(action, document, value, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
@@ -336,18 +400,18 @@ chrome.runtime.sendMessage({}, function(response) {
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
-          v.currentTime -= tc.settings.rewindTime;
+          v.currentTime -= value;
         } else if (action === 'advance') {
-          v.currentTime += tc.settings.advanceTime;
+          v.currentTime += value;
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
           // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=168
-          var s = Math.min( (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + tc.settings.speedStep, 16);
+          var s = Math.min((v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
           // Video min rate is 0.0625:
           // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=167
-          var s = Math.max(v.playbackRate - tc.settings.speedStep, 0.07);
+          var s = Math.max(v.playbackRate - value, 0.07);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
           resetSpeed(v, 1.0);
@@ -357,31 +421,59 @@ chrome.runtime.sendMessage({}, function(response) {
         } else if (action === 'drag') {
           handleDrag(v, controller, e);
         } else if (action === 'fast') {
-          resetSpeed(v, tc.settings.fastSpeed);
+          resetSpeed(v, value);
+        } else if (action === 'pause') {
+          pauseSpeed(v, value);
+        } else if (action === 'muted') {
+          muted(v, value);
         }
       }
     });
   }
 
+  function pauseSpeed(v, target) {
+    // not working as expected in youtube for now
+    if (v.playbackRate === target) {
+      v.play()
+    }
+    resetSpeed(v, target)
+  }
+
   function resetSpeed(v, target) {
     if (v.playbackRate === target) {
-      if(v.playbackRate === tc.settings.resetSpeed)
-      {
+      if (v.playbackRate === getKeyBindings("reset")) { // resetSpeed
         if (target !== 1.0) {
           v.playbackRate = 1.0;
         } else {
-          v.playbackRate = tc.settings.fastSpeed;
+          v.playbackRate = getKeyBindings("fast"); // fastSpeed
         }
       }
       else
       {
-        v.playbackRate = tc.settings.resetSpeed;
+        v.playbackRate = getKeyBindings("reset"); // resetSpeed
       }
     } else {
-      tc.settings.resetSpeed = v.playbackRate;
-      chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+      setKeyBindings("reset", v.playbackRate);// resetSpeed
+      // chrome.storage.sync.set({'resetSpeed': v.playbackRate});
       v.playbackRate = target;
     }
+  }
+
+  function muted(v, value) {
+    v.muted = v.muted !== true; //reverse muted status
+    /* this can be used if someone wants just mute button
+      switch (value) {
+          case 2:
+              v.muted = false;
+              break;
+          case 1:
+              v.muted = true;
+              break;
+          default:
+              v.muted = v.muted !== true;
+              break;
+      }
+      */
   }
 
   function handleDrag(video, controller, e) {
