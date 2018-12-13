@@ -214,6 +214,7 @@ chrome.runtime.sendMessage({}, function(response) {
         case (location.hostname == 'www.amazon.com'):
         case (location.hostname == 'www.reddit.com'):
         case (/hbogo\./).test(location.hostname):
+        case (/plex\.tv/).test(location.hostname):
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
