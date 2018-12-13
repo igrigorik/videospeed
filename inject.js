@@ -215,6 +215,7 @@ chrome.runtime.sendMessage({}, function(response) {
         case (location.hostname == 'www.reddit.com'):
         case (/hbogo\./).test(location.hostname):
         case (/plex\.tv/).test(location.hostname):
+        case (this.video.classList.contains("HTMLMedia-mediaElement-35x77")):// plex.tv localhost case
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
