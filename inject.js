@@ -334,19 +334,36 @@ chrome.runtime.sendMessage({}, function(response) {
         }, true);
       });
 
+      var timer = null, last_vscid = null;
+
+      function deleteCtrl(node) {
+        let id = node.dataset['vscid'];
+        let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
+        if (ctrl) {
+          ctrl.remove();
+        }
+        node.classList.remove('vsc-initialized');
+        delete node.dataset['vscid'];
+      }
+
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            new tc.videoController(node, parent);
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            } else {
+              new tc.videoController(node, parent);
+            }
           } else {
             if (node.classList.contains('vsc-initialized')) {
-              let id = node.dataset['vscid'];
-              let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
-              if (ctrl) {
-                ctrl.remove();
+              if (timer) {
+                // already waiting other one, delete this one immediately
+                deleteCtrl(node)
+              } else {
+                // wait for new one
+                timer = setTimeout(deleteCtrl, 10, node)
               }
-              node.classList.remove('vsc-initialized');
-              delete node.dataset['vscid'];
             }
           }
         } else if (node.children != undefined) {
