@@ -119,7 +119,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
   function defineVideoController() {
     tc.videoController = function(target, parent) {
-      if (target.dataset['vscid']) {
+      if (target.dataset['vscid'] && document.querySelector(".vsc-controller")) {
         return;
       }
 
