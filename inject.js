@@ -25,6 +25,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      audioBoolean: false, // default: false
       startHidden: false,   // default: false
       keyBindings: [],
       blacklist: `
@@ -90,6 +91,7 @@ chrome.runtime.sendMessage({}, function(response) {
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
         rememberSpeed: tc.settings.rememberSpeed,
+        audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
         blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
       });
@@ -97,6 +99,7 @@ chrome.runtime.sendMessage({}, function(response) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
@@ -118,7 +121,7 @@ chrome.runtime.sendMessage({}, function(response) {
   }
 
   function defineVideoController() {
-    tc.videoController = function(target, parent) {
+    tc.videoController = function(target, parent, previous_speed) {
       if (target.dataset['vscid']) {
         return;
       }
@@ -127,7 +130,11 @@ chrome.runtime.sendMessage({}, function(response) {
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
-      if (!tc.settings.rememberSpeed) {
+      if (previous_speed) {
+        tc.settings.speed = previous_speed;
+        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+      }
+      else if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       }
@@ -210,19 +217,24 @@ chrome.runtime.sendMessage({}, function(response) {
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
 
-      switch (true) {
-        case (location.hostname == 'www.amazon.com'):
-        case (location.hostname == 'www.reddit.com'):
-        case (/hbogo\./).test(location.hostname):
-          // insert before parent to bypass overlay
-          this.parent.parentElement.insertBefore(fragment, this.parent);
-          break;
+      if(this.video.nodeName === "AUDIO" && tc.settings.audioBoolean)
+        document.body.appendChild(fragment);
+      else
+      {
+        switch (true) {
+          case (location.hostname == 'www.amazon.com'):
+          case (location.hostname == 'www.reddit.com'):
+          case (/hbogo\./).test(location.hostname):
+            // insert before parent to bypass overlay
+            this.parent.parentElement.insertBefore(fragment, this.parent);
+            break;
 
-        default:
-          // Note: when triggered via a MutationRecord, it's possible that the
-          // target is not the immediate parent. This appends the controller as
-          // the first element of the target, which may not be the parent.
-          this.parent.insertBefore(fragment, this.parent.firstChild);
+          default:
+            // Note: when triggered via a MutationRecord, it's possible that the
+            // target is not the immediate parent. This appends the controller as
+            // the first element of the target, which may not be the parent.
+            this.parent.insertBefore(fragment, this.parent.firstChild);
+        }
       }
     }
   }
@@ -333,12 +345,17 @@ chrome.runtime.sendMessage({}, function(response) {
         }, true);
       });
 
+    var previous_speed = 0;
+
       function checkForVideo(node, parent, added) {
-        if (node.nodeName === 'VIDEO') {
+        if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO') {
           if (added) {
-            new tc.videoController(node, parent);
+            new tc.videoController(node, parent, previous_speed);
           } else {
             if (node.classList.contains('vsc-initialized')) {
+              previous_speed = node.playbackRate;
+              if(previous_speed === 1)
+                previous_speed = 0;
               let id = node.dataset['vscid'];
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
@@ -375,7 +392,7 @@ chrome.runtime.sendMessage({}, function(response) {
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.getElementsByTagName('video');
+      var videoTags = getVideoElement();
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);
       });
@@ -388,8 +405,15 @@ chrome.runtime.sendMessage({}, function(response) {
       });
   }
 
+  function getVideoElement() {
+    if (tc.settings.audioBoolean)
+      return [...document.getElementsByTagName('video'), ...document.getElementsByTagName('audio')];
+    else
+      return document.getElementsByTagName('video');
+  }
+
   function runAction(action, document, value, e) {
-    var videoTags = document.getElementsByTagName('video');
+    var videoTags = getVideoElement();
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {
