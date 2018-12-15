@@ -118,7 +118,7 @@ chrome.runtime.sendMessage({}, function(response) {
   }
 
   function defineVideoController() {
-    tc.videoController = function(target, parent) {
+    tc.videoController = function(target, parent, previous_speed) {
       if (target.dataset['vscid']) {
         return;
       }
@@ -127,7 +127,11 @@ chrome.runtime.sendMessage({}, function(response) {
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
-      if (!tc.settings.rememberSpeed) {
+      if (previous_speed) {
+        tc.settings.speed = previous_speed;
+        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+      }
+      else if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       }
@@ -333,12 +337,17 @@ chrome.runtime.sendMessage({}, function(response) {
         }, true);
       });
 
+    var previous_speed = 0;
+
       function checkForVideo(node, parent, added) {
         if (node.nodeName === 'VIDEO') {
           if (added) {
-            new tc.videoController(node, parent);
+            new tc.videoController(node, parent, previous_speed);
           } else {
             if (node.classList.contains('vsc-initialized')) {
+              previous_speed = node.playbackRate;
+              if(previous_speed === 1)
+                previous_speed = 0;
               let id = node.dataset['vscid'];
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
               if (ctrl) {
