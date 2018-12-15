@@ -317,6 +317,11 @@ chrome.runtime.sendMessage({}, function(response) {
             return false;
           }
 
+          // Ignore keydown event if typing in a page without vsc
+          if (!document.querySelector(".vsc-controller")) {
+            return false;
+          }
+
           if (keyCode == tc.settings.displayKeyCode) {
             runAction('display', document, true)
           }
