@@ -25,6 +25,7 @@ chrome.runtime.sendMessage({}, function(response) {
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      audioBoolean: false, // default: false
       startHidden: false,   // default: false
       keyBindings: [],
       blacklist: `
@@ -90,6 +91,7 @@ chrome.runtime.sendMessage({}, function(response) {
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
         rememberSpeed: tc.settings.rememberSpeed,
+        audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
         blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
       });
@@ -97,6 +99,7 @@ chrome.runtime.sendMessage({}, function(response) {
     tc.settings.speed = Number(storage.speed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
@@ -214,6 +217,10 @@ chrome.runtime.sendMessage({}, function(response) {
       this.video.classList.add('vsc-initialized');
       this.video.dataset['vscid'] = this.id;
 
+      if(this.video.nodeName === "AUDIO" && tc.settings.audioBoolean)
+        document.body.appendChild(fragment);
+      else
+      {
       switch (true) {
         case (location.hostname == 'www.amazon.com'):
         case (location.hostname == 'www.reddit.com'):
@@ -229,6 +236,7 @@ chrome.runtime.sendMessage({}, function(response) {
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
     }
+  }
   }
 
   function initializeWhenReady(document) {
@@ -340,7 +348,7 @@ chrome.runtime.sendMessage({}, function(response) {
     var previous_speed = 0;
 
       function checkForVideo(node, parent, added) {
-        if (node.nodeName === 'VIDEO') {
+        if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO') {
           if (added) {
             new tc.videoController(node, parent, previous_speed);
           } else {
@@ -384,7 +392,7 @@ chrome.runtime.sendMessage({}, function(response) {
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.getElementsByTagName('video');
+      var videoTags = document.querySelectorAll('video,audio');
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);
       });
@@ -398,7 +406,7 @@ chrome.runtime.sendMessage({}, function(response) {
   }
 
   function runAction(action, document, value, e) {
-    var videoTags = document.getElementsByTagName('video');
+    var videoTags = document.querySelectorAll('video,audio');
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {
