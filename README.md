@@ -29,8 +29,8 @@ Some sites may assign other functionality to same shortcut keys — these collis
 
 _Note: you can customize these shortcut keys in the extension settings page and even make the extension remember your current playback speed._
 
-From example, you could add a new short cut key, to add a key that toggle the video speed between 16x and it's previous speed by clicking the **Add New** button and selecting the **'Preferred speed'** In this image below the A key was used.
-You can have different speed setting with the different **Shortcuts** as they don't interfere with out shortcuts you set.
+For example, you could add a new short cut key, to add a key that toggle the video speed between 16x and it's previous speed by clicking the **Add New** button and selecting the **'Preferred speed'** In this image below the A key was used.
+You can have different speed setting with the different **Shortcuts** as they don't interfere with other shortcuts you set.
 
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
 
