@@ -1,4 +1,3 @@
-chrome.runtime.sendMessage({}, function(response) {
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
@@ -537,4 +536,3 @@ chrome.runtime.sendMessage({}, function(response) {
       animation = false;
     }, 2000);
   }
-});
