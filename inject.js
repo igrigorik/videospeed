@@ -2,8 +2,6 @@
     settings: {
       speed: 1.0,           // default 1x
 
-	  speeds: {},
-	  
       /**
        * these are not used and deprecated, will be removed in next update
        * but should be stay there because chrome.storage.sync.get needs them
@@ -24,7 +22,6 @@
        * but should be stay there because chrome.storage.sync.get needs them.
        */
 
-	  
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
@@ -129,17 +126,14 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
-	  var speed=tc.settings.speed;
       if (!tc.settings.rememberSpeed) {
-		if (!tc.settings.speeds[target.src]) {
-			tc.settings.speeds[target.src] = 1.0;
-		}
+        tc.settings.speed = 1.0;
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
-      } 
+      }
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
-        target.playbackRate = tc.settings.speeds[target.src];
+        target.playbackRate = tc.settings.speed;
       });
 
       target.addEventListener('ratechange', function(event) {
@@ -148,14 +142,14 @@
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
-          tc.settings.speeds[this.video.src] = speed;
+          tc.settings.speed = speed;
           chrome.storage.sync.set({'speed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
         }
       }.bind(this));
 
-      target.playbackRate = tc.settings.speeds[target.src];
+      target.playbackRate = tc.settings.speed;
     };
 
     tc.videoController.prototype.getSpeed = function() {
@@ -168,7 +162,7 @@
 
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
-      var speed = parseFloat(tc.settings.speeds[this.video.src]).toFixed(2),
+      var speed = parseFloat(tc.settings.speed).toFixed(2),
         top = Math.max(this.video.offsetTop, 0) + "px",
         left = Math.max(this.video.offsetLeft, 0) + "px";
 
@@ -399,17 +393,11 @@
   function runAction(action, document, value, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
-	if (e){
-		var targetController = e.target.getRootNode().host;
-	}
-	
+
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
-	  
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-	  if (e && !(targetController == controller)) {
-		  return;
-	  }
+
       showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
