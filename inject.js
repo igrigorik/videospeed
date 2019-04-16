@@ -1,6 +1,7 @@
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
+	  speeds: {},           // empty object to hold speed for each source
 
       /**
        * these are not used and deprecated, will be removed in next update
@@ -21,7 +22,7 @@
        * these(above) are not used and deprecated, will be removed in next update
        * but should be stay there because chrome.storage.sync.get needs them.
        */
-
+ 	  
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
@@ -127,13 +128,17 @@
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
-        tc.settings.speed = 1.0;
+		if (!tc.settings.speeds[target.src]) {
+			tc.settings.speeds[target.src] = 1.0;
+		}
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
-      }
+      } else{
+		  tc.settings.speeds[target.src]=tc.settings.speed;
+	  }	  
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
-        target.playbackRate = tc.settings.speed;
+        target.playbackRate = tc.settings.speeds[target.src];
       });
 
       target.addEventListener('ratechange', function(event) {
@@ -142,14 +147,14 @@
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
-          tc.settings.speed = speed;
+          tc.settings.speeds[this.video.src] = speed;
           chrome.storage.sync.set({'speed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
         }
       }.bind(this));
 
-      target.playbackRate = tc.settings.speed;
+      target.playbackRate = tc.settings.speeds[target.src];
     };
 
     tc.videoController.prototype.getSpeed = function() {
@@ -162,7 +167,7 @@
 
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
-      var speed = parseFloat(tc.settings.speed).toFixed(2),
+      var speed = parseFloat(tc.settings.speeds[this.video.src]).toFixed(2),
         top = Math.max(this.video.offsetTop, 0) + "px",
         left = Math.max(this.video.offsetLeft, 0) + "px";
 
