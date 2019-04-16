@@ -2,26 +2,6 @@
     settings: {
       speed: 1.0,           // default 1x
 	  speeds: {},           // empty object to hold speed for each source
-
-      /**
-       * these are not used and deprecated, will be removed in next update
-       * but should be stay there because chrome.storage.sync.get needs them
-       */
-      resetSpeed: 1.0,      // default 1.0
-      speedStep: null,       // default 0.1x just for buttons
-      fastSpeed: null,       // default 1.8x
-      rewindTime: null,       // default 10s just for buttons
-      advanceTime: null,      // default 10s just for buttons
-      resetKeyCode: null,    // default: R
-      slowerKeyCode: null,    // default: S
-      fasterKeyCode: null,    // default: D
-      rewindKeyCode: null,    // default: Z
-      advanceKeyCode: null,   // default: X
-      fastKeyCode: null,      // default: G
-      /**
-       * these(above) are not used and deprecated, will be removed in next update
-       * but should be stay there because chrome.storage.sync.get needs them.
-       */
  	  
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
