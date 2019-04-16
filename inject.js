@@ -398,11 +398,17 @@
   function runAction(action, document, value, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
-
+	if (e){
+		var targetController = e.target.getRootNode().host;
+	}
+	
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
+	  
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-
+	  if (e && !(targetController == controller)) {
+		  return;
+	  }
       showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
