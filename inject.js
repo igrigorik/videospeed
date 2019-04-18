@@ -118,6 +118,14 @@
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
+		if (!tc.settings.rememberSpeed) {
+	      if (!tc.settings.speeds[target.src]) {
+			tc.settings.speeds[target.src] = 1.0;
+		  }
+          setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+        } else{
+		  tc.settings.speeds[target.src]=tc.settings.speed;
+	    }	  
         target.playbackRate = tc.settings.speeds[target.src];
       });
 
