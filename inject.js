@@ -397,8 +397,11 @@
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-
-      showController(controller);
+	  
+	  if(controller){
+		showController(controller);
+	  }
+      
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
