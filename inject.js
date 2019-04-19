@@ -2,7 +2,7 @@
     settings: {
       speed: 1.0,           // default 1x
       speeds: {},           // empty object to hold speed for each source
- 	  
+
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
       startHidden: false,   // default: false
@@ -107,14 +107,15 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
+
       if (!tc.settings.rememberSpeed) {
         if (!tc.settings.speeds[target.src]) {
           tc.settings.speeds[target.src] = 1.0;
         }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
-      } else{
-          tc.settings.speeds[target.src] = tc.settings.speed;
-      }	  
+      } else {
+        tc.settings.speeds[target.src] = tc.settings.speed;
+      }
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
@@ -123,9 +124,9 @@
             tc.settings.speeds[target.src] = 1.0;
           }
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
-        } else{
+        } else {
           tc.settings.speeds[target.src] = tc.settings.speed;
-        }	  
+        }
         target.playbackRate = tc.settings.speeds[target.src];
       });
 
@@ -386,16 +387,17 @@
   function runAction(action, document, value, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
-	// Get the controller that was used if called from a button press event e
+
+    // Get the controller that was used if called from a button press event e
     if (e){
       var targetController = e.target.getRootNode().host;
     }
-	
+
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
-	  
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-	  // Don't change video speed if the video has a different controller
+
+      // Don't change video speed if the video has a different controller
       if (e && !(targetController == controller)) {
         return;
       }
@@ -448,35 +450,19 @@
         if (target !== 1.0) {
           v.playbackRate = 1.0;
         } else {
-          v.playbackRate = getKeyBindings("fast"); // fastSpeed
+          v.playbackRate = getKeyBindings("fast");  // fastSpeed
         }
-      }
-      else
-      {
+      } else {
         v.playbackRate = getKeyBindings("reset"); // resetSpeed
       }
     } else {
-      setKeyBindings("reset", v.playbackRate);// resetSpeed
-      // chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+      setKeyBindings("reset", v.playbackRate);  // resetSpeed
       v.playbackRate = target;
     }
   }
 
   function muted(v, value) {
-    v.muted = v.muted !== true; //reverse muted status
-    /* this can be used if someone wants just mute button
-      switch (value) {
-          case 2:
-              v.muted = false;
-              break;
-          case 1:
-              v.muted = true;
-              break;
-          default:
-              v.muted = v.muted !== true;
-              break;
-      }
-      */
+    v.muted = v.muted !== true;
   }
 
   function handleDrag(video, controller, e) {
