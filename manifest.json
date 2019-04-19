@@ -23,7 +23,7 @@
   "content_scripts": [{
       "all_frames": true,
       "matches": [ "http://*/*", "https://*/*", "file:///*" ],
-	  "match_about_blank": true,
+      "match_about_blank": true,
       "exclude_matches": [
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/*",
