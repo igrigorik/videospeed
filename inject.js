@@ -1,7 +1,7 @@
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
-	  speeds: {},           // empty object to hold speed for each source
+      speeds: {},           // empty object to hold speed for each source
  	  
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
@@ -108,24 +108,24 @@
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
       if (!tc.settings.rememberSpeed) {
-		if (!tc.settings.speeds[target.src]) {
-			tc.settings.speeds[target.src] = 1.0;
-		}
+        if (!tc.settings.speeds[target.src]) {
+          tc.settings.speeds[target.src] = 1.0;
+        }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       } else{
-		  tc.settings.speeds[target.src]=tc.settings.speed;
-	  }	  
+          tc.settings.speeds[target.src] = tc.settings.speed;
+      }	  
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
-		if (!tc.settings.rememberSpeed) {
-	      if (!tc.settings.speeds[target.src]) {
-			tc.settings.speeds[target.src] = 1.0;
-		  }
+        if (!tc.settings.rememberSpeed) {
+          if (!tc.settings.speeds[target.src]) {
+            tc.settings.speeds[target.src] = 1.0;
+          }
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
         } else{
-		  tc.settings.speeds[target.src]=tc.settings.speed;
-	    }	  
+          tc.settings.speeds[target.src] = tc.settings.speed;
+        }	  
         target.playbackRate = tc.settings.speeds[target.src];
       });
 
@@ -386,17 +386,19 @@
   function runAction(action, document, value, e) {
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
-	if (e){
-		var targetController = e.target.getRootNode().host;
-	}
+	// Get the controller that was used if called from a button press event e
+    if (e){
+      var targetController = e.target.getRootNode().host;
+    }
 	
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
 	  
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-	  if (e && !(targetController == controller)) {
-		  return;
-	  }
+	  // Don't change video speed if the video has a different controller
+      if (e && !(targetController == controller)) {
+        return;
+      }
       showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
