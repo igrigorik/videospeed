@@ -205,24 +205,19 @@
 
       this.video.dataset['vscid'] = this.id;
 
-      if(this.video.nodeName === "AUDIO" && tc.settings.audioBoolean) {
-        document.body.appendChild(fragment);
-      }
-      else {
-        switch (true) {
-          case (location.hostname == 'www.amazon.com'):
-          case (location.hostname == 'www.reddit.com'):
-          case (/hbogo\./).test(location.hostname):
-            // insert before parent to bypass overlay
-            this.parent.parentElement.insertBefore(fragment, this.parent);
-            break;
+      switch (true) {
+        case (location.hostname == 'www.amazon.com'):
+        case (location.hostname == 'www.reddit.com'):
+        case (/hbogo\./).test(location.hostname):
+          // insert before parent to bypass overlay
+          this.parent.parentElement.insertBefore(fragment, this.parent);
+          break;
 
-          default:
-            // Note: when triggered via a MutationRecord, it's possible that the
-            // target is not the immediate parent. This appends the controller as
-            // the first element of the target, which may not be the parent.
-            this.parent.insertBefore(fragment, this.parent.firstChild);
-		}
+        default:
+          // Note: when triggered via a MutationRecord, it's possible that the
+          // target is not the immediate parent. This appends the controller as
+          // the first element of the target, which may not be the parent.
+          this.parent.insertBefore(fragment, this.parent.firstChild);
       }
     }
   }
@@ -340,7 +335,7 @@
 
 
       function checkForVideo(node, parent, added) {
-        if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO') {
+        if (node.nodeName === 'VIDEO' || (node.nodeName === 'AUDIO' && tc.settings.audioBoolean)) {
           if (added) {
             new tc.videoController(node, parent);
           } else {
@@ -380,7 +375,12 @@
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.querySelectorAll('video,audio');
+      if (tc.settings.audioBoolean) {
+        var videoTags = document.querySelectorAll('video,audio');
+      } else {
+        var videoTags = document.querySelectorAll('video');
+      }
+	  
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);
       });
@@ -394,13 +394,18 @@
   }
 
   function runAction(action, document, value, e) {
-    var videoTags = document.querySelectorAll('video,audio');
+    if (tc.settings.audioBoolean) {
+      var videoTags = document.querySelectorAll('video,audio');
+    } else {
+      var videoTags = document.querySelectorAll('video');
+    }
+	console.log(videoTags)
     videoTags.forEach = Array.prototype.forEach;
 
     // Get the controller that was used if called from a button press event e
-    if (e){
+    if (e) {
       var targetController = e.target.getRootNode().host;
-    }
+    } 
 
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
