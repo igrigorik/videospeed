@@ -398,9 +398,9 @@
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
 	  
-	  if(controller){
-		showController(controller);
-	  }
+      if(controller){
+        showController(controller);
+      }
       
 
       if (!v.classList.contains('vsc-cancelled')) {
