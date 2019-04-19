@@ -24,6 +24,7 @@
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      audioBoolean: false, // default: false
       startHidden: false,   // default: false
       keyBindings: [],
       blacklist: `
@@ -89,6 +90,7 @@
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
         rememberSpeed: tc.settings.rememberSpeed,
+        audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
         blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
       });
@@ -96,6 +98,7 @@
     tc.settings.speed = Number(storage.speed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
@@ -126,7 +129,8 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
-      if (!tc.settings.rememberSpeed) {
+
+      else if (!tc.settings.rememberSpeed) {
         tc.settings.speed = 1.0;
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       }
@@ -208,6 +212,10 @@
 
       this.video.dataset['vscid'] = this.id;
 
+      if(this.video.nodeName === "AUDIO" && tc.settings.audioBoolean)
+        document.body.appendChild(fragment);
+      else
+      {
       switch (true) {
         case (location.hostname == 'www.amazon.com'):
         case (location.hostname == 'www.reddit.com'):
@@ -223,6 +231,7 @@
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
     }
+  }
   }
 
   function initializeWhenReady(document) {
@@ -336,8 +345,9 @@
         }, true);
       });
 
+
       function checkForVideo(node, parent, added) {
-        if (node.nodeName === 'VIDEO') {
+        if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO') {
           if (added) {
             new tc.videoController(node, parent);
           } else {
@@ -377,7 +387,7 @@
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.getElementsByTagName('video');
+      var videoTags = document.querySelectorAll('video,audio');
       forEach.call(videoTags, function(video) {
         new tc.videoController(video);
       });
@@ -391,7 +401,7 @@
   }
 
   function runAction(action, document, value, e) {
-    var videoTags = document.getElementsByTagName('video');
+    var videoTags = document.querySelectorAll('video,audio');
     videoTags.forEach = Array.prototype.forEach;
 
     videoTags.forEach(function(v) {

@@ -2,6 +2,7 @@ var tcDefaults = {
   speed: 1.0,           // default:
   displayKeyCode: 86,   // default: V
   rememberSpeed: false, // default: false
+  audioBoolean: false, // default: false
   startHidden: false,   // default: false
   keyBindings: [
     {action: "slower", key: 83, value: 0.1, force: false, predefined: true}, // S
@@ -141,6 +142,7 @@ function save_options() {
 
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
+  var audioBoolean = document.getElementById('audioBoolean').checked;
   var startHidden = document.getElementById('startHidden').checked;
   var blacklist     = document.getElementById('blacklist').value;
 
@@ -150,6 +152,7 @@ function save_options() {
   chrome.storage.sync.set({
     displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
+    audioBoolean:  audioBoolean,
     startHidden:    startHidden,
     keyBindings:    keyBindings,
     blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
@@ -168,6 +171,7 @@ function restore_options() {
   chrome.storage.sync.get(tcDefaults, function(storage) {
     updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
+    document.getElementById('audioBoolean').checked = storage.audioBoolean;
     document.getElementById('startHidden').checked = storage.startHidden;
     document.getElementById('blacklist').value = storage.blacklist;
 
