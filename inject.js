@@ -225,7 +225,6 @@
       }
     }
   }
-  }
 
   function initializeWhenReady(document) {
     escapeStringRegExp.matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
