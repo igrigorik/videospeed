@@ -1,26 +1,7 @@
   var tc = {
     settings: {
       speed: 1.0,           // default 1x
-
-      /**
-       * these are not used and deprecated, will be removed in next update
-       * but should be stay there because chrome.storage.sync.get needs them
-       */
-      resetSpeed: 1.0,      // default 1.0
-      speedStep: null,       // default 0.1x just for buttons
-      fastSpeed: null,       // default 1.8x
-      rewindTime: null,       // default 10s just for buttons
-      advanceTime: null,      // default 10s just for buttons
-      resetKeyCode: null,    // default: R
-      slowerKeyCode: null,    // default: S
-      fasterKeyCode: null,    // default: D
-      rewindKeyCode: null,    // default: Z
-      advanceKeyCode: null,   // default: X
-      fastKeyCode: null,      // default: G
-      /**
-       * these(above) are not used and deprecated, will be removed in next update
-       * but should be stay there because chrome.storage.sync.get needs them.
-       */
+      speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
@@ -126,14 +107,27 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
+
       if (!tc.settings.rememberSpeed) {
-        tc.settings.speed = 1.0;
+        if (!tc.settings.speeds[target.src]) {
+          tc.settings.speeds[target.src] = 1.0;
+        }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+      } else {
+        tc.settings.speeds[target.src] = tc.settings.speed;
       }
       this.initializeControls();
 
       target.addEventListener('play', function(event) {
-        target.playbackRate = tc.settings.speed;
+        if (!tc.settings.rememberSpeed) {
+          if (!tc.settings.speeds[target.src]) {
+            tc.settings.speeds[target.src] = 1.0;
+          }
+          setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+        } else {
+          tc.settings.speeds[target.src] = tc.settings.speed;
+        }
+        target.playbackRate = tc.settings.speeds[target.src];
       });
 
       target.addEventListener('ratechange', function(event) {
@@ -142,14 +136,14 @@
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
-          tc.settings.speed = speed;
+          tc.settings.speeds[this.video.src] = speed;
           chrome.storage.sync.set({'speed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
         }
       }.bind(this));
 
-      target.playbackRate = tc.settings.speed;
+      target.playbackRate = tc.settings.speeds[target.src];
     };
 
     tc.videoController.prototype.getSpeed = function() {
@@ -162,7 +156,7 @@
 
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
-      var speed = parseFloat(tc.settings.speed).toFixed(2),
+      var speed = parseFloat(tc.settings.speeds[this.video.src]).toFixed(2),
         top = Math.max(this.video.offsetTop, 0) + "px",
         left = Math.max(this.video.offsetLeft, 0) + "px";
 
@@ -394,14 +388,22 @@
     var videoTags = document.getElementsByTagName('video');
     videoTags.forEach = Array.prototype.forEach;
 
+    // Get the controller that was used if called from a button press event e
+    if (e){
+      var targetController = e.target.getRootNode().host;
+    }
+
     videoTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-	  
+
+      // Don't change video speed if the video has a different controller
+      if (e && !(targetController == controller)) {
+        return;
+      }
       if(controller){
         showController(controller);
       }
-      
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
@@ -410,12 +412,12 @@
           v.currentTime += value;
         } else if (action === 'faster') {
           // Maximum playback speed in Chrome is set to 16:
-          // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=168
+          // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
           var s = Math.min((v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value, 16);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'slower') {
           // Video min rate is 0.0625:
-          // https://cs.chromium.org/chromium/src/third_party/WebKit/Source/core/html/media/HTMLMediaElement.cpp?l=167
+          // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
           var s = Math.max(v.playbackRate - value, 0.07);
           v.playbackRate = Number(s.toFixed(2));
         } else if (action === 'reset') {
@@ -450,35 +452,19 @@
         if (target !== 1.0) {
           v.playbackRate = 1.0;
         } else {
-          v.playbackRate = getKeyBindings("fast"); // fastSpeed
+          v.playbackRate = getKeyBindings("fast");  // fastSpeed
         }
-      }
-      else
-      {
+      } else {
         v.playbackRate = getKeyBindings("reset"); // resetSpeed
       }
     } else {
-      setKeyBindings("reset", v.playbackRate);// resetSpeed
-      // chrome.storage.sync.set({'resetSpeed': v.playbackRate});
+      setKeyBindings("reset", v.playbackRate);  // resetSpeed
       v.playbackRate = target;
     }
   }
 
   function muted(v, value) {
-    v.muted = v.muted !== true; //reverse muted status
-    /* this can be used if someone wants just mute button
-      switch (value) {
-          case 2:
-              v.muted = false;
-              break;
-          case 1:
-              v.muted = true;
-              break;
-          default:
-              v.muted = v.muted !== true;
-              break;
-      }
-      */
+    v.muted = v.muted !== true;
   }
 
   function handleDrag(video, controller, e) {
