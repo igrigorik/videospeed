@@ -207,7 +207,7 @@
 
       if(this.video.nodeName === "AUDIO" && tc.settings.audioBoolean) {
         document.body.appendChild(fragment);
-	  }
+      }
       else {
         switch (true) {
           case (location.hostname == 'www.amazon.com'):
