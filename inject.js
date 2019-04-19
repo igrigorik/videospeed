@@ -376,12 +376,12 @@
       observer.observe(document, { childList: true, subtree: true });
 
       if (tc.settings.audioBoolean) {
-        var videoTags = document.querySelectorAll('video,audio');
+        var mediaTags = document.querySelectorAll('video,audio');
       } else {
-        var videoTags = document.querySelectorAll('video');
+        var mediaTags = document.querySelectorAll('video');
       }
 	  
-      forEach.call(videoTags, function(video) {
+      forEach.call(mediaTags, function(video) {
         new tc.videoController(video);
       });
 
@@ -395,19 +395,19 @@
 
   function runAction(action, document, value, e) {
     if (tc.settings.audioBoolean) {
-      var videoTags = document.querySelectorAll('video,audio');
+      var mediaTags = document.querySelectorAll('video,audio');
     } else {
-      var videoTags = document.querySelectorAll('video');
+      var mediaTags = document.querySelectorAll('video');
     }
-	console.log(videoTags)
-    videoTags.forEach = Array.prototype.forEach;
+	console.log(mediaTags)
+    mediaTags.forEach = Array.prototype.forEach;
 
     // Get the controller that was used if called from a button press event e
     if (e) {
       var targetController = e.target.getRootNode().host;
     } 
 
-    videoTags.forEach(function(v) {
+    mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
       showController(controller);
