@@ -5,6 +5,7 @@
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
+      audioBoolean: false, // default: false
       startHidden: false,   // default: false
       keyBindings: [],
       blacklist: `
@@ -70,6 +71,7 @@
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
         rememberSpeed: tc.settings.rememberSpeed,
+        audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
         blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
       });
@@ -77,6 +79,7 @@
     tc.settings.speed = Number(storage.speed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+    tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.blacklist = String(storage.blacklist);
 
@@ -330,8 +333,9 @@
         }, true);
       });
 
+
       function checkForVideo(node, parent, added) {
-        if (node.nodeName === 'VIDEO') {
+        if (node.nodeName === 'VIDEO' || (node.nodeName === 'AUDIO' && tc.settings.audioBoolean)) {
           if (added) {
             new tc.videoController(node, parent);
           } else {
@@ -371,8 +375,13 @@
       });
       observer.observe(document, { childList: true, subtree: true });
 
-      var videoTags = document.getElementsByTagName('video');
-      forEach.call(videoTags, function(video) {
+      if (tc.settings.audioBoolean) {
+        var mediaTags = document.querySelectorAll('video,audio');
+      } else {
+        var mediaTags = document.querySelectorAll('video');
+      }
+	  
+      forEach.call(mediaTags, function(video) {
         new tc.videoController(video);
       });
 
@@ -385,19 +394,23 @@
   }
 
   function runAction(action, document, value, e) {
-    var videoTags = document.getElementsByTagName('video');
-    videoTags.forEach = Array.prototype.forEach;
-
-    // Get the controller that was used if called from a button press event e
-    if (e){
-      var targetController = e.target.getRootNode().host;
+    if (tc.settings.audioBoolean) {
+      var mediaTags = document.querySelectorAll('video,audio');
+    } else {
+      var mediaTags = document.querySelectorAll('video');
     }
 
-    videoTags.forEach(function(v) {
+    mediaTags.forEach = Array.prototype.forEach;
+
+    // Get the controller that was used if called from a button press event e
+    if (e) {
+      var targetController = e.target.getRootNode().host;
+    } 
+
+    mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
-
-      // Don't change video speed if the video has a different controller
+      // Don't change video speed if the video has a different controller	
       if (e && !(targetController == controller)) {
         return;
       }
