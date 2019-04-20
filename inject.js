@@ -399,7 +399,7 @@
     } else {
       var mediaTags = document.querySelectorAll('video');
     }
-	console.log(mediaTags)
+
     mediaTags.forEach = Array.prototype.forEach;
 
     // Get the controller that was used if called from a button press event e
@@ -410,6 +410,10 @@
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
+      // Don't change video speed if the video has a different controller	
+      if (e && !(targetController == controller)) {
+        return;
+      }
       showController(controller);
 
       if (!v.classList.contains('vsc-cancelled')) {
