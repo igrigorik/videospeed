@@ -140,6 +140,7 @@
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
           tc.settings.speeds[this.video.src] = speed;
+          tc.settings.speed = speed;
           chrome.storage.sync.set({'speed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
