@@ -1,6 +1,6 @@
   var tc = {
     settings: {
-      speed: 1.0,           // default 1x
+      lastSpeed: 1.0,           // default 1x
       speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
@@ -76,7 +76,7 @@
         blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
       });
     }
-    tc.settings.speed = Number(storage.speed);
+    tc.settings.lastSpeed = Number(storage.lastSpeed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.audioBoolean = Boolean(storage.audioBoolean);
@@ -117,7 +117,7 @@
         }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       } else {
-        tc.settings.speeds[target.src] = tc.settings.speed;
+        tc.settings.speeds[target.src] = tc.settings.lastSpeed;
       }
       this.initializeControls();
 
@@ -128,7 +128,7 @@
           }
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
         } else {
-          tc.settings.speeds[target.src] = tc.settings.speed;
+          tc.settings.speeds[target.src] = tc.settings.lastSpeed;
         }
         target.playbackRate = tc.settings.speeds[target.src];
       });
@@ -140,8 +140,8 @@
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
           tc.settings.speeds[this.video.src] = speed;
-          tc.settings.speed = speed;
-          chrome.storage.sync.set({'speed': speed}, function() {
+          tc.settings.lastSpeed = speed;
+          chrome.storage.sync.set({'lastSpeed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
         }
