@@ -1,11 +1,11 @@
   var tc = {
     settings: {
-      lastSpeed: 1.0,           // default 1x
+      lastSpeed: 1.0,       // default 1x
       speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
       rememberSpeed: false, // default: false
-      audioBoolean: false, // default: false
+      audioBoolean: false,  // default: false
       startHidden: false,   // default: false
       keyBindings: [],
       blacklist: `
@@ -110,6 +110,9 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
+
+      // settings.speeds[] ensures that same source used across video tags (e.g. fullscreen on YT) retains speed setting
+      // this.speed is a controller level variable that retains speed setting across source switches (e.g. video quality, playlist change)
       this.speed = 1.0;
 
       if (!tc.settings.rememberSpeed) {
@@ -413,11 +416,14 @@
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
+
       // Don't change video speed if the video has a different controller	
       if (e && !(targetController == controller)) {
         return;
       }
-      if(controller){
+
+      // Controller may have been (force) removed by the site, guard to prevent crashes but run the command
+      if (controller) {
         showController(controller);
       }
 
