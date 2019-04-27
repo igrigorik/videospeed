@@ -110,10 +110,11 @@
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
       this.id = Math.random().toString(36).substr(2, 9);
+      this.speed = 1.0;
 
       if (!tc.settings.rememberSpeed) {
         if (!tc.settings.speeds[target.src]) {
-          tc.settings.speeds[target.src] = 1.0;
+          tc.settings.speeds[target.src] = this.speed;
         }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       } else {
@@ -124,14 +125,14 @@
       target.addEventListener('play', function(event) {
         if (!tc.settings.rememberSpeed) {
           if (!tc.settings.speeds[target.src]) {
-            tc.settings.speeds[target.src] = 1.0;
+            tc.settings.speeds[target.src] = this.speed;
           }
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
         } else {
           tc.settings.speeds[target.src] = tc.settings.lastSpeed;
         }
         target.playbackRate = tc.settings.speeds[target.src];
-      });
+      }.bind(this));
 
       target.addEventListener('ratechange', function(event) {
         // Ignore ratechange events on unitialized videos.
@@ -141,6 +142,7 @@
           this.speedIndicator.textContent = speed;
           tc.settings.speeds[this.video.src] = speed;
           tc.settings.lastSpeed = speed;
+          this.speed = speed;
           chrome.storage.sync.set({'lastSpeed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
