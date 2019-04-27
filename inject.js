@@ -415,7 +415,9 @@
       if (e && !(targetController == controller)) {
         return;
       }
-      showController(controller);
+      if(controller){
+        showController(controller);
+      }
 
       if (!v.classList.contains('vsc-cancelled')) {
         if (action === 'rewind') {
