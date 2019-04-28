@@ -165,7 +165,7 @@
               controller.classList.add('vsc-nosource');
               console.log('Hiding: no source');
             } else {
-              ontroller.classList.remove('vsc-nosource');
+              controller.classList.remove('vsc-nosource');
               console.log('showing: '+mutation.target.src);
             }
           }
@@ -193,6 +193,10 @@
       var wrapper = document.createElement('div');
       wrapper.classList.add('vsc-controller');
       wrapper.dataset['vscid'] = this.id;
+
+      if (!this.video.src) {
+        wrapper.classList.add('vsc-nosource');
+      }
 
       if (tc.settings.startHidden) {
         wrapper.classList.add('vsc-hidden');
