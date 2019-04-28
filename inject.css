@@ -1,8 +1,10 @@
+.vsc-nosource { display: none !important; }
 .vsc-hidden { display: none !important; }
 .vsc-manual {
   visibility: visible !important;
   opacity: 1.0 !important;
 }
+
 
 /* Origin specific overrides */
 /* YouTube player */

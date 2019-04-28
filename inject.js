@@ -123,9 +123,11 @@
       } else {
         tc.settings.speeds[target.src] = tc.settings.lastSpeed;
       }
+      target.playbackRate = tc.settings.speeds[target.src];
+
       this.initializeControls();
 
-      target.addEventListener('play', function(event) {
+	  target.addEventListener('play', function(event) {
         if (!tc.settings.rememberSpeed) {
           if (!tc.settings.speeds[target.src]) {
             tc.settings.speeds[target.src] = this.speed;
@@ -152,7 +154,26 @@
         }
       }.bind(this));
 
-      target.playbackRate = tc.settings.speeds[target.src];
+      var observer=new MutationObserver((mutations)=> {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'src'){
+            var controller = document.querySelector(`div[data-vscid="${this.id}"]`);
+            if(!controller){
+              return;
+            }
+            if (!mutation.target.src) {
+              controller.classList.add('vsc-nosource');
+              console.log('Hiding: no source');
+            } else {
+              ontroller.classList.remove('vsc-nosource');
+              console.log('showing: '+mutation.target.src);
+            }
+          }
+        });
+      });
+      observer.observe(target, {
+        attributeFilter: ["src"]
+      });
     };
 
     tc.videoController.prototype.getSpeed = function() {
