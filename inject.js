@@ -127,7 +127,7 @@
 
       this.initializeControls();
 
-	  target.addEventListener('play', function(event) {
+      target.addEventListener('play', function(event) {
         if (!tc.settings.rememberSpeed) {
           if (!tc.settings.speeds[target.src]) {
             tc.settings.speeds[target.src] = this.speed;
