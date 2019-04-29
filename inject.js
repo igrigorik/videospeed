@@ -346,15 +346,15 @@
 
 
       function checkForVideo(node, parent, added) {
+        if (document.body.contains(node)) {
+          return;
+        }
         if (node.nodeName === 'VIDEO' || (node.nodeName === 'AUDIO' && tc.settings.audioBoolean)) {
           if (added) {
             node.vsc = new tc.videoController(node, parent);
           } else {
             let id = node.dataset['vscid'];
             if (id) {
-              if (document.body.contains(node)) {
-                return;
-              }
               node.vsc.remove();
             }
           }
