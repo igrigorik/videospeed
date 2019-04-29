@@ -348,6 +348,9 @@
             let id = node.dataset['vscid'];
             if (id) {
               let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
+              if (document.body.contains(node)) {
+                return;
+              }
               if (ctrl) {
                 ctrl.remove();
               }
