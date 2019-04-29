@@ -346,7 +346,8 @@
 
 
       function checkForVideo(node, parent, added) {
-        if (document.body.contains(node)) {
+        // Only proceed with supposed removal if node is missing from DOM
+        if (!added && document.body.contains(node)) {
           return;
         }
         if (node.nodeName === 'VIDEO' || (node.nodeName === 'AUDIO' && tc.settings.audioBoolean)) {
