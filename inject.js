@@ -103,7 +103,7 @@
   function defineVideoController() {
     tc.videoController = function(target, parent) {
       if (target.dataset['vscid']) {
-        return;
+        return target.vsc;
       }
 
       this.video = target;
@@ -123,11 +123,12 @@
       } else {
         tc.settings.speeds[target.src] = tc.settings.lastSpeed;
       }
+
       target.playbackRate = tc.settings.speeds[target.src];
 
-      this.initializeControls();
+      this.div=this.initializeControls();
 
-      target.addEventListener('play', function(event) {
+      target.addEventListener('play', this.handlePlay = function(event) {
         if (!tc.settings.rememberSpeed) {
           if (!tc.settings.speeds[target.src]) {
             tc.settings.speeds[target.src] = this.speed;
@@ -139,7 +140,7 @@
         target.playbackRate = tc.settings.speeds[target.src];
       }.bind(this));
 
-      target.addEventListener('ratechange', function(event) {
+      target.addEventListener('ratechange', this.handleRatechange = function(event) {
         // Ignore ratechange events on unitialized videos.
         // 0 == No information is available about the media resource.
         if (event.target.readyState > 0) {
@@ -179,7 +180,11 @@
     }
 
     tc.videoController.prototype.remove = function() {
-      this.parentElement.removeChild(this);
+      this.div.remove();
+      this.video.removeEventListener('play',this.handlePlay);
+      this.video.removeEventListener('ratechange',this.handleRatechange);
+      delete this.video.dataset['vscid'];
+      delete this.video.vsc;
     }
 
     tc.videoController.prototype.initializeControls = function() {
@@ -248,6 +253,7 @@
           // the first element of the target, which may not be the parent.
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
+	  return wrapper;
     }
   }
 
@@ -364,17 +370,17 @@
 
 
       function checkForVideo(node, parent, added) {
+        // Only proceed with supposed removal if node is missing from DOM
+        if (!added && document.body.contains(node)) {
+          return;
+        }
         if (node.nodeName === 'VIDEO' || (node.nodeName === 'AUDIO' && tc.settings.audioBoolean)) {
           if (added) {
-            new tc.videoController(node, parent);
+            node.vsc = new tc.videoController(node, parent);
           } else {
             let id = node.dataset['vscid'];
             if (id) {
-              let ctrl = document.querySelector(`div[data-vscid="${id}"]`)
-              if (ctrl) {
-                ctrl.remove();
-              }
-              delete node.dataset['vscid'];
+              node.vsc.remove();
             }
           }
         } else if (node.children != undefined) {
@@ -411,7 +417,7 @@
       }
 	  
       forEach.call(mediaTags, function(video) {
-        new tc.videoController(video);
+        video.vsc = new tc.videoController(video);
       });
 
       var frameTags = document.getElementsByTagName('iframe');
