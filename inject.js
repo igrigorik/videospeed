@@ -154,7 +154,7 @@
         }
       }.bind(this));
 
-      var observer=new MutationObserver((mutations)=> {
+      var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           if (mutation.type === 'attributes' && mutation.attributeName === 'src'){
             var controller = document.querySelector(`div[data-vscid="${this.id}"]`);
@@ -163,10 +163,8 @@
             }
             if (!mutation.target.src) {
               controller.classList.add('vsc-nosource');
-              console.log('Hiding: no source');
             } else {
               controller.classList.remove('vsc-nosource');
-              console.log('showing: '+mutation.target.src);
             }
           }
         });
