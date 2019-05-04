@@ -123,7 +123,10 @@
       } else {
         tc.settings.speeds[target.src] = tc.settings.lastSpeed;
       }
-      this.div = this.initializeControls();
+
+      target.playbackRate = tc.settings.speeds[target.src];
+
+      this.div=this.initializeControls();
 
       target.addEventListener('play', this.handlePlay = function(event) {
         if (!tc.settings.rememberSpeed) {
@@ -152,7 +155,24 @@
         }
       }.bind(this));
 
-      target.playbackRate = tc.settings.speeds[target.src];
+      var observer=new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'src'){
+            var controller = document.querySelector(`div[data-vscid="${this.id}"]`);
+            if(!controller){
+              return;
+            }
+            if (!mutation.target.src) {
+              controller.classList.add('vsc-nosource');
+            } else {
+              controller.classList.remove('vsc-nosource');
+            }
+          }
+        });
+      });
+      observer.observe(target, {
+        attributeFilter: ["src"]
+      });
     };
 
     tc.videoController.prototype.getSpeed = function() {
@@ -176,6 +196,10 @@
       var wrapper = document.createElement('div');
       wrapper.classList.add('vsc-controller');
       wrapper.dataset['vscid'] = this.id;
+
+      if (!this.video.src) {
+        wrapper.classList.add('vsc-nosource');
+      }
 
       if (tc.settings.startHidden) {
         wrapper.classList.add('vsc-hidden');
