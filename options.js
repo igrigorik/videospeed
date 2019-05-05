@@ -110,6 +110,8 @@ function add_shortcut() {
     <option value="fast">Preferred speed</option>
     <option value="muted">Mute</option>
     <option value="pause">Pause</option>
+    <option value="mark">Set marker</option>
+    <option value="jump">Jump to marker</option>
     </select> 
     <input class="customKey" type="text" placeholder="press a key"/> 
     <input class="customValue" type="text" placeholder="value (0.10)"/> 
@@ -123,6 +125,9 @@ function add_shortcut() {
   div.innerHTML = html;
   var customs_element = document.getElementById("customs");
   customs_element.insertBefore(div, customs_element.children[customs_element.childElementCount - 1]);
+  div.querySelector("select").oninput = (e) => {
+    e.target.nextElementSibling.focus();
+  };
 }
 
 function createKeyBindings(item) {
@@ -190,7 +195,7 @@ function restore_options() {
         const dom = document.querySelector(".customs:last-of-type")
         dom.querySelector(".customDo").value = item["action"];
 
-        if (item["action"] === "pause" || item["action"] === "muted")
+        if (item["action"] === "pause" || item["action"] === "muted" || item["action"] === "mark" || item["action"] === "jump")
           dom.querySelector(".customValue").disabled = true;
 
         updateCustomShortcutInputText(dom.querySelector(".customKey"), item["key"]);
@@ -263,6 +268,8 @@ document.addEventListener('DOMContentLoaded', function () {
       switch (event.target.value) {
         case "muted":
         case "pause":
+        case "mark":
+        case "jump":
           event.target.nextElementSibling.nextElementSibling.disabled = true;
           event.target.nextElementSibling.nextElementSibling.value = 0;
           break;
