@@ -100,7 +100,7 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
   inputItem.keyCode = keyCode;
 }
 
-var customActionsNoValues=["pause","mute","mark","jump"];
+var customActionsNoValues=["pause","muted","mark","jump"];
 
 function add_shortcut() {
   var html = `<select class="customDo">
