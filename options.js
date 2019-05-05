@@ -100,6 +100,7 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
   inputItem.keyCode = keyCode;
 }
 
+// List of custom actions for which customValue should be disabled
 var customActionsNoValues=["pause","muted","mark","jump"];
 
 function add_shortcut() {
