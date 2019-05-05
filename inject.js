@@ -484,6 +484,10 @@
           pauseSpeed(v, value);
         } else if (action === 'muted') {
           muted(v, value);
+        } else if (action === 'mark') {
+          setMark(v);
+        } else if (action === 'jump') {
+          jumpToMark(v);
         }
       }
     });
@@ -518,6 +522,16 @@
     v.muted = v.muted !== true;
   }
 
+  function setMark(v) {
+    v.vsc.mark = v.currentTime;
+  }
+  
+  function jumpToMark(v) {
+    if (v.vsc.mark && typeof v.vsc.mark === "number") {
+      v.currentTime = v.vsc.mark;
+    }
+  }
+  
   function handleDrag(video, controller, e) {
     const shadowController = controller.shadowRoot.querySelector('#controller');
 
