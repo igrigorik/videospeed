@@ -127,9 +127,6 @@ function add_shortcut() {
   div.innerHTML = html;
   var customs_element = document.getElementById("customs");
   customs_element.insertBefore(div, customs_element.children[customs_element.childElementCount - 1]);
-  div.querySelector("select").oninput = (e) => {
-    e.target.nextElementSibling.focus();
-  };
 }
 
 function createKeyBindings(item) {
