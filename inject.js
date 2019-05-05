@@ -1,4 +1,4 @@
-  var regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+  var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 
   var tc = {
     settings: {
