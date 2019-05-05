@@ -1,5 +1,5 @@
   var regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
-  
+
   var tc = {
     settings: {
       lastSpeed: 1.0,       // default 1x
