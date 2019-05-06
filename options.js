@@ -1,3 +1,5 @@
+var regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+
 var tcDefaults = {
   speed: 1.0,           // default:
   displayKeyCode: 86,   // default: V
@@ -17,7 +19,7 @@ var tcDefaults = {
     twitter.com
     vine.co
     imgur.com
-  `.replace(/^\s+|\s+$/gm, '')
+  `.replace(regStrip, '')
 };
 
 var keyBindings = [];
@@ -155,7 +157,7 @@ function save_options() {
     audioBoolean:  audioBoolean,
     startHidden:    startHidden,
     keyBindings:    keyBindings,
-    blacklist:      blacklist.replace(/^\s+|\s+$/gm,'')
+    blacklist:      blacklist.replace(regStrip,'')
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');

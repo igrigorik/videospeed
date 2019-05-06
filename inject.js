@@ -1,3 +1,5 @@
+  var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+
   var tc = {
     settings: {
       lastSpeed: 1.0,       // default 1x
@@ -13,7 +15,7 @@
         twitter.com
         vine.co
         imgur.com
-      `.replace(/^\s+|\s+$/gm,'')
+      `.replace(regStrip,'')
     }
   };
 
@@ -73,7 +75,7 @@
         rememberSpeed: tc.settings.rememberSpeed,
         audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
-        blacklist: tc.settings.blacklist.replace(/^\s+|\s+$/gm, '')
+        blacklist: tc.settings.blacklist.replace(regStrip, '')
       });
     }
     tc.settings.lastSpeed = Number(storage.lastSpeed);
@@ -265,7 +267,7 @@
 
     var blacklisted = false;
     tc.settings.blacklist.split("\n").forEach(match => {
-      match = match.replace(/^\s+|\s+$/g,'')
+      match = match.replace(regStrip,'')
       if (match.length == 0) {
         return;
       }
