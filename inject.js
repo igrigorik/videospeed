@@ -487,7 +487,7 @@
         } else if (action === 'fast') {
           resetSpeed(v, value);
         } else if (action === 'pause') {
-          pauseSpeed(v, value);
+          pause(v);
         } else if (action === 'muted') {
           muted(v, value);
         } else if (action === 'mark') {
@@ -499,12 +499,12 @@
     });
   }
 
-  function pauseSpeed(v, target) {
-    // not working as expected in youtube for now
-    if (v.playbackRate === target) {
-      v.play()
+  function pause(v) {
+    if (v.paused) {
+      v.play();
+    } else {
+      v.pause();
     }
-    resetSpeed(v, target)
   }
 
   function resetSpeed(v, target) {
