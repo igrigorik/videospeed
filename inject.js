@@ -20,7 +20,6 @@
     }
   };
 
-  // Gets object keys from storage matching those of tc.settings
   chrome.storage.sync.get(tc.settings, function (storage) {
     tc.settings.keyBindings = storage.keyBindings; // Array
     if (storage.keyBindings.length == 0) // if first initialization of 0.5.3
