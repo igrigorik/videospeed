@@ -9,6 +9,7 @@
       rememberSpeed: false, // default: false
       audioBoolean: false,  // default: false
       startHidden: false,   // default: false
+      controllerOpacity: 0.3, // default: 0.3
       keyBindings: [],
       blacklist: `
         www.instagram.com
@@ -75,6 +76,7 @@
         rememberSpeed: tc.settings.rememberSpeed,
         audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
+        controllerOpacity: tc.settings.controllerOpacity,
         blacklist: tc.settings.blacklist.replace(regStrip, '')
       });
     }
@@ -83,6 +85,7 @@
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
+    tc.settings.controllerOpacity = Number(storage.controllerOpacity);
     tc.settings.blacklist = String(storage.blacklist);
 
     initializeWhenReady(document);
@@ -213,7 +216,7 @@
           @import "${chrome.runtime.getURL('shadow.css')}";
         </style>
 
-        <div id="controller" style="top:${top}; left:${left}">
+        <div id="controller" style="top:${top}; left:${left}; opacity:${tc.settings.controllerOpacity}">
           <span data-action="drag" class="draggable">${speed}</span>
           <span id="controls">
             <button data-action="rewind" class="rw">«</button>
