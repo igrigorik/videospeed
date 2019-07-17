@@ -20,6 +20,7 @@ var tcDefaults = {
     twitter.com
     vine.co
     imgur.com
+    teams.microsoft.com
   `.replace(regStrip, '')
 };
 
