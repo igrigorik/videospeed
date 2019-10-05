@@ -122,28 +122,28 @@
       this.speed = 1.0;
 
       if (!tc.settings.rememberSpeed) {
-        if (!tc.settings.speeds[target.src]) {
-          tc.settings.speeds[target.src] = this.speed;
+        if (!tc.settings.speeds[target.currentSrc]) {
+          tc.settings.speeds[target.currentSrc] = this.speed;
         }
         setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
       } else {
-        tc.settings.speeds[target.src] = tc.settings.lastSpeed;
+        tc.settings.speeds[target.currentSrc] = tc.settings.lastSpeed;
       }
 
-      target.playbackRate = tc.settings.speeds[target.src];
+      target.playbackRate = tc.settings.speeds[target.currentSrc];
 
       this.div=this.initializeControls();
 
       target.addEventListener('play', this.handlePlay = function(event) {
         if (!tc.settings.rememberSpeed) {
-          if (!tc.settings.speeds[target.src]) {
-            tc.settings.speeds[target.src] = this.speed;
+          if (!tc.settings.speeds[target.currentSrc]) {
+            tc.settings.speeds[target.currentSrc] = this.speed;
           }
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
         } else {
-          tc.settings.speeds[target.src] = tc.settings.lastSpeed;
+          tc.settings.speeds[target.currentSrc] = tc.settings.lastSpeed;
         }
-        target.playbackRate = tc.settings.speeds[target.src];
+        target.playbackRate = tc.settings.speeds[target.currentSrc];
       }.bind(this));
 
       target.addEventListener('ratechange', this.handleRatechange = function(event) {
@@ -152,7 +152,7 @@
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
-          tc.settings.speeds[this.video.src] = speed;
+          tc.settings.speeds[this.video.currentSrc] = speed;
           tc.settings.lastSpeed = speed;
           this.speed = speed;
           chrome.storage.sync.set({'lastSpeed': speed}, function() {
@@ -163,12 +163,12 @@
 
       var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-          if (mutation.type === 'attributes' && mutation.attributeName === 'src'){
+          if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')){
             var controller = document.querySelector(`div[data-vscid="${this.id}"]`);
             if(!controller){
               return;
             }
-            if (!mutation.target.src) {
+            if (!mutation.target.currentSrc) {
               controller.classList.add('vsc-nosource');
             } else {
               controller.classList.remove('vsc-nosource');
@@ -177,7 +177,7 @@
         });
       });
       observer.observe(target, {
-        attributeFilter: ["src"]
+        attributeFilter: ["src", "currentSrc"]
       });
     };
 
@@ -195,7 +195,7 @@
 
     tc.videoController.prototype.initializeControls = function() {
       var document = this.document;
-      var speed = parseFloat(tc.settings.speeds[this.video.src]).toFixed(2),
+      var speed = parseFloat(tc.settings.speeds[this.video.currentSrc]).toFixed(2),
         top = Math.max(this.video.offsetTop, 0) + "px",
         left = Math.max(this.video.offsetLeft, 0) + "px";
 
@@ -203,7 +203,7 @@
       wrapper.classList.add('vsc-controller');
       wrapper.dataset['vscid'] = this.id;
 
-      if (!this.video.src) {
+      if (!this.video.currentSrc) {
         wrapper.classList.add('vsc-nosource');
       }
 
