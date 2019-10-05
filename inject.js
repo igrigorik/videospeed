@@ -3,6 +3,7 @@
   var tc = {
     settings: {
       lastSpeed: 1.0,       // default 1x
+      enabled: true,        // default enabled
       speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
@@ -77,6 +78,7 @@
         rememberSpeed: tc.settings.rememberSpeed,
         audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
+        enabled: tc.settings.enabled,
         controllerOpacity: tc.settings.controllerOpacity,
         blacklist: tc.settings.blacklist.replace(regStrip, '')
       });
@@ -85,6 +87,7 @@
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.audioBoolean = Boolean(storage.audioBoolean);
+    tc.settings.enabled = Boolean(storage.enabled);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.controllerOpacity = Number(storage.controllerOpacity);
     tc.settings.blacklist = String(storage.blacklist);
@@ -309,6 +312,7 @@
     }
   }
   function initializeNow(document) {
+      if (!tc.settings.enabled) return;
       // enforce init-once due to redundant callers
       if (!document.body || document.body.classList.contains('vsc-initialized')) {
         return;

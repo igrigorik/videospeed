@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>Video Speed Controller: Options</title>
-		<link rel="stylesheet" href="options.css" />
-		<script src="options.js"></script>
-	</head>
-	<body>
-		<header>
-			<h1>Video Speed Controller</h1>
-		</header>
+    <head>
+        <title>Video Speed Controller: Options</title>
+        <link rel="stylesheet" href="options.css" />
+        <script src="options.js"></script>
+    </head>
+    <body>
+        <header>
+            <h1>Video Speed Controller</h1>
+        </header>
 
     <section id="customs">
       <h3>Shortcuts</h3>
@@ -81,26 +81,30 @@
     </section>
 
     <section>
-            <h3>Other</h3>
-		<div class="row">
+      <h3>Other</h3>
+      <div class="row">
+        <label for="enabled">Enabled</label>
+        <input id="enabled" type="checkbox"/>
+      </div>
+      <div class="row">
         <label for="startHidden">Hide controller by default</label>
         <input id="startHidden" type="checkbox"/>
       </div>
       <div class="row">
-          <label for="rememberSpeed">Remember Playback Speed</label>
-          <input id="rememberSpeed" type="checkbox"/>
+        <label for="rememberSpeed">Remember Playback Speed</label>
+        <input id="rememberSpeed" type="checkbox"/>
       </div>
       <div class="row">
-          <label for="audioBoolean">Work on audio</label>
-          <input id="audioBoolean" type="checkbox"/>
+        <label for="audioBoolean">Work on audio</label>
+        <input id="audioBoolean" type="checkbox"/>
       </div>
       <div class="row">
-            <label for="controllerOpacity">Controller opacity</label>
-            <input id="controllerOpacity" type="text" value="">
+        <label for="controllerOpacity">Controller opacity</label>
+        <input id="controllerOpacity" type="text" value="">
       </div>
       <div class="row">
-          <label for="blacklist">Blacklisted sites on which extension is disabled<br/>(one per line)</label>
-          <textarea id="blacklist" rows="10" cols="50"></textarea>
+        <label for="blacklist">Blacklisted sites on which extension is disabled<br/>(one per line)</label>
+        <textarea id="blacklist" rows="10" cols="50"></textarea>
       </div>
     </section>
 
