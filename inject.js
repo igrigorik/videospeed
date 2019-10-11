@@ -6,6 +6,7 @@
       speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
+      displayForce: false,
       rememberSpeed: false, // default: false
       audioBoolean: false,  // default: false
       startHidden: false,   // default: false
@@ -74,6 +75,7 @@
         keyBindings: tc.settings.keyBindings,
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
+        displayForce: tc.settings.displayForce,
         rememberSpeed: tc.settings.rememberSpeed,
         audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
@@ -83,6 +85,7 @@
     }
     tc.settings.lastSpeed = Number(storage.lastSpeed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
+    tc.settings.displayForce = String(storage.displayForce);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
@@ -360,6 +363,10 @@
 
           if (keyCode == tc.settings.displayKeyCode) {
             runAction('display', document, true)
+            if (tc.settings.displayForce === "true") {// disable websites key bindings
+              event.preventDefault();
+              event.stopPropagation();
+            }
           }
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {

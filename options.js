@@ -3,6 +3,7 @@ var regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var tcDefaults = {
   speed: 1.0,           // default:
   displayKeyCode: 86,   // default: V
+  displayForce: false,
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
   startHidden: false,   // default: false
@@ -150,6 +151,7 @@ function save_options() {
   Array.from(document.querySelectorAll(".customs")).forEach(item => createKeyBindings(item)); // Remove added shortcuts
 
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
+  var displayForce = document.getElementById('displayForce').value;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var audioBoolean = document.getElementById('audioBoolean').checked;
   var startHidden = document.getElementById('startHidden').checked;
@@ -161,6 +163,7 @@ function save_options() {
   chrome.storage.sync.remove(["resetSpeed", "speedStep", "fastSpeed", "rewindTime", "advanceTime", "resetKeyCode", "slowerKeyCode", "fasterKeyCode", "rewindKeyCode", "advanceKeyCode", "fastKeyCode"]);
   chrome.storage.sync.set({
     displayKeyCode: displayKeyCode,
+    displayForce: displayForce,
     rememberSpeed:  rememberSpeed,
     audioBoolean:  audioBoolean,
     startHidden:    startHidden,
@@ -181,6 +184,7 @@ function save_options() {
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function(storage) {
     updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
+    document.getElementById('displayForce').value = storage.displayForce;
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
     document.getElementById('startHidden').checked = storage.startHidden;
