@@ -46,8 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  function settingsSavedReloadMessage(){
-    setStatusMessage("Saved. Reload page to see changes");
+  function settingsSavedReloadMessage(enabled){
+    setStatusMessage(`${enabled ? "Enabled" : "Disabled"}. Reload page to see changes`);
   }
 
   function setStatusMessage(str){
