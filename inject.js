@@ -6,7 +6,6 @@
       speeds: {},           // empty object to hold speed for each source
 
       displayKeyCode: 86,   // default: V
-      displayForce: false,
       rememberSpeed: false, // default: false
       audioBoolean: false,  // default: false
       startHidden: false,   // default: false
@@ -75,7 +74,6 @@
         keyBindings: tc.settings.keyBindings,
         version: tc.settings.version,
         displayKeyCode: tc.settings.displayKeyCode,
-        displayForce: tc.settings.displayForce,
         rememberSpeed: tc.settings.rememberSpeed,
         audioBoolean: tc.settings.audioBoolean,
         startHidden: tc.settings.startHidden,
@@ -85,12 +83,22 @@
     }
     tc.settings.lastSpeed = Number(storage.lastSpeed);
     tc.settings.displayKeyCode = Number(storage.displayKeyCode);
-    tc.settings.displayForce = String(storage.displayForce);
     tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
     tc.settings.audioBoolean = Boolean(storage.audioBoolean);
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.controllerOpacity = Number(storage.controllerOpacity);
     tc.settings.blacklist = String(storage.blacklist);
+
+    // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
+    if (tc.settings.keyBindings.filter(x => x.action == "display").length == 0) {
+      tc.settings.keyBindings.push({
+        action: "display",
+        key: Number(storage.displayKeyCode) || 86,
+        value: 0,
+        force: false,
+        predefined: true
+      }); // default V
+    }
 
     initializeWhenReady(document);
   });
@@ -361,13 +369,6 @@
             return false;
           }
 
-          if (keyCode == tc.settings.displayKeyCode) {
-            runAction('display', document, true)
-            if (tc.settings.displayForce === "true") {// disable websites key bindings
-              event.preventDefault();
-              event.stopPropagation();
-            }
-          }
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {
           runAction(item.action, document, item.value);
