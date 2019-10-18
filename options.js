@@ -6,6 +6,7 @@ var tcDefaults = {
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
   startHidden: false,   // default: false
+  enabled: true,        // default enabled
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
     {action: "slower", key: 83, value: 0.1, force: false, predefined: true}, // S
@@ -168,6 +169,7 @@ function save_options() {
   var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var audioBoolean = document.getElementById('audioBoolean').checked;
+  var enabled = document.getElementById('enabled').checked;
   var startHidden = document.getElementById('startHidden').checked;
   var controllerOpacity = document.getElementById('controllerOpacity').value;
   var blacklist     = document.getElementById('blacklist').value;
@@ -179,6 +181,7 @@ function save_options() {
     displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
     audioBoolean:  audioBoolean,
+    enabled:  enabled,
     startHidden:    startHidden,
     controllerOpacity:    controllerOpacity,
     keyBindings:    keyBindings,
@@ -199,6 +202,7 @@ function restore_options() {
     updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
+    document.getElementById('enabled').checked = storage.enabled;
     document.getElementById('startHidden').checked = storage.startHidden;
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('blacklist').value = storage.blacklist;
