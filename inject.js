@@ -92,6 +92,17 @@
     tc.settings.controllerOpacity = Number(storage.controllerOpacity);
     tc.settings.blacklist = String(storage.blacklist);
 
+    // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
+    if (tc.settings.keyBindings.filter(x => x.action == "display").length == 0) {
+      tc.settings.keyBindings.push({
+        action: "display",
+        key: Number(storage.displayKeyCode) || 86,
+        value: 0,
+        force: false,
+        predefined: true
+      }); // default V
+    }
+
     initializeWhenReady(document);
   });
 
@@ -362,9 +373,6 @@
             return false;
           }
 
-          if (keyCode == tc.settings.displayKeyCode) {
-            runAction('display', document, true)
-          }
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {
           runAction(item.action, document, item.value);

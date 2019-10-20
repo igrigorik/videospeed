@@ -9,6 +9,7 @@ var tcDefaults = {
   enabled: true,        // default enabled
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
+    {action: "display", key: 86, value: 0, force: false, predefined: true }, // V
     {action: "slower", key: 83, value: 0.1, force: false, predefined: true}, // S
     {action: "faster", key: 68, value: 0.1, force: false, predefined: true}, // D
     {action: "rewind", key: 90, value: 10, force: false, predefined: true}, // Z
@@ -122,7 +123,7 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
 }
 
 // List of custom actions for which customValue should be disabled
-var customActionsNoValues=["pause","muted","mark","jump"];
+var customActionsNoValues=["pause","muted","mark","jump","display"];
 
 function add_shortcut() {
   var html = `<select class="customDo">
@@ -136,6 +137,7 @@ function add_shortcut() {
     <option value="pause">Pause</option>
     <option value="mark">Set marker</option>
     <option value="jump">Jump to marker</option>
+    <option value="display">Show/hide controller</option>
     </select> 
     <input class="customKey" type="text" placeholder="press a key"/> 
     <input class="customValue" type="text" placeholder="value (0.10)"/> 
@@ -166,7 +168,6 @@ function save_options() {
   keyBindings = [];
   Array.from(document.querySelectorAll(".customs")).forEach(item => createKeyBindings(item)); // Remove added shortcuts
 
-  var displayKeyCode = document.getElementById('displayKeyInput').keyCode;
   var rememberSpeed = document.getElementById('rememberSpeed').checked;
   var audioBoolean = document.getElementById('audioBoolean').checked;
   var enabled = document.getElementById('enabled').checked;
@@ -174,11 +175,8 @@ function save_options() {
   var controllerOpacity = document.getElementById('controllerOpacity').value;
   var blacklist     = document.getElementById('blacklist').value;
 
-  displayKeyCode = isNaN(displayKeyCode) ? tcDefaults.displayKeyCode : displayKeyCode;
-
   chrome.storage.sync.remove(["resetSpeed", "speedStep", "fastSpeed", "rewindTime", "advanceTime", "resetKeyCode", "slowerKeyCode", "fasterKeyCode", "rewindKeyCode", "advanceKeyCode", "fastKeyCode"]);
   chrome.storage.sync.set({
-    displayKeyCode: displayKeyCode,
     rememberSpeed:  rememberSpeed,
     audioBoolean:  audioBoolean,
     enabled:  enabled,
@@ -199,7 +197,6 @@ function save_options() {
 // Restores options from chrome.storage
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function(storage) {
-    updateShortcutInputText('displayKeyInput', storage.displayKeyCode);
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
     document.getElementById('enabled').checked = storage.enabled;
@@ -207,11 +204,23 @@ function restore_options() {
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('blacklist').value = storage.blacklist;
 
+    // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
+    if(storage.keyBindings.filter(x => x.action == "display").length == 0){
+      storage.keyBindings.push({ action: "display", value: 0, force: false, predefined: true });
+    }
+
     for (let i in storage.keyBindings) {
       var item = storage.keyBindings[i];
       if (item.predefined) {
         //do predefined ones because their value needed for overlay
         // document.querySelector("#" + item["action"] + " .customDo").value = item["action"];
+        if (item["action"] == "display" && typeof (item["key"]) === "undefined"){
+          item["key"] = storage.displayKeyCode || tcDefaults.displayKeyCode; // V
+        }
+
+        if (customActionsNoValues.includes(item["action"]))
+          document.querySelector("#" + item["action"] + " .customValue").disabled = true;
+
         updateCustomShortcutInputText(document.querySelector("#" + item["action"] + " .customKey"), item["key"]);
         document.querySelector("#" + item["action"] + " .customValue").value = item["value"];
         document.querySelector("#" + item["action"] + " .customForce").value = item["force"];
@@ -250,12 +259,6 @@ function show_experimental() {
   document.querySelectorAll(".customForce").forEach(item => item.style.display = 'inline-block');
 }
 
-function initShortcutInput(inputId) {
-  document.getElementById(inputId).addEventListener('focus', inputFocus);
-  document.getElementById(inputId).addEventListener('blur', inputBlur);
-  document.getElementById(inputId).addEventListener('keydown', recordKeyPress);
-}
-
 document.addEventListener('DOMContentLoaded', function () {
   restore_options();
 
@@ -263,8 +266,6 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('add').addEventListener('click', add_shortcut);
   document.getElementById('restore').addEventListener('click', restore_defaults);
   document.getElementById('experimental').addEventListener('click', show_experimental);
-
-  initShortcutInput('displayKeyInput');
 
   function eventCaller(event, className, funcName) {
     if (!event.target.classList.contains(className)) {
