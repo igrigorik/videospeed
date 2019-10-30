@@ -172,6 +172,7 @@
           chrome.storage.sync.set({'lastSpeed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
+          // show the controller for 1000ms if it's hidden.
           runAction('blink', document, 1000, null);
         }
       }.bind(this));
@@ -496,6 +497,7 @@
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'blink') {
+            // if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
             if(controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined){
               clearTimeout(controller.blinkTimeOut);
               controller.classList.remove('vsc-hidden');
