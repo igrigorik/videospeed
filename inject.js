@@ -172,6 +172,7 @@
           chrome.storage.sync.set({'lastSpeed': speed}, function() {
             console.log('Speed setting saved: ' + speed);
           });
+          runAction('blink', document, 1000, null);
         }
       }.bind(this));
 
@@ -494,6 +495,15 @@
         } else if (action === 'display') {
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
+        } else if (action === 'blink') {
+            if(controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined){
+              clearTimeout(controller.blinkTimeOut);
+              controller.classList.remove('vsc-hidden');
+              controller.blinkTimeOut = setTimeout(()=>{
+                controller.classList.add('vsc-hidden');
+                controller.blinkTimeOut = undefined;
+              }, value);
+            }
         } else if (action === 'drag') {
           handleDrag(v, controller, e);
         } else if (action === 'fast') {
