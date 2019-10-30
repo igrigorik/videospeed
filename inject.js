@@ -173,7 +173,7 @@
             console.log('Speed setting saved: ' + speed);
           });
           // show the controller for 1000ms if it's hidden.
-          runAction('blink', document, 1000, null);
+          runAction('blink', document, null, null);
         }
       }.bind(this));
 
@@ -504,7 +504,7 @@
               controller.blinkTimeOut = setTimeout(()=>{
                 controller.classList.add('vsc-hidden');
                 controller.blinkTimeOut = undefined;
-              }, value);
+              }, value ? value : 1000);
             }
         } else if (action === 'drag') {
           handleDrag(v, controller, e);
