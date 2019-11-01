@@ -125,7 +125,12 @@
       if (target.dataset['vscid']) {
         return target.vsc;
       }
-
+      this.zindex = target.style.zIndex;
+      if (this.zindex === "") {
+        this.zindex = 1;
+      } else {
+        this.zindex++;
+      }
       this.video = target;
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
@@ -224,11 +229,13 @@
       if (tc.settings.startHidden) {
         wrapper.classList.add('vsc-hidden');
       }
-
       var shadow = wrapper.attachShadow({ mode: 'open' });
       var shadowTemplate = `
         <style>
           @import "${chrome.runtime.getURL('shadow.css')}";
+          #controller {
+            z-index: ${this.zindex};
+          }
         </style>
 
         <div id="controller" style="top:${top}; left:${left}; opacity:${tc.settings.controllerOpacity}">

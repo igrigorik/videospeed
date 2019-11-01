@@ -21,7 +21,6 @@
   margin: 10px 10px 10px 15px;
 
   cursor: default;
-  z-index: 9999999;
 }
 
 #controller:hover {
