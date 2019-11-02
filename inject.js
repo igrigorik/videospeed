@@ -120,17 +120,45 @@
     tc.settings.keyBindings.find(item => item.action === action)["value"] = value;
   }
 
+  function incrementZIndex(target) {
+    // I don't _expect_ any errors here, this is a defensive coding practice.
+    // This try/catch block should be removed if debugging this function
+    try {
+      i = target.style.zIndex;
+      if (target === null) {
+        // In the event a recursive call reaches the top of the html tree, 
+        // return default + 1, which is 1.
+        return 1;
+      }
+      if (isNaN(i) === false) {
+        i++;
+      } else {
+        switch (i) {
+          default:
+            // Handles cases: "", "initial", and "auto"
+            i = 1;
+            break;
+          case "inherit":
+            i = incrementZIndex(target.parentElement);
+            break;
+        }
+      }
+      return i;
+    }
+    catch(err) {
+      // The value most likely to be correct is 1, so in the event of a failure
+      // just return 1
+      return 1;
+    }
+  }
+
   function defineVideoController() {
     tc.videoController = function(target, parent) {
       if (target.dataset['vscid']) {
         return target.vsc;
       }
-      this.zindex = target.style.zIndex;
-      if (this.zindex === "") {
-        this.zindex = 1;
-      } else {
-        this.zindex++;
-      }
+      // Set z-index to 1-higher than the video element
+      this.zindex = incrementZIndex(target);
       this.video = target;
       this.parent = target.parentElement || parent;
       this.document = target.ownerDocument;
