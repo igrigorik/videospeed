@@ -124,12 +124,12 @@
     // I don't _expect_ any errors here, this is a defensive coding practice.
     // This try/catch block should be removed if debugging this function
     try {
-      i = target.style.zIndex;
       if (target === null) {
         // In the event a recursive call reaches the top of the html tree, 
         // return default + 1, which is 1.
         return 1;
       }
+      i = target.style.zIndex;
       if (isNaN(i) === false) {
         i++;
       } else {
