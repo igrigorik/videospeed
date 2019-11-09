@@ -433,7 +433,7 @@
       } else {
         var mediaTags = document.querySelectorAll('video');
       }
-	  
+
       forEach.call(mediaTags, function(video) {
         video.vsc = new tc.videoController(video);
       });
@@ -444,6 +444,11 @@
         try { var childDocument = frame.contentDocument } catch (e) { return }
         initializeWhenReady(childDocument);
       });
+
+      //look for video in shadowRoot
+      if (document.querySelector('apple-tv-plus-player')) {
+        console.log('Congratulations. There is the apple-tv-plus-player.')
+      }
   }
 
   function runAction(action, document, value, e) {
@@ -458,13 +463,13 @@
     // Get the controller that was used if called from a button press event e
     if (e) {
       var targetController = e.target.getRootNode().host;
-    } 
+    }
 
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
 
-      // Don't change video speed if the video has a different controller	
+      // Don't change video speed if the video has a different controller
       if (e && !(targetController == controller)) {
         return;
       }
@@ -543,13 +548,13 @@
   function setMark(v) {
     v.vsc.mark = v.currentTime;
   }
-  
+
   function jumpToMark(v) {
     if (v.vsc.mark && typeof v.vsc.mark === "number") {
       v.currentTime = v.vsc.mark;
     }
   }
-  
+
   function handleDrag(video, controller, e) {
     const shadowController = controller.shadowRoot.querySelector('#controller');
 
