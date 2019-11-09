@@ -409,7 +409,7 @@
         }
       }
 
-      var observer = new MutationObserver(function(mutations) {
+      function mutationCallback(mutations) {
         // Process the DOM nodes lazily
         requestIdleCallback(_ => {
           mutations.forEach(function(mutation) {
@@ -425,7 +425,8 @@
             });
           });
         }, {timeout: 1000});
-      });
+      }
+      var observer = new MutationObserver(mutationCallback);
       observer.observe(document, { childList: true, subtree: true });
 
       if (tc.settings.audioBoolean) {
@@ -445,9 +446,9 @@
         initializeWhenReady(childDocument);
       });
 
-      //look for video in shadowRoot
+      //look for video in shadowRoot for apple tv
       if (document.querySelector('apple-tv-plus-player')) {
-        console.log('Congratulations. There is the apple-tv-plus-player.')
+        shadowMutations('apple-tv-plus-player', mutationCallback, {childList: true, subtree: true})
       }
 
       // start of ally.js/src/observe/shadow-mutations.js
