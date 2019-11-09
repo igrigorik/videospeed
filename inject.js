@@ -446,11 +446,6 @@
         initializeWhenReady(childDocument);
       });
 
-      //look for video in shadowRoot for apple tv
-      if (document.querySelector('apple-tv-plus-player')) {
-        shadowMutations('apple-tv-plus-player', mutationCallback, {childList: true, subtree: true})
-      }
-
       // start of ally.js/src/observe/shadow-mutations.js
       // import nodeArray from '../util/node-array';
         // input may be undefined, selector-tring, Node, NodeList, HTMLCollection, array of Nodes
@@ -659,6 +654,12 @@
         };
       }
       //end of ally.js/src/observe/shadow-mutations.js
+
+      //look for video in shadowRoot for apple tv
+      if (document.querySelector('apple-tv-plus-player')) {
+        shadowMutations('apple-tv-plus-player', mutationCallback, {childList: true, subtree: true})
+      }
+
   }
 
   function runAction(action, document, value, e) {
