@@ -161,7 +161,7 @@
       }.bind(this));
 
       target.addEventListener('ratechange', this.handleRatechange = function(event) {
-        // Ignore ratechange events on unitialized videos.
+        // Ignore ratechange events on uninitialized videos.
         // 0 == No information is available about the media resource.
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
@@ -273,7 +273,7 @@
           // the first element of the target, which may not be the parent.
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
-	  return wrapper;
+	    return wrapper;
     }
   }
 
@@ -381,7 +381,6 @@
             event.stopPropagation();
           }
         }
-
           return false;
         }, true);
       });
