@@ -322,6 +322,35 @@
       return true;
     }
   }
+  function queryShadowVideo(element) {
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_ELEMENT,
+      { acceptNode: function(node) {
+        if (node.shadowRoot) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      }}
+    );
+
+    let list = [];
+
+    if (element.shadowRoot) {
+      list = list.concat(queryShadowVideo(element.shadowRoot))
+    }
+
+    while (walker.nextNode()) {
+      let video = walker.currentNode.shadowRoot.querySelector('video')
+      if (video) {
+        list.push(video);
+      }
+      list = list.concat(queryShadowVideo(walker.currentNode.shadowRoot))
+    }
+
+    return list;
+  }
+
   function initializeNow(document) {
       if (!tc.settings.enabled) return;
       // enforce init-once due to redundant callers
@@ -369,7 +398,12 @@
           }
 
           // Ignore keydown event if typing in a page without vsc
-          if (!document.querySelector(".vsc-controller")) {
+          if (document.querySelector('apple-tv-plus-player')) {
+            if (queryShadowVideo(document.querySelector('apple-tv-plus-player')).length > 0) {
+
+            }
+          }
+          else if (!document.querySelector(".vsc-controller")) {
             return false;
           }
 
@@ -447,22 +481,17 @@
       });
 
       //look for video in shadowRoot for apple tv
-      function deepActiveElement() {
-        let a = document.activeElement;
-        while (a && a.shadowRoot && a.shadowRoot.activeElement) {
-          a = a.shadowRoot.activeElement;
-        }
-        return a;
-      }
       var apple_tv = document.querySelector('apple-tv-plus-player')
       if (apple_tv) {
         var observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(mutation) {
             if (mutation.attributeName == 'aria-hidden' && (apple_tv.getAttribute('aria-hidden') == 'false')) {
-              setTimeout(() => {
-                var node = deepActiveElement()
+              var node = queryShadowVideo(document.querySelector('apple-tv-plus-player'))[0]
+              if (!node.previousElementSibling) {
                 checkForVideo(node, node.parentNode || mutation.target, true);
-              }, 2000)
+              } else {
+                checkForVideo(node, node.parentNode || mutation.target, false);
+              }
             }
           });
         });
@@ -476,7 +505,9 @@
   }
 
   function runAction(action, document, value, e) {
-    if (tc.settings.audioBoolean) {
+    if (document.querySelector('apple-tv-plus-player')) {
+      var mediaTags = queryShadowVideo(document.querySelector('apple-tv-plus-player'))
+    } else if (tc.settings.audioBoolean) {
       var mediaTags = document.querySelectorAll('video,audio');
     } else {
       var mediaTags = document.querySelectorAll('video');
