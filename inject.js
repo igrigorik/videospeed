@@ -399,8 +399,8 @@
 
           // Ignore keydown event if typing in a page without vsc
           if (document.querySelector('apple-tv-plus-player')) {
-            if (queryShadowVideo(document.querySelector('apple-tv-plus-player')).length > 0) {
-
+            if (queryShadowVideo(document.querySelector('apple-tv-plus-player')).length == 0) {
+              return false;
             }
           }
           else if (!document.querySelector(".vsc-controller")) {
