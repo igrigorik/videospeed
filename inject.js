@@ -443,7 +443,7 @@
         }
       }
 
-      function mutationCallback(mutations) {
+      var observer = new MutationObserver(function(mutations) {
         // Process the DOM nodes lazily
         requestIdleCallback(_ => {
           mutations.forEach(function(mutation) {
@@ -459,8 +459,7 @@
             });
           });
         }, {timeout: 1000});
-      }
-      var observer = new MutationObserver(mutationCallback);
+      });
       observer.observe(document, { childList: true, subtree: true });
 
       if (tc.settings.audioBoolean) {
