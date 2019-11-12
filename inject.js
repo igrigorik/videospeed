@@ -402,8 +402,7 @@
             if (queryShadowVideo(document.querySelector('apple-tv-plus-player')).length == 0) {
               return false;
             }
-          }
-          else if (!document.querySelector(".vsc-controller")) {
+          } else if (!document.querySelector(".vsc-controller")) {
             return false;
           }
 
