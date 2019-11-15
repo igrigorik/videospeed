@@ -448,20 +448,34 @@
         // Process the DOM nodes lazily
         requestIdleCallback(_ => {
           mutations.forEach(function(mutation) {
-            forEach.call(mutation.addedNodes, function(node) {
-              if (typeof node === "function")
-                return;
-              checkForVideo(node, node.parentNode || mutation.target, true);
-            });
-            forEach.call(mutation.removedNodes, function(node) {
-              if (typeof node === "function")
-                return;
-              checkForVideo(node, node.parentNode || mutation.target, false);
-            });
+            switch (mutation.type) {
+              case 'childList':
+                forEach.call(mutation.addedNodes, function(node) {
+                  if (typeof node === "function")
+                    return;
+                  checkForVideo(node, node.parentNode || mutation.target, true);
+                });
+                forEach.call(mutation.removedNodes, function(node) {
+                  if (typeof node === "function")
+                    return;
+                  checkForVideo(node, node.parentNode || mutation.target, false);
+                });
+                break;
+              case 'attributes':
+                if (mutation.attributeName == 'aria-hidden' && (mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
+                  var node = queryShadowVideo(document.querySelector('apple-tv-plus-player'))[0]
+                  if (!node.previousElementSibling) {
+                    checkForVideo(node, node.parentNode || mutation.target, true);
+                  } else {
+                    checkForVideo(node, node.parentNode || mutation.target, false);
+                  }
+                }
+                break;
+            };
           });
         }, {timeout: 1000});
       });
-      observer.observe(document, { childList: true, subtree: true });
+      observer.observe(document, { attributes: true, childList: true, subtree: true });
 
       if (tc.settings.audioBoolean) {
         var mediaTags = document.querySelectorAll('video,audio');
@@ -479,28 +493,6 @@
         try { var childDocument = frame.contentDocument } catch (e) { return }
         initializeWhenReady(childDocument);
       });
-
-      //look for video in shadowRoot for apple tv
-      var apple_tv = document.querySelector('apple-tv-plus-player')
-      if (apple_tv) {
-        var observer = new MutationObserver(function(mutations) {
-          mutations.forEach(function(mutation) {
-            if (mutation.attributeName == 'aria-hidden' && (apple_tv.getAttribute('aria-hidden') == 'false')) {
-              var node = queryShadowVideo(document.querySelector('apple-tv-plus-player'))[0]
-              if (!node.previousElementSibling) {
-                checkForVideo(node, node.parentNode || mutation.target, true);
-              } else {
-                checkForVideo(node, node.parentNode || mutation.target, false);
-              }
-            }
-          });
-        });
-
-        observer.observe(apple_tv, {
-          attributes: true
-        });
-
-      }
 
   }
 
