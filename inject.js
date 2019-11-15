@@ -475,7 +475,11 @@
           });
         }, {timeout: 1000});
       });
-      observer.observe(document, { attributes: true, childList: true, subtree: true });
+      observer.observe(document, {
+        attributeFilter: ['aria-hidden'],
+        childList: true,
+        subtree: true
+      });
 
       if (tc.settings.audioBoolean) {
         var mediaTags = document.querySelectorAll('video,audio');
