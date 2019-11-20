@@ -395,9 +395,9 @@
           }
 
           // Ignore keydown event if typing in an input box
-          if (document.activeElement.nodeName === 'INPUT'
-              || document.activeElement.nodeName === 'TEXTAREA'
-              || document.activeElement.isContentEditable) {
+          if (event.target.nodeName === 'INPUT'
+              || event.target.nodeName === 'TEXTAREA'
+              || event.target.isContentEditable) {
             return false;
           }
 
