@@ -268,6 +268,8 @@
           // insert before parent to bypass overlay
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
+        case (location.hostname == 'tv.apple.com'):
+          this.parent.getRootNode().host.prepend(fragment);
 
         default:
           // Note: when triggered via a MutationRecord, it's possible that the
@@ -551,6 +553,7 @@
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'blink') {
+          console.log(controller)
             // if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
             if(controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined){
               clearTimeout(controller.blinkTimeOut);
