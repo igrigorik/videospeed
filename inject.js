@@ -180,7 +180,9 @@
       var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')){
-            var controller = document.querySelector(`div[data-vscid="${this.id}"]`);
+            var controller = getShadow(document.body).filter(x => {
+              return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${id}`
+            })[0]
             if(!controller){
               return;
             }
@@ -269,7 +271,7 @@
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
         case (location.hostname == 'tv.apple.com'):
-          // insert after parent for correct stacking context 
+          // insert after parent for correct stacking context
           this.parent.getRootNode().host.prepend(fragment);
 
         default:
@@ -327,33 +329,23 @@
       return true;
     }
   }
-  function queryShadowVideo(element) {
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_ELEMENT,
-      { acceptNode: function(node) {
-        if (node.shadowRoot) {
-          return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_SKIP;
-      }}
-    );
-
-    let list = [];
-
-    if (element.shadowRoot) {
-      list = list.concat(queryShadowVideo(element.shadowRoot))
-    }
-
-    while (walker.nextNode()) {
-      let video = walker.currentNode.shadowRoot.querySelector('video')
-      if (video) {
-        list.push(video);
-      }
-      list = list.concat(queryShadowVideo(walker.currentNode.shadowRoot))
-    }
-
-    return list;
+  function getShadow(parent) {
+  	let result = []
+  	function getChild(parent) {
+  		if (parent.firstElementChild) {
+  			var child = parent.firstElementChild
+        do {
+          result = result.concat(child)
+  				getChild(child)
+  				if (child.shadowRoot) {
+  					result = result.concat(getShadow(child.shadowRoot))
+  				}
+          child = child.nextElementSibling
+        } while (child)
+  		}
+  	}
+  	getChild(parent)
+  	return result
   }
 
   function initializeNow(document) {
@@ -403,11 +395,7 @@
           }
 
           // Ignore keydown event if typing in a page without vsc
-          if (document.querySelector('apple-tv-plus-player')) {
-            if (queryShadowVideo(document.querySelector('apple-tv-plus-player')).length == 0) {
-              return false;
-            }
-          } else if (!document.querySelector(".vsc-controller")) {
+          if (!getShadow(document.body).filter(x => x.tagName == 'vsc-controller')) {
             return false;
           }
 
@@ -466,11 +454,10 @@
                 break;
               case 'attributes':
                 if (mutation.attributeName == 'aria-hidden' && (mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
-                  var node = queryShadowVideo(document.querySelector('apple-tv-plus-player'))[0]
-                  if (!node.previousElementSibling) {
+                  var flattenedNodes = getShadow(document.body)
+                  var node = flattenedNodes.filter(x => x.tagName == 'VIDEO')[0]
+                  if (!flattenedNodes.filter(x => x.className == 'vsc-controller')[0]) {
                     checkForVideo(node, node.parentNode || mutation.target, true);
-                  } else {
-                    checkForVideo(node, node.parentNode || mutation.target, false);
                   }
                 }
                 break;
@@ -504,12 +491,12 @@
   }
 
   function runAction(action, document, value, e) {
-    if (document.querySelector('apple-tv-plus-player')) {
-      var mediaTags = queryShadowVideo(document.querySelector('apple-tv-plus-player'))
-    } else if (tc.settings.audioBoolean) {
-      var mediaTags = document.querySelectorAll('video,audio');
+    if (tc.settings.audioBoolean) {
+      var mediaTags = getShadow(document.body).filter(x => {
+        return x.tagName == 'AUDIO' || x.tagName == 'VIDEO'
+      });
     } else {
-      var mediaTags = document.querySelectorAll('video');
+      var mediaTags = getShadow(document.body).filter(x => x.tagName == 'VIDEO');;
     }
 
     mediaTags.forEach = Array.prototype.forEach;
@@ -521,8 +508,9 @@
 
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
-      var controller = document.querySelector(`div[data-vscid="${id}"]`);
-
+      var controller = getShadow(document.body).filter(x => {
+        return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${id}`
+      })[0]
       // Don't change video speed if the video has a different controller
       if (e && !(targetController == controller)) {
         return;
@@ -554,7 +542,6 @@
           controller.classList.add('vsc-manual');
           controller.classList.toggle('vsc-hidden');
         } else if (action === 'blink') {
-          console.log(controller)
             // if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
             if(controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined){
               clearTimeout(controller.blinkTimeOut);
