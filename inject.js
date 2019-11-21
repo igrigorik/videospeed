@@ -330,22 +330,22 @@
     }
   }
   function getShadow(parent) {
-  	let result = []
-  	function getChild(parent) {
-  		if (parent.firstElementChild) {
-  			var child = parent.firstElementChild
+    let result = []
+    function getChild(parent) {
+      if (parent.firstElementChild) {
+        var child = parent.firstElementChild
         do {
           result = result.concat(child)
-  				getChild(child)
-  				if (child.shadowRoot) {
-  					result = result.concat(getShadow(child.shadowRoot))
-  				}
+          getChild(child)
+          if (child.shadowRoot) {
+            result = result.concat(getShadow(child.shadowRoot))
+          }
           child = child.nextElementSibling
         } while (child)
-  		}
-  	}
-  	getChild(parent)
-  	return result
+      }
+    }
+    getChild(parent)
+    return result
   }
 
   function initializeNow(document) {
