@@ -489,7 +489,6 @@
         try { var childDocument = frame.contentDocument } catch (e) { return }
         initializeWhenReady(childDocument);
       });
-
   }
 
   function runAction(action, document, value, e) {
