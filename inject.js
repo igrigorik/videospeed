@@ -179,7 +179,6 @@
 
       var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-          console.log(mutation)
           if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')){
             var controller = getShadow(document.body).filter(x => {
               return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${this.id}`
