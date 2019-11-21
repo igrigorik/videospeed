@@ -269,6 +269,7 @@
           this.parent.parentElement.insertBefore(fragment, this.parent);
           break;
         case (location.hostname == 'tv.apple.com'):
+          // insert after parent for correct stacking context 
           this.parent.getRootNode().host.prepend(fragment);
 
         default:
