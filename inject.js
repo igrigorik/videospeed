@@ -179,9 +179,10 @@
 
       var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
+          console.log(mutation)
           if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')){
             var controller = getShadow(document.body).filter(x => {
-              return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${id}`
+              return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${this.id}`
             })[0]
             if(!controller){
               return;
@@ -453,12 +454,14 @@
                 });
                 break;
               case 'attributes':
-                if (mutation.attributeName == 'aria-hidden' && (mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
+                if ((mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
                   var flattenedNodes = getShadow(document.body)
                   var node = flattenedNodes.filter(x => x.tagName == 'VIDEO')[0]
-                  if (!flattenedNodes.filter(x => x.className == 'vsc-controller')[0]) {
-                    checkForVideo(node, node.parentNode || mutation.target, true);
+                  var oldController = flattenedNodes.filter(x => x.className == 'vsc-controller')[0]
+                  if (oldController) {
+                    oldController.remove()
                   }
+                  checkForVideo(node, node.parentNode || mutation.target, true);
                 }
                 break;
             };
@@ -496,7 +499,7 @@
         return x.tagName == 'AUDIO' || x.tagName == 'VIDEO'
       });
     } else {
-      var mediaTags = getShadow(document.body).filter(x => x.tagName == 'VIDEO');;
+      var mediaTags = getShadow(document.body).filter(x => x.tagName == 'VIDEO');
     }
 
     mediaTags.forEach = Array.prototype.forEach;
