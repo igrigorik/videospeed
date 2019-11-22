@@ -272,7 +272,7 @@
           break;
         case (location.hostname == 'tv.apple.com'):
           // insert after parent for correct stacking context
-          this.parent.getRootNode().host.prepend(fragment);
+          this.parent.getRootNode().querySelector('.scrim').prepend(fragment);
 
         default:
           // Note: when triggered via a MutationRecord, it's possible that the
@@ -456,7 +456,7 @@
                 if ((mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
                   var flattenedNodes = getShadow(document.body)
                   var node = flattenedNodes.filter(x => x.tagName == 'VIDEO')[0]
-                  var oldController = flattenedNodes.filter(x => x.className == 'vsc-controller')[0]
+                  var oldController = flattenedNodes.filter(x => x.classList.contains('vsc-controller'))[0]
                   if (oldController) {
                     oldController.remove()
                   }
