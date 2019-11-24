@@ -163,6 +163,7 @@
       target.addEventListener('ratechange', this.handleRatechange = function(event) {
         // Ignore ratechange events on uninitialized videos.
         // 0 == No information is available about the media resource.
+        // event.getRules( function (rules) { console.log(JSON.stringify(rules)); });
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
