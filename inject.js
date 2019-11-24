@@ -292,7 +292,12 @@
         return;
       }
 
-      var regexp = new RegExp(escapeStringRegExp(match));
+      if (match.startsWith('/')) {
+        var regexp = new RegExp(match);
+      } else {
+        var regexp = new RegExp(escapeStringRegExp(match));
+      }
+
       if (regexp.test(location.href)) {
         blacklisted = true;
         return;
