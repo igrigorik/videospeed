@@ -293,7 +293,11 @@
       }
 
       if (match.startsWith('/')) {
-        var regexp = new RegExp(match);
+        try {
+          var regexp = new RegExp(match);
+        } catch(err) {
+          return;
+        }
       } else {
         var regexp = new RegExp(escapeStringRegExp(match));
       }
