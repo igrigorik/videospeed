@@ -275,7 +275,7 @@
           // the first element of the target, which may not be the parent.
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
-	  return wrapper;
+      return wrapper;
     }
   }
 
