@@ -18,7 +18,11 @@
         vine.co
         imgur.com
         teams.microsoft.com
+      `.replace(regStrip,''),
+      ratechange: `
+        pluralsight.com
       `.replace(regStrip,'')
+
     }
   };
 
@@ -80,7 +84,8 @@
         startHidden: tc.settings.startHidden,
         enabled: tc.settings.enabled,
         controllerOpacity: tc.settings.controllerOpacity,
-        blacklist: tc.settings.blacklist.replace(regStrip, '')
+        blacklist: tc.settings.blacklist.replace(regStrip, ''),
+        ratechange: tc.settings.ratechange.replace(regStrip,'')
       });
     }
     tc.settings.lastSpeed = Number(storage.lastSpeed);
@@ -91,6 +96,7 @@
     tc.settings.startHidden = Boolean(storage.startHidden);
     tc.settings.controllerOpacity = Number(storage.controllerOpacity);
     tc.settings.blacklist = String(storage.blacklist);
+    tc.settings.ratechange = String(storage.ratechange);
 
     // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
     if (tc.settings.keyBindings.filter(x => x.action == "display").length == 0) {
@@ -286,6 +292,9 @@
       return str.replace(escapeStringRegExp.matchOperatorsRe, '\\$&');
     }
 
+    console.log('Blacklist: ' + tc.settings.blacklist)
+    console.log('Rate Change Blocks: ' + tc.settings.ratechange)
+
     var blacklisted = false;
     tc.settings.blacklist.split("\n").forEach(match => {
       match = match.replace(regStrip,'')
@@ -300,9 +309,28 @@
       }
     })
 
-    if (blacklisted)
+    if (blacklisted) {
       return;
+    }
+    var blockRateChange = false;
+    tc.settings.ratechange.split("\n").forEach(match => {
+      match = match.replace(regStrip,'')
+      if (match.length == 0) {
+        return;
+      }
+      var regexp = new RegExp(escapeStringRegExp(match));
+      if (regexp.test(location.href)) {
+        blockRateChange = true;
+        return;
+      }
+    })
 
+    if (blockRateChange === true) {
+      document.body.addEventListener("ratechange", function (event) {
+        event.stopImmediatePropagation();
+      }, true);  
+    }
+    
     window.onload = () => {
       initializeNow(window.document)
     };
@@ -347,6 +375,7 @@
         if (inIframe())
           docs.push(window.top.document);
       } catch (e) {
+        // no operation
       }
 
       docs.forEach(function(doc) {

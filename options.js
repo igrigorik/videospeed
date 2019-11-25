@@ -23,6 +23,9 @@ var tcDefaults = {
     vine.co
     imgur.com
     teams.microsoft.com
+  `.replace(regStrip, ''),
+  ratechange: `
+    pluralsight.com
   `.replace(regStrip, '')
 };
 
@@ -174,6 +177,7 @@ function save_options() {
   var startHidden = document.getElementById('startHidden').checked;
   var controllerOpacity = document.getElementById('controllerOpacity').value;
   var blacklist     = document.getElementById('blacklist').value;
+  var ratechange = document.getElementById('ratechange').value;
 
   chrome.storage.sync.remove(["resetSpeed", "speedStep", "fastSpeed", "rewindTime", "advanceTime", "resetKeyCode", "slowerKeyCode", "fasterKeyCode", "rewindKeyCode", "advanceKeyCode", "fastKeyCode"]);
   chrome.storage.sync.set({
@@ -183,7 +187,8 @@ function save_options() {
     startHidden:    startHidden,
     controllerOpacity:    controllerOpacity,
     keyBindings:    keyBindings,
-    blacklist:      blacklist.replace(regStrip,'')
+    blacklist:      blacklist.replace(regStrip,''),
+    ratechange: ratechange.replace(regStrip,'')
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -203,6 +208,7 @@ function restore_options() {
     document.getElementById('startHidden').checked = storage.startHidden;
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('blacklist').value = storage.blacklist;
+    document.getElementById('ratechange').value = storage.ratechange;
 
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
     if(storage.keyBindings.filter(x => x.action == "display").length == 0){
