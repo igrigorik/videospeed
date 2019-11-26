@@ -109,16 +109,27 @@
         <input id="controllerOpacity" type="text" value="">
       </div>
       <div class="row">
-        <label for="blacklist">Blacklisted sites on which extension is disabled<br/>(one per line)</label>
+        <label for="blacklist">Blacklisted sites on which extension is disabled<br/>
+            (one per line)<br/>
+            <br/>
+            <em>
+                <a href="https://www.regexpal.com/">Regex</a> is supported. 
+                Be sure it is in "//g" format.<br/>
+                ie: /(.+)youtube\.com(\/*)$/gi
+            </em>
+        </label>
         <textarea id="blacklist" rows="10" cols="50"></textarea>
       </div>
       <div class="row">
-        <label for="ratechange">Sites to forcefully stop ratechange listeners<br/>
+        <label for="blacklistrc">Sites to forcefully stop ratechange listeners<br/>
             (add here if video speed can't be adjusted)<br/>
             <br/>
-            <em>Important: This also prevents the speed from showing correctly in the controller</em>
+            <em>
+                Important: Use sparingly as this may cause unexpected website 
+                or controller behavior
+            </em>
         </label>
-        <textarea id="ratechange" rows="10" cols="50"></textarea>
+        <textarea id="blacklistrc" rows="10" cols="50"></textarea>
       </div>
     </section>
 

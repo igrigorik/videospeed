@@ -17,14 +17,14 @@ var tcDefaults = {
     {action: "reset", key: 82, value: 1, force: false, predefined: true}, // R
     {action: "fast", key: 71, value: 1.8, force: false, predefined: true} // G
   ],
-  blacklist: `
+  blacklist:` \
     www.instagram.com
     twitter.com
     vine.co
     imgur.com
     teams.microsoft.com
   `.replace(regStrip, ''),
-  ratechange: `
+  blacklistrc: ` \
     pluralsight.com
   `.replace(regStrip, '')
 };
@@ -166,29 +166,65 @@ function createKeyBindings(item) {
   keyBindings.push({action: action, key: key, value: value, force: force, predefined: predefined});
 }
 
+// Validates settings before saving
+function validate() {
+  var valid = true;
+  var status = document.getElementById('status');
+  document.getElementById('blacklist').value.split("\n").forEach(match => {
+    match = match.replace(regStrip,'')
+    if (match.startsWith('/')) {
+      try {
+        var regexp = new RegExp(match);
+      } catch(err) {
+        status.textContent = 'Error: Invalid blacklist regex: ' + match
+                           + '. Unable to save';
+        valid = false;
+        return;
+      }
+    }
+  })
+  document.getElementById('blacklistrc').value.split("\n").forEach(match => {
+    match = match.replace(regStrip,'')
+    if (match.startsWith('/')) {
+      try {
+        var regexp = new RegExp(match);
+      } catch(err) {
+        status.textContent = 'Error: Invalid ratechange blacklist regex: ' + match
+                           + '. Unable to save';
+        valid = false;
+        return;
+      }
+    }
+  })
+  return valid;
+}
+
 // Saves options to chrome.storage
 function save_options() {
+  if (validate() === false) {
+    return;
+  }
   keyBindings = [];
   Array.from(document.querySelectorAll(".customs")).forEach(item => createKeyBindings(item)); // Remove added shortcuts
 
-  var rememberSpeed = document.getElementById('rememberSpeed').checked;
-  var audioBoolean = document.getElementById('audioBoolean').checked;
-  var enabled = document.getElementById('enabled').checked;
-  var startHidden = document.getElementById('startHidden').checked;
+  var rememberSpeed     = document.getElementById('rememberSpeed').checked;
+  var audioBoolean      = document.getElementById('audioBoolean').checked;
+  var enabled           = document.getElementById('enabled').checked;
+  var startHidden       = document.getElementById('startHidden').checked;
   var controllerOpacity = document.getElementById('controllerOpacity').value;
-  var blacklist     = document.getElementById('blacklist').value;
-  var ratechange = document.getElementById('ratechange').value;
+  var blacklist         = document.getElementById('blacklist').value;
+  var blacklistrc       = document.getElementById('blacklistrc').value;
 
   chrome.storage.sync.remove(["resetSpeed", "speedStep", "fastSpeed", "rewindTime", "advanceTime", "resetKeyCode", "slowerKeyCode", "fasterKeyCode", "rewindKeyCode", "advanceKeyCode", "fastKeyCode"]);
   chrome.storage.sync.set({
-    rememberSpeed:  rememberSpeed,
-    audioBoolean:  audioBoolean,
-    enabled:  enabled,
-    startHidden:    startHidden,
-    controllerOpacity:    controllerOpacity,
-    keyBindings:    keyBindings,
-    blacklist:      blacklist.replace(regStrip,''),
-    ratechange: ratechange.replace(regStrip,'')
+    rememberSpeed:      rememberSpeed,
+    audioBoolean:       audioBoolean,
+    enabled:            enabled,
+    startHidden:        startHidden,
+    controllerOpacity:  controllerOpacity,
+    keyBindings:        keyBindings,
+    blacklist:          blacklist.replace(regStrip,''),
+    blacklistrc:        blacklistrc.replace(regStrip,'')
   }, function() {
     // Update status to let user know options were saved.
     var status = document.getElementById('status');
@@ -202,13 +238,13 @@ function save_options() {
 // Restores options from chrome.storage
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function(storage) {
-    document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
-    document.getElementById('audioBoolean').checked = storage.audioBoolean;
-    document.getElementById('enabled').checked = storage.enabled;
-    document.getElementById('startHidden').checked = storage.startHidden;
-    document.getElementById('controllerOpacity').value = storage.controllerOpacity;
-    document.getElementById('blacklist').value = storage.blacklist;
-    document.getElementById('ratechange').value = storage.ratechange;
+    document.getElementById('rememberSpeed').checked    = storage.rememberSpeed;
+    document.getElementById('audioBoolean').checked     = storage.audioBoolean;
+    document.getElementById('enabled').checked          = storage.enabled;
+    document.getElementById('startHidden').checked      = storage.startHidden;
+    document.getElementById('controllerOpacity').value  = storage.controllerOpacity;
+    document.getElementById('blacklist').value          = storage.blacklist;
+    document.getElementById('blacklistrc').value        = storage.blacklistrc;
 
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
     if(storage.keyBindings.filter(x => x.action == "display").length == 0){
