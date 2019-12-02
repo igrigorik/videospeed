@@ -280,7 +280,7 @@
           // the first element of the target, which may not be the parent.
           this.parent.insertBefore(fragment, this.parent.firstChild);
       }
-	  return wrapper;
+      return wrapper;
     }
   }
 
@@ -297,7 +297,16 @@
         return;
       }
 
-      var regexp = new RegExp(escapeStringRegExp(match));
+      if (match.startsWith('/')) {
+        try {
+          var regexp = new RegExp(match);
+        } catch(err) {
+          return;
+        }
+      } else {
+        var regexp = new RegExp(escapeStringRegExp(match));
+      }
+
       if (regexp.test(location.href)) {
         blacklisted = true;
         return;

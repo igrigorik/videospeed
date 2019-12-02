@@ -163,8 +163,31 @@ function createKeyBindings(item) {
   keyBindings.push({action: action, key: key, value: value, force: force, predefined: predefined});
 }
 
+// Validates settings before saving
+function validate() {
+  var valid = true;
+  var status = document.getElementById('status');
+  document.getElementById('blacklist').value.split("\n").forEach(match => {
+    match = match.replace(regStrip,'')
+    if (match.startsWith('/')) {
+      try {
+        var regexp = new RegExp(match);
+      } catch(err) {
+        status.textContent = 'Error: Invalid Regex: ' + match
+                           + '. Unable to save';
+        valid = false;
+        return;
+      }
+    }
+  })
+  return valid;
+}
+
 // Saves options to chrome.storage
 function save_options() {
+  if (validate() === false) {
+    return;
+  }
   keyBindings = [];
   Array.from(document.querySelectorAll(".customs")).forEach(item => createKeyBindings(item)); // Remove added shortcuts
 
