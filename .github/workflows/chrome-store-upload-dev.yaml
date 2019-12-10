@@ -1,0 +1,31 @@
+name: Upload Dev To Store
+
+on: 
+  push:
+    branches:
+      - master
+      
+jobs:
+  build:
+    name: Upload-dev
+    # This job runs on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v1
+        
+      - name: zip
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip -r ./vscd.zip ./
+        
+      - name: Upload to 
+        uses: trmcnvn/chrome-addon@v1
+        with:
+          # extension is only necessary when updating an existing addon,
+          # omitting it will create a new addon
+          extension: video-speed-controller-dev
+          zip: vscd.zip
+          client-id: ${{ secrets.CHROME_CLIENT_ID_DEV }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET_DEV }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN_DEV }}
