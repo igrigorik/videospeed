@@ -69,6 +69,14 @@
         force: false,
         predefined: true
       }); // default: G
+      tc.settings.keyBindings.push({
+        action: "reposition",
+        key: Number(storage.repositionKeyCode) || 72,
+        value: 0,
+        force: false,
+        predefined: true
+      }); // default: H
+
       tc.settings.version = "0.5.3";
 
       chrome.storage.sync.set({
@@ -444,7 +452,7 @@
       } else {
         var mediaTags = document.querySelectorAll('video');
       }
-	  
+
       forEach.call(mediaTags, function(video) {
         video.vsc = new tc.videoController(video);
       });
@@ -469,13 +477,13 @@
     // Get the controller that was used if called from a button press event e
     if (e) {
       var targetController = e.target.getRootNode().host;
-    } 
+    }
 
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
       var controller = document.querySelector(`div[data-vscid="${id}"]`);
 
-      // Don't change video speed if the video has a different controller	
+      // Don't change video speed if the video has a different controller
       if (e && !(targetController == controller)) {
         return;
       }
@@ -527,6 +535,8 @@
           setMark(v);
         } else if (action === 'jump') {
           jumpToMark(v);
+        } else if (action === 'reposition') {
+          handleReposition(v, controller);
         }
       }
     });
@@ -564,13 +574,13 @@
   function setMark(v) {
     v.vsc.mark = v.currentTime;
   }
-  
+
   function jumpToMark(v) {
     if (v.vsc.mark && typeof v.vsc.mark === "number") {
       v.currentTime = v.vsc.mark;
     }
   }
-  
+
   function handleDrag(video, controller, e) {
     const shadowController = controller.shadowRoot.querySelector('#controller');
 
@@ -611,6 +621,21 @@
     parentElement.addEventListener('mouseup',stopDragging);
     parentElement.addEventListener('mouseleave',stopDragging);
     parentElement.addEventListener('mousemove', startDragging);
+  }
+
+  function handleReposition(video, controller) { // 481_NEW: handling reposition
+    const shadowController = controller.shadowRoot.querySelector('#controller');
+    // Find nearest parent of same size as video parent.
+    var parentElement = controller.parentElement;
+    while (parentElement.parentNode &&
+      parentElement.parentNode.offsetHeight === parentElement.offsetHeight &&
+      parentElement.parentNode.offsetWidth === parentElement.offsetWidth) {
+      parentElement = parentElement.parentNode;
+    }
+
+    let style = shadowController.style;
+    style.left = Math.max(video.offsetLeft, 0) + "px";
+    style.top  = Math.max(video.offsetTop, 0) + "px";
   }
 
   var timer;
