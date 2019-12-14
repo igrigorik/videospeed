@@ -3,7 +3,7 @@ name: Upload To Chrome Web Store
 on: 
   push:
     tags:
-      - v1*
+      - v**
 jobs:
   build:
     name: Upload
