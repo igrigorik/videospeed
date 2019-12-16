@@ -15,7 +15,7 @@ jobs:
       - name: zip
         uses: montudor/action-zip@v0.1.0
         with:
-          args: zip -r ./vscd.zip ./
+          args: zip -r ./vscd.zip *
         
       - name: Upload to 
         uses: trmcnvn/chrome-addon@v1
