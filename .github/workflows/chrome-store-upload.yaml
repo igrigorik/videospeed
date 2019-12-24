@@ -15,14 +15,14 @@ jobs:
       - name: zip
         uses: montudor/action-zip@v0.1.0
         with:
-          args: zip -r ./vscd.zip . -i *
+          args: zip -r ./vscd.zip . -i * -x *.git*
         
       - name: Upload to 
         uses: trmcnvn/chrome-addon@v1
         with:
           # extension is only necessary when updating an existing addon,
           # omitting it will create a new addon
-          extension: video-speed-controller
+          extension: "nffaoalbilbmmfgbnbgppjihopabppdk"
           zip: vscd.zip
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
