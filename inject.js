@@ -184,7 +184,7 @@
             if(!controller){
               return;
             }
-            if (!mutation.target.currentSrc) {
+            if (!mutation.target.src && !mutation.target.currentSrc) {
               controller.classList.add('vsc-nosource');
             } else {
               controller.classList.remove('vsc-nosource');
