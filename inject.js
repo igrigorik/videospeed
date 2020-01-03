@@ -180,9 +180,7 @@
       var observer=new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')){
-            var controller = getShadow(document.body).filter(x => {
-              return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${this.id}`
-            })[0]
+            var controller = getController(this.id)
             if(!controller){
               return;
             }
@@ -356,6 +354,13 @@
     getChild(parent)
     return result
   }
+  function getController(id){
+    return getShadow(document.body).filter(x => {
+      return x.attributes['data-vscid'] &&
+      x.tagName == 'DIV' &&
+      x.attributes['data-vscid'].value==`${id}`
+    })[0]
+  }
 
   function initializeNow(document) {
       if (!tc.settings.enabled) return;
@@ -518,9 +523,7 @@
 
     mediaTags.forEach(function(v) {
       var id = v.dataset['vscid'];
-      var controller = getShadow(document.body).filter(x => {
-        return x.attributes['data-vscid'] && x.tagName == 'DIV' && x.attributes['data-vscid'].value==`${id}`
-      })[0]
+      var controller = getController(id)
       // Don't change video speed if the video has a different controller
       if (e && !(targetController == controller)) {
         return;
