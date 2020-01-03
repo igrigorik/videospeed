@@ -467,14 +467,16 @@
                 });
                 break;
               case 'attributes':
-                if ((mutation.target.tagName == 'APPLE-TV-PLUS-PLAYER') && (mutation.target.attributes['aria-hidden'].value == "false")) {
+                if (mutation.target.attributes['aria-hidden'].value == "false") {
                   var flattenedNodes = getShadow(document.body)
                   var node = flattenedNodes.filter(x => x.tagName == 'VIDEO')[0]
-                  var oldController = flattenedNodes.filter(x => x.classList.contains('vsc-controller'))[0]
-                  if (oldController) {
-                    oldController.remove()
+                  if (node) {
+                    var oldController = flattenedNodes.filter(x => x.classList.contains('vsc-controller'))[0]
+                    if (oldController) {
+                      oldController.remove()
+                    }
+                    checkForVideo(node, node.parentNode || mutation.target, true);
                   }
-                  checkForVideo(node, node.parentNode || mutation.target, true);
                 }
                 break;
             };
