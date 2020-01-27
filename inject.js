@@ -11,6 +11,7 @@
       audioBoolean: false,  // default: false
       startHidden: false,   // default: false
       controllerOpacity: 0.3, // default: 0.3
+      adaptiveSpeed: false,   // default: false
       keyBindings: [],
       blacklist: `
         www.instagram.com
@@ -69,6 +70,14 @@
         force: false,
         predefined: true
       }); // default: G
+      tc.settings.keyBindings.push({
+        action: "adaptive",
+        key: 65,
+        value: 0,
+        force: false,
+        predefined: true
+      }); // default: A
+
       tc.settings.version = "0.5.3";
 
       chrome.storage.sync.set({
@@ -163,17 +172,20 @@
       target.addEventListener('ratechange', this.handleRatechange = function(event) {
         // Ignore ratechange events on unitialized videos.
         // 0 == No information is available about the media resource.
+        // when adaptiveSpeed is activated, there are too many changes.
         if (event.target.readyState > 0) {
           var speed = this.getSpeed();
           this.speedIndicator.textContent = speed;
-          tc.settings.speeds[this.video.currentSrc] = speed;
-          tc.settings.lastSpeed = speed;
-          this.speed = speed;
-          chrome.storage.sync.set({'lastSpeed': speed}, function() {
-            console.log('Speed setting saved: ' + speed);
-          });
-          // show the controller for 1000ms if it's hidden.
-          runAction('blink', document, null, null);
+          if(!tc.settings.adaptiveSpeed) {
+            tc.settings.speeds[this.video.currentSrc] = speed;
+            tc.settings.lastSpeed = speed;
+            this.speed = speed;
+            chrome.storage.sync.set({'lastSpeed': speed}, function() {
+              console.log('Speed setting saved: ' + speed);
+            });
+            // show the controller for 1000ms if it's hidden.
+            runAction('blink', document, null, null);
+          }
         }
       }.bind(this));
 
@@ -241,6 +253,7 @@
             <button data-action="faster">+</button>
             <button data-action="advance" class="rw">»</button>
             <button data-action="display" class="hideButton">x</button>
+            <button data-action="adaptive" class="hideButton">A</button>
           </span>
         </div>
       `;
@@ -527,9 +540,56 @@
           setMark(v);
         } else if (action === 'jump') {
           jumpToMark(v);
+        } else if (action === 'adaptive') {
+          toggleAdoptiveSpeed(v, controller);
         }
       }
     });
+  }
+
+  function toggleAdoptiveSpeed(v, controller) {
+    tc.settings.adaptiveSpeed = !tc.settings.adaptiveSpeed;
+    const shadowController = controller.shadowRoot.querySelector('#controller');
+    var button = shadowController.querySelector(`button[data-action="adaptive"]`)
+    button.setAttribute('class', tc.settings.adaptiveSpeed? '' : 'hideButton');
+
+    if(tc.settings.adaptiveSpeed){
+
+      if (!tc.adaptiveSpeedCtx){
+        tc.adaptiveSpeedCtx = new AudioContext();
+        tc.adaptiveSpeedSrc = tc.adaptiveSpeedCtx.createMediaElementSource(v);
+        tc.adaptiveSpeedAnalyserNode = tc.adaptiveSpeedCtx.createAnalyser();
+        tc.adaptiveSpeedSrc.connect(tc.adaptiveSpeedAnalyserNode);
+        tc.adaptiveSpeedAnalyserNode.connect(tc.adaptiveSpeedCtx.destination);
+        tc.adaptiveSpeedAnalyserNode.fftSize = 512;
+      }
+      const myDataArray = new Float32Array(tc.adaptiveSpeedAnalyserNode.frequencyBinCount);
+    
+      function audioSample(){
+        if(!v.paused){ 
+          tc.adaptiveSpeedAnalyserNode.getFloatFrequencyData(myDataArray);
+          var dbValue = Math.max(...myDataArray) + 100;
+          var quietZone = 45;
+          var eps = 4;
+          if(dbValue < (quietZone - eps) ){
+            if(v.playbackRate === getKeyBindings("reset")){
+              v.playbackRate = getKeyBindings("reset") * 2;
+            }
+          } else if(dbValue > (quietZone + eps) ){
+            if(v.playbackRate !== getKeyBindings("reset")){
+              v.playbackRate = getKeyBindings("reset");
+            }          
+          }
+        }
+        if(tc.settings.adaptiveSpeed){
+          setTimeout(audioSample, 0);
+        } else {
+          v.playbackRate = getKeyBindings("reset");
+        }
+      }
+
+     audioSample();
+    }
   }
 
   function pause(v) {
