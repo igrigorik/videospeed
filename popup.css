@@ -1,5 +1,5 @@
 body {
-  min-width: 8em
+  min-width: 8em;
 }
 
 hr {
@@ -12,13 +12,14 @@ hr {
 
 button {
   width: 100%;
-  background-image: linear-gradient(#EDEDED, #EDEDED 38%, #DEDEDE);
-  border: 1px solid rgba(0,0,0,0.25);
+  background-image: linear-gradient(#ededed, #ededed 38%, #dedede);
+  border: 1px solid rgba(0, 0, 0, 0.25);
   border-radius: 2px;
   outline: none;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,0.75);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.75);
   color: #444;
-  text-shadow: 0 1px 0 rgb(240,240,240);
+  text-shadow: 0 1px 0 rgb(240, 240, 240);
   font: inherit;
   user-select: none;
 }
