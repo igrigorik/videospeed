@@ -17,7 +17,7 @@ var tcDefaults = {
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
     { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
   ],
-  blacklist: `
+  blacklist: `\
     www.instagram.com
     twitter.com
     vine.co

@@ -12,7 +12,7 @@ var tc = {
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
     keyBindings: [],
-    blacklist: `
+    blacklist: `\
       www.instagram.com
       twitter.com
       vine.co
