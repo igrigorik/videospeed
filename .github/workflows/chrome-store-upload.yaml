@@ -1,6 +1,6 @@
 name: Upload To Chrome Web Store
 # This workflow is triggered on pushes to the repository.
-on: 
+on:
   push:
     tags:
       - v**
@@ -11,13 +11,13 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v1
-        
+
       - name: zip
         uses: montudor/action-zip@v0.1.0
         with:
           args: zip -r ./vscd.zip . -i * -x *.git*
-        
-      - name: Upload to 
+
+      - name: Upload to
         uses: trmcnvn/chrome-addon@v1
         with:
           # extension is only necessary when updating an existing addon,
