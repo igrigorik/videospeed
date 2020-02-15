@@ -17,7 +17,7 @@ var tcDefaults = {
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
     { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
   ],
-  blacklist: `
+  blacklist: `\
     www.instagram.com
     twitter.com
     vine.co
@@ -143,9 +143,9 @@ function add_shortcut() {
     <option value="mark">Set marker</option>
     <option value="jump">Jump to marker</option>
     <option value="display">Show/hide controller</option>
-    </select> 
-    <input class="customKey" type="text" placeholder="press a key"/> 
-    <input class="customValue" type="text" placeholder="value (0.10)"/> 
+    </select>
+    <input class="customKey" type="text" placeholder="press a key"/>
+    <input class="customValue" type="text" placeholder="value (0.10)"/>
     <select class="customForce">
     <option value="false">Do not disable website key bindings</option>
     <option value="true">Disable websites key bindings</option>

@@ -79,7 +79,7 @@ pre-commit checks before committing via `pre-commit run --all-files`
 You should always be working with the latest version of the tool to make pull
 requests easy. If you want to do this easily, just add a second remote to your
 local git repo like this
-`git push --set-upstream origin feature/578-prettier.io-formatting`
+`git remote add upstream https://github.com/igrigorik/videospeed.git`
 
 Now any time you like to pull the latest version in to your local branch you can
 simply issue the command `git pull upstream master`
