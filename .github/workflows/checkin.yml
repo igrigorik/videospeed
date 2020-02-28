@@ -1,0 +1,14 @@
+name: "Pull Request Checks"
+on: [pull_request, push]
+
+jobs:
+  check_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install packages from lockfile
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test

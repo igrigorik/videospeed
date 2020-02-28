@@ -1,0 +1,68 @@
+@wip
+Feature: Speed Adjustment
+
+Scenario Outline: Speed Adjustments
+  Given a user's playback rate is currently set to <current_speed>
+    And a user has speed adjustments configured as <percentage>%
+    And the browser's maximum playback rate is 16x
+    And the browser's minimum playback rate is 0.0625x
+   When the user <increases_or_decreases> their speed
+   Then the new speed will be <new_speed>
+
+Examples: 50% Increasing
+|current_speed|percentage|increases_or_decreases|new_speed|
+|     1.0     |    50    |       increases      |   1.5   |
+|     2.0     |    50    |       increases      |   3.0   |
+|     3.0     |    50    |       increases      |   4.5   |
+|     4.5     |    50    |       increases      |   6.75  |
+|     6.75    |    50    |       increases      |  10.125 |
+|    10.125   |    50    |       increases      | 15.1875 |
+
+Examples: 50% Increase Max
+|current_speed|percentage|increases_or_decreases|new_speed|
+|   15.1875   |    50    |       increases      | 15.1875 |
+
+
+Examples: 50% Decreasing
+|current_speed|percentage|increases_or_decreases|new_speed|
+|     1.0     |    50    |       decreases      |   0.5   |
+|     0.5     |    50    |       decreases      |   0.25  |
+|     0.25    |    50    |       decreases      |  0.125  |
+|    0.125    |    50    |       decreases      |  0.0625 |
+
+Examples: 50% Decrease Min
+|current_speed|percentage|increases_or_decreases|new_speed|
+|    0.0625   |    50    |       decreases      |  0.0625 |
+
+Examples: 30% Increasing
+|current_speed|percentage|increases_or_decreases|  new_speed  |
+|     1.0     |    30    |       increases      |     1.3     |
+|     1.3     |    30    |       increases      |     1.69    |
+|     1.0     |    30    |       increases      |    2.197    |
+|     1.0     |    30    |       increases      |    2.8561   |
+|     1.0     |    30    |       increases      |   3.71293   |
+|   3.71293   |    30    |       increases      |   4.826809  |
+|   4.826809  |    30    |       increases      |  6.2748517  |
+|  6.2748517  |    30    |       increases      |  8.15730721 |
+|  8.15730721 |    30    |       increases      | 10.604499373|
+| 10.604499373|    30    |       increases      |13.7858491849|
+
+
+Examples: 30% Increase Max
+|current_speed|percentage|increases_or_decreases|  new_speed  |
+|13.7858491849|    30    |       increases      |13.7858491849|
+
+
+Examples: 30% Decreasing
+|current_speed|percentage|increases_or_decreases|new_speed|
+|     1.0     |    30    |       decreases      |   0.7   |
+|     0.7     |    30    |       decreases      |   0.49  |
+|     0.49    |    30    |       decreases      |  0.343  |
+|    0.343    |    30    |       decreases      |  0.2401 |
+|    0.2401   |    30    |       decreases      | 0.16807 |
+|   0.16807   |    30    |       decreases      | 0.117649|
+|   0.117649  |    30    |       decreases      |0.0823543|
+
+Examples: 30% Decrease Min
+|current_speed|percentage|increases_or_decreases|new_speed|
+|  0.0823543  |    30    |       decreases      |0.0823543|

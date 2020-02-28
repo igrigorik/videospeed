@@ -1,5 +1,10 @@
+
 .DS_Store
 local
 
-# IntelliJ IDEA
+# Node
+node_modules
+
+# IDE
 .idea/
+.vscode

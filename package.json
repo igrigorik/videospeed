@@ -1,0 +1,40 @@
+{
+  "name": "videospeed",
+  "version": "0.5.9",
+  "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
+  "main": "lib/main.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "pretty-quick && jest && cucumber-js",
+    "lint": "pretty-quick",
+    "cucumber": "cucumber-js",
+    "test-live": "jest --watchAll"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/igrigorik/videospeed.git"
+  },
+  "author": "Ilya Grigorik",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/igrigorik/videospeed/issues"
+  },
+  "homepage": "https://github.com/igrigorik/videospeed#readme",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "cucumber": "^6.0.5",
+    "husky": "^4.2.3",
+    "jest": "^25.1.0",
+    "mocha": "^7.1.0",
+    "prettier": "1.19.1",
+    "pretty-quick": "^2.0.1"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test",
+      "pre-push": "npm test"
+    }
+  }
+}

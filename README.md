@@ -86,3 +86,7 @@ to the extension.
 ### License
 
 (MIT License) - Copyright (c) 2014 Ilya Grigorik
+
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Figrigorik%2Fvideospeed%2Fbadge%3Fref%3Dmaster&style=flat)](https://actions-badge.atrox.dev/igrigorik/videospeed/goto?ref=master)
+![Upload To Chrome Web Store](https://github.com/igrigorik/videospeed/workflows/Upload%20To%20Chrome%20Web%20Store/badge.svg)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
