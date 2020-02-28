@@ -11,14 +11,14 @@
     "128": "icons/icon128.png"
   },
   "permissions": ["activeTab", "storage"],
-  "options_page": "src/options.html",
+  "options_page": "options.html",
   "browser_action": {
     "default_icon": {
       "19": "icons/icon19.png",
       "38": "icons/icon38.png",
       "48": "icons/icon48.png"
     },
-    "default_popup": "src/popup.html"
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {
@@ -32,9 +32,9 @@
         "https://teamtreehouse.com/*",
         "http://www.hitbox.tv/*"
       ],
-      "css": ["src/inject.css"],
-      "js": ["src/inject.js"]
+      "css": ["inject.css"],
+      "js": ["inject.js"]
     }
   ],
-  "web_accessible_resources": ["src/inject.css", "src/shadow.css"]
+  "web_accessible_resources": ["inject.css", "shadow.css"]
 }
