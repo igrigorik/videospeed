@@ -192,7 +192,9 @@ function defineVideoController() {
           (mutation.attributeName === "src" ||
             mutation.attributeName === "currentSrc")
         ) {
-          var controller = getController(this.id);
+          var controller = document.querySelector(
+            `div[data-vscid="${this.id}"]`
+          );
           if (!controller) {
             return;
           }
@@ -246,7 +248,6 @@ function defineVideoController() {
         <style>
           @import "${chrome.runtime.getURL("shadow.css")}";
         </style>
-
         <div id="controller" style="top:${top}; left:${left}; opacity:${
       tc.settings.controllerOpacity
     }">
@@ -289,12 +290,6 @@ function defineVideoController() {
         // insert before parent to bypass overlay
         this.parent.parentElement.insertBefore(fragment, this.parent);
         break;
-      case location.hostname == "tv.apple.com":
-        // insert after parent for correct stacking context
-        this.parent
-          .getRootNode()
-          .querySelector(".scrim")
-          .prepend(fragment);
 
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
@@ -359,34 +354,6 @@ function inIframe() {
     return true;
   }
 }
-function getShadow(parent) {
-  let result = [];
-  function getChild(parent) {
-    if (parent.firstElementChild) {
-      var child = parent.firstElementChild;
-      do {
-        result = result.concat(child);
-        getChild(child);
-        if (child.shadowRoot) {
-          result = result.concat(getShadow(child.shadowRoot));
-        }
-        child = child.nextElementSibling;
-      } while (child);
-    }
-  }
-  getChild(parent);
-  return result;
-}
-function getController(id) {
-  return getShadow(document.body).filter(x => {
-    return (
-      x.attributes["data-vscid"] &&
-      x.tagName == "DIV" &&
-      x.attributes["data-vscid"].value == `${id}`
-    );
-  })[0];
-}
-
 function initializeNow(document) {
   if (!tc.settings.enabled) return;
   // enforce init-once due to redundant callers
@@ -438,9 +405,7 @@ function initializeNow(document) {
         }
 
         // Ignore keydown event if typing in a page without vsc
-        if (
-          !getShadow(document.body).filter(x => x.tagName == "vsc-controller")
-        ) {
+        if (!document.querySelector(".vsc-controller")) {
           return false;
         }
 
@@ -490,43 +455,20 @@ function initializeNow(document) {
     requestIdleCallback(
       _ => {
         mutations.forEach(function(mutation) {
-          switch (mutation.type) {
-            case "childList":
-              forEach.call(mutation.addedNodes, function(node) {
-                if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, true);
-              });
-              forEach.call(mutation.removedNodes, function(node) {
-                if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, false);
-              });
-              break;
-            case "attributes":
-              if (mutation.target.attributes["aria-hidden"].value == "false") {
-                var flattenedNodes = getShadow(document.body);
-                var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
-                if (node) {
-                  var oldController = flattenedNodes.filter(x =>
-                    x.classList.contains("vsc-controller")
-                  )[0];
-                  if (oldController) {
-                    oldController.remove();
-                  }
-                  checkForVideo(node, node.parentNode || mutation.target, true);
-                }
-              }
-              break;
-          }
+          forEach.call(mutation.addedNodes, function(node) {
+            if (typeof node === "function") return;
+            checkForVideo(node, node.parentNode || mutation.target, true);
+          });
+          forEach.call(mutation.removedNodes, function(node) {
+            if (typeof node === "function") return;
+            checkForVideo(node, node.parentNode || mutation.target, false);
+          });
         });
       },
       { timeout: 1000 }
     );
   });
-  observer.observe(document, {
-    attributeFilter: ["aria-hidden"],
-    childList: true,
-    subtree: true
-  });
+  observer.observe(document, { childList: true, subtree: true });
 
   if (tc.settings.audioBoolean) {
     var mediaTags = document.querySelectorAll("video,audio");
@@ -552,11 +494,9 @@ function initializeNow(document) {
 
 function runAction(action, document, value, e) {
   if (tc.settings.audioBoolean) {
-    var mediaTags = getShadow(document.body).filter(x => {
-      return x.tagName == "AUDIO" || x.tagName == "VIDEO";
-    });
+    var mediaTags = document.querySelectorAll("video,audio");
   } else {
-    var mediaTags = getShadow(document.body).filter(x => x.tagName == "VIDEO");
+    var mediaTags = document.querySelectorAll("video");
   }
 
   mediaTags.forEach = Array.prototype.forEach;
@@ -568,7 +508,8 @@ function runAction(action, document, value, e) {
 
   mediaTags.forEach(function(v) {
     var id = v.dataset["vscid"];
-    var controller = getController(id);
+    var controller = document.querySelector(`div[data-vscid="${id}"]`);
+
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
       return;
