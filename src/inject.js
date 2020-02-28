@@ -246,7 +246,7 @@ function defineVideoController() {
     var shadow = wrapper.attachShadow({ mode: "open" });
     var shadowTemplate = `
       <style>
-        @import "${chrome.runtime.getURL("shadow.css")}";
+        @import "${chrome.runtime.getURL("src/shadow.css")}";
       </style>
 
       <div id="controller" style="top:${top}; left:${left}; opacity:${
@@ -367,7 +367,7 @@ function initializeNow(document) {
     defineVideoController();
   } else {
     var link = document.createElement("link");
-    link.href = chrome.runtime.getURL("inject.css");
+    link.href = chrome.runtime.getURL("src/inject.css");
     link.type = "text/css";
     link.rel = "stylesheet";
     document.head.appendChild(link);
