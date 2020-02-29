@@ -7,9 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "pretty-quick --staged --check && jest && cucumber-js",
-    "lint": "pretty-quick --check",
-    "fixup": "pretty-quick",
+    "test": "prettier -c **/*.{js,json,html,css,yml,yaml,md} && jest && cucumber-js",
+    "lint": "prettier -c **/*.{js,json,html,css,yml,yaml,md}",
+    "fixup": "prettier --write **/*.{js,json,html,css,yml,yaml,md}",
     "cucumber": "cucumber-js",
     "test-live": "jest --watchAll"
   },
@@ -29,8 +29,7 @@
     "husky": "^4.2.3",
     "jest": "^25.1.0",
     "mocha": "^7.1.0",
-    "prettier": "1.19.1",
-    "pretty-quick": "^2.0.1"
+    "prettier": "1.19.1"
   },
   "husky": {
     "hooks": {
