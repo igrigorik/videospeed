@@ -502,8 +502,10 @@ function initializeNow(document) {
               });
               break;
             case "attributes":
-              if (mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false") {
+              if (
+                mutation.target.attributes["aria-hidden"] &&
+                mutation.target.attributes["aria-hidden"].value == "false"
+              ) {
                 var flattenedNodes = getShadow(document.body);
                 var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
                 if (node) {

@@ -7,8 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "pretty-quick --staged && jest && cucumber-js",
-    "lint": "pretty-quick --staged",
+    "test": "pretty-quick --staged --check && jest && cucumber-js",
+    "lint": "pretty-quick --check",
+    "fixup": "pretty-quick",
     "cucumber": "cucumber-js",
     "test-live": "jest --watchAll"
   },
