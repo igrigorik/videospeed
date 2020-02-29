@@ -365,17 +365,17 @@ function getShadow(parent) {
     if (parent.firstElementChild) {
       var child = parent.firstElementChild;
       do {
-        result = result.concat(child);
+        result.push(child);
         getChild(child);
         if (child.shadowRoot) {
-          result = result.concat(getShadow(child.shadowRoot));
+          result.push(getShadow(child.shadowRoot));
         }
         child = child.nextElementSibling;
       } while (child);
     }
   }
   getChild(parent);
-  return result;
+  return result.flat(Infinity);
 }
 function getController(id) {
   return getShadow(document.body).filter(x => {
@@ -502,7 +502,8 @@ function initializeNow(document) {
               });
               break;
             case "attributes":
-              if (mutation.target.attributes["aria-hidden"].value == "false") {
+              if (mutation.target.attributes["aria-hidden"] &&
+                mutation.target.attributes["aria-hidden"].value == "false") {
                 var flattenedNodes = getShadow(document.body);
                 var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
                 if (node) {
