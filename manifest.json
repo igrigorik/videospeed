@@ -1,7 +1,7 @@
 {
   "name": "Video Speed Controller",
   "short_name": "videospeed",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "manifest_version": 2,
   "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
   "homepage_url": "https://github.com/igrigorik/videospeed",
@@ -29,7 +29,6 @@
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/*",
         "https://meet.google.com/*",
-        "https://teamtreehouse.com/*",
         "http://www.hitbox.tv/*"
       ],
       "css": ["inject.css"],

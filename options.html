@@ -160,13 +160,29 @@
           >Blacklisted sites on which extension is disabled<br />
           (one per line)<br />
           <br />
-          <em
-            ><a href="https://www.regexpal.com/">Regex</a> is supported. Be sure
+          <em>
+            <a href="https://www.regexpal.com/">Regex</a> is supported. Be sure
             it is in "//g" format.<br />
-            ie: /(.+)youtube\.com(\/*)$/gi</em
-          >
+            ie: /(.+)youtube\.com(\/*)$/gi
+          </em>
         </label>
         <textarea id="blacklist" rows="10" cols="50"></textarea>
+      </div>
+      <div class="row">
+        <label for="blacklistrc">
+          Sites to forcefully block ratechange listeners<br />
+          (add here if video speed can't be adjusted or "bounces back" after
+          changing)<br />
+          <br />
+          <em>
+            *Important: Use sparingly as this may cause unexpected website and
+            extension behavior.
+          </em>
+          <br />
+          <br />
+          <em><a href="https://www.regexpal.com/">Regex</a> is supported.</em>
+        </label>
+        <textarea id="blacklistrc" rows="10" cols="50"></textarea>
       </div>
     </section>
 
