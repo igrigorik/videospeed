@@ -18,11 +18,6 @@ var tc = {
       vine.co
       imgur.com
       teams.microsoft.com
-    `.replace(regStrip, ""),
-    blacklistrc: `\
-      twitch.tv
-      pluralsight.com
-      teamtreehouse.com
     `.replace(regStrip, "")
   }
 };
@@ -85,8 +80,7 @@ chrome.storage.sync.get(tc.settings, function(storage) {
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
-      blacklist: tc.settings.blacklist.replace(regStrip, ""),
-      blacklistrc: tc.settings.blacklistrc.replace(regStrip, "")
+      blacklist: tc.settings.blacklist.replace(regStrip, "")
     });
   }
   tc.settings.lastSpeed = Number(storage.lastSpeed);
@@ -97,7 +91,6 @@ chrome.storage.sync.get(tc.settings, function(storage) {
   tc.settings.startHidden = Boolean(storage.startHidden);
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
   tc.settings.blacklist = String(storage.blacklist);
-  tc.settings.blacklistrc = String(storage.blacklistrc);
 
   // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
   if (tc.settings.keyBindings.filter(x => x.action == "display").length == 0) {
@@ -344,43 +337,31 @@ function isBlacklisted() {
   return blacklisted;
 }
 
-function isRateChangeBlocked() {
-  blockRateChange = false;
-  tc.settings.blacklistrc.split("\n").forEach(match => {
-    match = match.replace(regStrip, "");
-    if (match.length == 0) {
-      return;
-    }
-    if (match.startsWith("/")) {
-      try {
-        var regexp = new RegExp(match);
-      } catch (err) {
-        return;
-      }
-    } else {
-      var regexp = new RegExp(escapeStringRegExp(match));
-    }
-    if (regexp.test(location.href)) {
-      blockRateChange = true;
-      return;
-    }
-  });
-  return blockRateChange;
+var coolDown = false;
+function refreshCoolDown() {
+  if (coolDown) {
+    clearTimeout(coolDown);
+  }
+  coolDown = setTimeout(function() {
+    coolDown = false;
+  }, 1000);
 }
 
 function initializeWhenReady(document) {
   if (isBlacklisted()) {
     return;
   }
-  if (isRateChangeBlocked()) {
-    document.body.addEventListener(
-      "ratechange",
-      function(event) {
+  document.body.addEventListener(
+    "ratechange",
+    function(event) {
+      if (coolDown) {
+        refreshCoolDown();
+        console.log("Speed event propagation blocked");
         event.stopImmediatePropagation();
-      },
-      true
-    );
-  }
+      }
+    },
+    true
+  );
   window.onload = () => {
     initializeNow(window.document);
   };
@@ -602,6 +583,7 @@ function setSpeed(controller, video, speed) {
   video.playbackRate = Number(speedvalue);
   var speedIndicator = controller.shadowRoot.querySelector("span");
   speedIndicator.textContent = speedvalue;
+  refreshCoolDown();
 }
 
 function runAction(action, document, value, e) {

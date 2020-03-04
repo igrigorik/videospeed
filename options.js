@@ -23,11 +23,6 @@ var tcDefaults = {
     vine.co
     imgur.com
     teams.microsoft.com
-  `.replace(regStrip, ""),
-  blacklistrc: `\
-    twitch.tv
-    pluralsight.com
-    teamtreehouse.com
   `.replace(regStrip, "")
 };
 
@@ -202,24 +197,6 @@ function validate() {
         }
       }
     });
-  document
-    .getElementById("blacklistrc")
-    .value.split("\n")
-    .forEach(match => {
-      match = match.replace(regStrip, "");
-      if (match.startsWith("/")) {
-        try {
-          var regexp = new RegExp(match);
-        } catch (err) {
-          status.textContent =
-            "Error: Invalid ratechange blacklist regex: " +
-            match +
-            ". Unable to save";
-          valid = false;
-          return;
-        }
-      }
-    });
   return valid;
 }
 
@@ -239,7 +216,6 @@ function save_options() {
   var startHidden = document.getElementById("startHidden").checked;
   var controllerOpacity = document.getElementById("controllerOpacity").value;
   var blacklist = document.getElementById("blacklist").value;
-  var blacklistrc = document.getElementById("blacklistrc").value;
 
   chrome.storage.sync.remove([
     "resetSpeed",
@@ -262,8 +238,7 @@ function save_options() {
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       keyBindings: keyBindings,
-      blacklist: blacklist.replace(regStrip, ""),
-      blacklistrc: blacklistrc.replace(regStrip, "")
+      blacklist: blacklist.replace(regStrip, "")
     },
     function() {
       // Update status to let user know options were saved.
@@ -286,7 +261,6 @@ function restore_options() {
     document.getElementById("controllerOpacity").value =
       storage.controllerOpacity;
     document.getElementById("blacklist").value = storage.blacklist;
-    document.getElementById("blacklistrc").value = storage.blacklistrc;
 
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
     if (storage.keyBindings.filter(x => x.action == "display").length == 0) {
