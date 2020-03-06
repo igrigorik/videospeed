@@ -171,16 +171,7 @@ function defineVideoController() {
         // Ignore ratechange events on unitialized videos.
         // 0 == No information is available about the media resource.
         if (event.target.readyState > 0) {
-          var speed = this.getSpeed();
-          this.speedIndicator.textContent = speed;
-          tc.settings.speeds[this.video.currentSrc] = speed;
-          tc.settings.lastSpeed = speed;
-          this.speed = speed;
-          chrome.storage.sync.set({ lastSpeed: speed }, function() {
-            console.log("Speed setting saved: " + speed);
-          });
-          // show the controller for 1000ms if it's hidden.
-          runAction("blink", document, null, null);
+          rateChanged(this);
         }
       }.bind(this))
     );
@@ -584,6 +575,19 @@ function setSpeed(controller, video, speed) {
   var speedIndicator = controller.shadowRoot.querySelector("span");
   speedIndicator.textContent = speedvalue;
   refreshCoolDown();
+}
+
+function rateChanged(controller) {
+  var speed = parseFloat(controller.video.playbackRate).toFixed(2);
+  controller.speedIndicator.textContent = speed;
+  tc.settings.speeds[controller.video.currentSrc] = speed;
+  tc.settings.lastSpeed = speed;
+  controller.speed = speed;
+  chrome.storage.sync.set({ lastSpeed: speed }, function() {
+    console.log("Speed setting saved: " + speed);
+  });
+  // show the controller for 1000ms if it's hidden.
+  runAction("blink", document, null, null);
 }
 
 function runAction(action, document, value, e) {
