@@ -171,7 +171,7 @@ function defineVideoController() {
         // Ignore ratechange events on unitialized videos.
         // 0 == No information is available about the media resource.
         if (event.target.readyState > 0) {
-          rateChanged(this);
+          rateChanged(this.div);
         }
       }.bind(this))
     );
@@ -346,7 +346,6 @@ function initializeWhenReady(document) {
     "ratechange",
     function(event) {
       if (coolDown) {
-        refreshCoolDown();
         console.log("Speed event propagation blocked");
         event.stopImmediatePropagation();
       }
@@ -572,17 +571,19 @@ function initializeNow(document) {
 function setSpeed(controller, video, speed) {
   var speedvalue = speed.toFixed(2);
   video.playbackRate = Number(speedvalue);
-  var speedIndicator = controller.shadowRoot.querySelector("span");
-  speedIndicator.textContent = speedvalue;
   refreshCoolDown();
+  rateChanged(controller);
 }
 
 function rateChanged(controller) {
-  var speed = parseFloat(controller.video.playbackRate).toFixed(2);
-  controller.speedIndicator.textContent = speed;
-  tc.settings.speeds[controller.video.currentSrc] = speed;
+  var speedIndicator = controller.shadowRoot.querySelector("span");
+  var video = controller.parentElement.querySelector("video");
+  var src = video.currentSrc;
+  var speed = video.playbackRate.toFixed(2);
+
+  speedIndicator.textContent = speed;
+  tc.settings.speeds[src] = speed;
   tc.settings.lastSpeed = speed;
-  controller.speed = speed;
   chrome.storage.sync.set({ lastSpeed: speed }, function() {
     console.log("Speed setting saved: " + speed);
   });
