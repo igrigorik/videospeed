@@ -18,9 +18,40 @@ var tc = {
       vine.co
       imgur.com
       teams.microsoft.com
-    `.replace(regStrip, "")
+    `.replace(regStrip, ""),
+    defaultLogLevel: 4,
+    logLevel: 3
   }
 };
+
+/* Log levels (depends on caller specifying the correct level)
+  1 - none
+  2 - error
+  3 - warning
+  4 - info
+  5 - debug
+  6 - debug high verbosity + stack trace on each message
+*/
+function log(message, level) {
+  verbosity = tc.settings.logLevel;
+  if (typeof level === "undefined") {
+    level = tc.settings.defaultLogLevel;
+  }
+  if (verbosity >= level) {
+    if (level === 2) {
+      console.log("ERROR:" + message);
+    } else if (level === 3) {
+      console.log("WARNING:" + message);
+    } else if (level === 4) {
+      console.log("INFO:" + message);
+    } else if (level === 5) {
+      console.log("DEBUG:" + message);
+    } else if (level === 6) {
+      console.log("DEBUG (VERBOSE):" + message);
+      console.trace();
+    }
+  }
+}
 
 chrome.storage.sync.get(tc.settings, function(storage) {
   tc.settings.keyBindings = storage.keyBindings; // Array
@@ -132,47 +163,54 @@ function defineVideoController() {
     this.id = Math.random()
       .toString(36)
       .substr(2, 9);
-
-    // settings.speeds[] ensures that same source used across video tags (e.g. fullscreen on YT) retains speed setting
-    // this.speed is a controller level variable that retains speed setting across source switches (e.g. video quality, playlist change)
-    this.speed = 1.0;
-
+    storedSpeed = tc.settings.speeds[target.currentSrc];
     if (!tc.settings.rememberSpeed) {
-      if (!tc.settings.speeds[target.currentSrc]) {
-        tc.settings.speeds[target.currentSrc] = this.speed;
+      if (!storedSpeed) {
+        log(
+          "Overwriting stored speed to 1.0 due to rememberSpeed being disabled",
+          5
+        );
+        storedSpeed = 1.0;
       }
       setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
     } else {
-      tc.settings.speeds[target.currentSrc] = tc.settings.lastSpeed;
+      log("Recalling stored speed due to rememberSpeed being enabled", 5);
+      storedSpeed = tc.settings.lastSpeed;
     }
 
-    target.playbackRate = tc.settings.speeds[target.currentSrc];
+    log("Explicitly setting playbackRate to: " + storedSpeed, 5);
+    target.playbackRate = storedSpeed;
 
     this.div = this.initializeControls();
 
     target.addEventListener(
       "play",
       (this.handlePlay = function(event) {
+        storedSpeed = tc.settings.speeds[event.target.currentSrc];
         if (!tc.settings.rememberSpeed) {
-          if (!tc.settings.speeds[target.currentSrc]) {
-            tc.settings.speeds[target.currentSrc] = this.speed;
+          if (!storedSpeed) {
+            log(
+              "Overwriting stored speed to 1.0 (rememberSpeed not enabled)",
+              4
+            );
+            storedSpeed = 1.0;
           }
+          // resetSpeed isn't really a reset, it's a toggle
+          log("Setting reset keybinding to fast", 5);
           setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
         } else {
-          tc.settings.speeds[target.currentSrc] = tc.settings.lastSpeed;
+          log(
+            "Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",
+            5
+          );
+          storedSpeed = tc.settings.lastSpeed;
         }
-        target.playbackRate = tc.settings.speeds[target.currentSrc];
-      }.bind(this))
-    );
-
-    target.addEventListener(
-      "ratechange",
-      (this.handleRatechange = function(event) {
-        // Ignore ratechange events on unitialized videos.
-        // 0 == No information is available about the media resource.
-        if (event.target.readyState > 0) {
-          rateChanged(this.div);
-        }
+        // TODO: Check if explicitly setting the playback rate to 1.0 is
+        // necessary when rememberSpeed is disabled (this may accidentally
+        // override a website's intentional initial speed setting interfering
+        // with the site's default behavior)
+        log("Explicitly setting playbackRate to: " + storedSpeed, 4);
+        event.target.playbackRate = storedSpeed;
       }.bind(this))
     );
 
@@ -200,25 +238,21 @@ function defineVideoController() {
     });
   };
 
-  tc.videoController.prototype.getSpeed = function() {
-    return parseFloat(this.video.playbackRate).toFixed(2);
-  };
-
   tc.videoController.prototype.remove = function() {
     this.div.remove();
     this.video.removeEventListener("play", this.handlePlay);
-    this.video.removeEventListener("ratechange", this.handleRatechange);
     delete this.video.dataset["vscid"];
     delete this.video.vsc;
   };
 
   tc.videoController.prototype.initializeControls = function() {
+    log("initializeControls Begin", 5);
     var document = this.document;
-    var speed = parseFloat(tc.settings.speeds[this.video.currentSrc]).toFixed(
-        2
-      ),
+    var speed = this.video.playbackRate.toFixed(2),
       top = Math.max(this.video.offsetTop, 0) + "px",
       left = Math.max(this.video.offsetLeft, 0) + "px";
+
+    log("Speed variable set to: " + speed, 5);
 
     var wrapper = document.createElement("div");
     wrapper.classList.add("vsc-controller");
@@ -330,23 +364,28 @@ function isBlacklisted() {
 
 var coolDown = false;
 function refreshCoolDown() {
+  log("Begin refreshCoolDown", 5);
   if (coolDown) {
     clearTimeout(coolDown);
   }
   coolDown = setTimeout(function() {
     coolDown = false;
   }, 1000);
+  log("End refreshCoolDown", 5);
 }
 
 function initializeWhenReady(document) {
+  log("Begin initializeWhenReady", 5);
   if (isBlacklisted()) {
     return;
   }
   document.body.addEventListener(
     "ratechange",
     function(event) {
+      controller = event.target.parentElement.querySelector(".vsc-controller");
+      rateChanged(controller);
       if (coolDown) {
-        console.log("Speed event propagation blocked");
+        log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
       }
     },
@@ -366,6 +405,7 @@ function initializeWhenReady(document) {
       };
     }
   }
+  log("End initializeWhenReady", 5);
 }
 function inIframe() {
   try {
@@ -403,12 +443,14 @@ function getController(id) {
 }
 
 function initializeNow(document) {
+  log("Begin initializeNow", 5);
   if (!tc.settings.enabled) return;
   // enforce init-once due to redundant callers
   if (!document.body || document.body.classList.contains("vsc-initialized")) {
     return;
   }
   document.body.classList.add("vsc-initialized");
+  log("initializeNow: vsc-initialized added to document body", 5);
 
   if (document === window.document) {
     defineVideoController();
@@ -429,6 +471,7 @@ function initializeNow(document) {
       "keydown",
       function(event) {
         var keyCode = event.keyCode;
+        log("Processing keydown event: " + keyCode, 6);
 
         // Ignore if following modifier is active.
         if (
@@ -440,6 +483,7 @@ function initializeNow(document) {
           event.getModifierState("Hyper") ||
           event.getModifierState("OS")
         ) {
+          log("Keydown event ignored due to active modifier: " + keyCode, 5);
           return;
         }
 
@@ -566,13 +610,16 @@ function initializeNow(document) {
     }
     initializeWhenReady(childDocument);
   });
+  log("End initializeNow", 5);
 }
 
 function setSpeed(controller, video, speed) {
+  log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   video.playbackRate = Number(speedvalue);
   refreshCoolDown();
   rateChanged(controller);
+  log("setSpeed finished: " + speed, 5);
 }
 
 function rateChanged(controller) {
@@ -581,17 +628,23 @@ function rateChanged(controller) {
   var src = video.currentSrc;
   var speed = video.playbackRate.toFixed(2);
 
+  log("Playback rate changed to " + speed, 4);
+
+  log("Updating controller with new speed", 5);
   speedIndicator.textContent = speed;
   tc.settings.speeds[src] = speed;
+  log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
   tc.settings.lastSpeed = speed;
+  log("Syncing chrome settings for lastSpeed", 5);
   chrome.storage.sync.set({ lastSpeed: speed }, function() {
-    console.log("Speed setting saved: " + speed);
+    log("Speed setting saved: " + speed, 5);
   });
   // show the controller for 1000ms if it's hidden.
   runAction("blink", document, null, null);
 }
 
 function runAction(action, document, value, e) {
+  log("runAction Begin", 5);
   if (tc.settings.audioBoolean) {
     var mediaTags = getShadow(document.body).filter(x => {
       return x.tagName == "AUDIO" || x.tagName == "VIDEO";
@@ -622,10 +675,13 @@ function runAction(action, document, value, e) {
 
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
+        log("Rewind", 5);
         v.currentTime -= value;
       } else if (action === "advance") {
+        log("Fast forward", 5);
         v.currentTime += value;
       } else if (action === "faster") {
+        log("Increase speed", 5);
         // Maximum playback speed in Chrome is set to 16:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
         var s = Math.min(
@@ -634,16 +690,20 @@ function runAction(action, document, value, e) {
         );
         setSpeed(controller, v, s);
       } else if (action === "slower") {
+        log("Decrease speed", 5);
         // Video min rate is 0.0625:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
         var s = Math.max(v.playbackRate - value, 0.07);
         setSpeed(controller, v, s);
       } else if (action === "reset") {
+        log("Reset speed", 5);
         resetSpeed(v, controller, 1.0);
       } else if (action === "display") {
+        log("Showing controller", 5);
         controller.classList.add("vsc-manual");
         controller.classList.toggle("vsc-hidden");
       } else if (action === "blink") {
+        log("Showing controller momentarily", 5);
         // if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
         if (
           controller.classList.contains("vsc-hidden") ||
@@ -674,12 +734,15 @@ function runAction(action, document, value, e) {
       }
     }
   });
+  log("runAction End", 5);
 }
 
 function pause(v) {
   if (v.paused) {
+    log("Resuming video", 5);
     v.play();
   } else {
+    log("Pausing video", 5);
     v.pause();
   }
 }
@@ -687,17 +750,20 @@ function pause(v) {
 function resetSpeed(v, controller, target) {
   if (v.playbackRate === target) {
     if (v.playbackRate === getKeyBindings("reset")) {
-      // resetSpeed
       if (target !== 1.0) {
+        log("Resetting playback speed to 1.0", 4);
         setSpeed(controller, v, 1.0);
       } else {
-        setSpeed(controller, v, getKeyBindings("fast")); // fastSpeed
+        log('Toggling playback speed to "fast" speed', 4);
+        setSpeed(controller, v, getKeyBindings("fast"));
       }
     } else {
-      setSpeed(controller, v, getKeyBindings("reset")); // resetSpeed
+      log('Toggling playback speed to "reset" speed', 4);
+      setSpeed(controller, v, getKeyBindings("reset"));
     }
   } else {
-    setKeyBindings("reset", v.playbackRate); // resetSpeed
+    log('Toggling playback speed to "reset" speed', 4);
+    setKeyBindings("reset", v.playbackRate);
     setSpeed(controller, v, target);
   }
 }
@@ -707,10 +773,12 @@ function muted(v, value) {
 }
 
 function setMark(v) {
+  log("Adding marker", 5);
   v.vsc.mark = v.currentTime;
 }
 
 function jumpToMark(v) {
+  log("Recalling marker", 5);
   if (v.vsc.mark && typeof v.vsc.mark === "number") {
     v.currentTime = v.vsc.mark;
   }
@@ -763,6 +831,7 @@ function handleDrag(video, controller, e) {
 var timer;
 var animation = false;
 function showController(controller) {
+  log("Showing controller", 4);
   controller.classList.add("vcs-show");
 
   if (animation) clearTimeout(timer);
@@ -771,5 +840,6 @@ function showController(controller) {
   timer = setTimeout(function() {
     controller.classList.remove("vcs-show");
     animation = false;
+    log("Hiding controller", 5);
   }, 2000);
 }
