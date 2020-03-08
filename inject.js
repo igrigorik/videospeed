@@ -374,11 +374,7 @@ function refreshCoolDown() {
   log("End refreshCoolDown", 5);
 }
 
-function initializeWhenReady(document) {
-  log("Begin initializeWhenReady", 5);
-  if (isBlacklisted()) {
-    return;
-  }
+function setupListener() {
   document.body.addEventListener(
     "ratechange",
     function(event) {
@@ -391,6 +387,13 @@ function initializeWhenReady(document) {
     },
     true
   );
+}
+
+function initializeWhenReady(document) {
+  log("Begin initializeWhenReady", 5);
+  if (isBlacklisted()) {
+    return;
+  }
   window.onload = () => {
     initializeNow(window.document);
   };
@@ -448,6 +451,11 @@ function initializeNow(document) {
   // enforce init-once due to redundant callers
   if (!document.body || document.body.classList.contains("vsc-initialized")) {
     return;
+  }
+  try {
+    setupListener();
+  } catch {
+    // no operation
   }
   document.body.classList.add("vsc-initialized");
   log("initializeNow: vsc-initialized added to document body", 5);
