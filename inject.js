@@ -378,12 +378,31 @@ function setupListener() {
   document.body.addEventListener(
     "ratechange",
     function(event) {
-      controller = event.target.parentElement.querySelector(".vsc-controller");
-      rateChanged(controller);
       if (coolDown) {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
       }
+      var controller = event.target.parentElement.querySelector(
+        ".vsc-controller"
+      );
+      var speedIndicator = controller.shadowRoot.querySelector("span");
+      var video = controller.parentElement.querySelector("video");
+      var src = video.currentSrc;
+      var speed = video.playbackRate.toFixed(2);
+
+      log("Playback rate changed to " + speed, 4);
+
+      log("Updating controller with new speed", 5);
+      speedIndicator.textContent = speed;
+      tc.settings.speeds[src] = speed;
+      log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
+      tc.settings.lastSpeed = speed;
+      log("Syncing chrome settings for lastSpeed", 5);
+      chrome.storage.sync.set({ lastSpeed: speed }, function() {
+        log("Speed setting saved: " + speed, 5);
+      });
+      // show the controller for 1000ms if it's hidden.
+      runAction("blink", document, null, null);
     },
     true
   );
@@ -626,29 +645,7 @@ function setSpeed(controller, video, speed) {
   var speedvalue = speed.toFixed(2);
   video.playbackRate = Number(speedvalue);
   refreshCoolDown();
-  rateChanged(controller);
   log("setSpeed finished: " + speed, 5);
-}
-
-function rateChanged(controller) {
-  var speedIndicator = controller.shadowRoot.querySelector("span");
-  var video = controller.parentElement.querySelector("video");
-  var src = video.currentSrc;
-  var speed = video.playbackRate.toFixed(2);
-
-  log("Playback rate changed to " + speed, 4);
-
-  log("Updating controller with new speed", 5);
-  speedIndicator.textContent = speed;
-  tc.settings.speeds[src] = speed;
-  log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
-  tc.settings.lastSpeed = speed;
-  log("Syncing chrome settings for lastSpeed", 5);
-  chrome.storage.sync.set({ lastSpeed: speed }, function() {
-    log("Speed setting saved: " + speed, 5);
-  });
-  // show the controller for 1000ms if it's hidden.
-  runAction("blink", document, null, null);
 }
 
 function runAction(action, document, value, e) {
