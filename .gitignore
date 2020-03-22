@@ -3,3 +3,4 @@ local
 
 # IntelliJ IDEA
 .idea/
+node_modules

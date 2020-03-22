@@ -191,7 +191,7 @@ function validate() {
           var regexp = new RegExp(match);
         } catch (err) {
           status.textContent =
-            "Error: Invalid Regex: " + match + ". Unable to save";
+            "Error: Invalid blacklist regex: " + match + ". Unable to save";
           valid = false;
           return;
         }
