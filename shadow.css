@@ -1,14 +1,14 @@
-.vsc-controller * {
+* {
   line-height: 1.8em;
   font-family: Verdana, Geneva, sans-serif;
   font-size: 13px;
 }
 
-.vsc-controller:hover #controls {
+:host(:hover) #controls {
   display: inline;
 }
 
-.vsc-controller #controller {
+#controller {
   position: absolute;
   top: 0;
   left: 0;
@@ -24,39 +24,39 @@
   z-index: 9999999;
 }
 
-.vsc-controller #controller:hover {
+#controller:hover {
   opacity: 0.7;
 }
 
-.vsc-controller #controller:hover > .draggable {
+#controller:hover > .draggable {
   margin-right: 0.8em;
 }
 
-.vsc-controller #controls {
+#controls {
   display: none;
 }
 
-.vsc-controller #controller.dragging {
+#controller.dragging {
   cursor: -webkit-grabbing;
   cursor: -moz-grabbing;
   opacity: 0.7;
 }
 
-.vsc-controller #controller.dragging #controls {
+#controller.dragging #controls {
   display: inline;
 }
 
-.vsc-controller .draggable {
+.draggable {
   cursor: -webkit-grab;
   cursor: -moz-grab;
 }
 
-.vsc-controller .draggable:active {
+.draggable:active {
   cursor: -webkit-grabbing;
   cursor: -moz-grabbing;
 }
 
-.vsc-controller button {
+button {
   cursor: pointer;
   color: black;
   background: white;
@@ -67,26 +67,26 @@
   line-height: 14px;
   border: 1px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin: 2px;
+  margin-bottom: 2px;
 }
 
-.vsc-controller button:focus {
+button:focus {
   outline: 0;
 }
 
-.vsc-controller button:hover {
+button:hover {
   opacity: 1.0;
 }
 
-.vsc-controller button:active {
+button:active {
   background: #ccc;
 }
 
-.vsc-controller button.rw {
+button.rw {
   opacity: 0.65;
 }
 
-.vsc-controller button.hideButton {
+button.hideButton {
   margin-right: 2px;
   opacity: 0.5;
 }
