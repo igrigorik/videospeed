@@ -1,3 +1,4 @@
+.vsc-nosource { display: none !important; }
 .vsc-hidden { display: none !important; }
 .vsc-manual {
   visibility: visible !important;
@@ -26,7 +27,13 @@
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
 .html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
   position: relative;
-  top: 40px;
+  top: 60px;
+}
+
+/* Facebook player */
+#facebook .vsc-controller {
+ position: relative;
+ top: 40px;
 }
 
 /* Google Photos player */

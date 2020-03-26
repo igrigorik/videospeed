@@ -22,7 +22,6 @@
 
   cursor: default;
   z-index: 9999999;
-  opacity: 0.3;
 }
 
 .vsc-controller #controller:hover {

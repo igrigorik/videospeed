@@ -27,3 +27,7 @@ button {
   font-size: 0.95em;
   margin: 0.15em 0;
 }
+
+.hide {
+  display: none;
+}

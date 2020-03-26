@@ -83,10 +83,6 @@ label {
     width: 170px;
 }
 
-label[for=rememberSpeed] {
-  width: 200px;
-}
-
 #status {
     color: #9D9D9D;
     display: inline-block;
@@ -95,4 +91,18 @@ label[for=rememberSpeed] {
 
 #faq {
 	margin-top: 2em;
+}
+
+select {
+	width: 170px;
+}
+
+.customForce {
+	display: none;
+	width: 250px;
+}
+
+.customKey {
+  color: transparent;
+  text-shadow: 0 0 0 #000000;
 }
