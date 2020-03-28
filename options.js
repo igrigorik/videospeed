@@ -75,6 +75,9 @@ var keyCodeAliases = {
   220: '\\',
   221: ']',
   222: '\'',
+  59:  ';',
+  61:  '+',
+  173: '-',
 }
 
 function recordKeyPress(e) {
