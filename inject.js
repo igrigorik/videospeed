@@ -600,6 +600,10 @@ function initializeNow(document) {
                   )[0];
                   if (oldController) {
                     oldController.remove();
+                    if (node.vsc) {
+                      delete node.dataset.vscid;
+                      delete node.vsc;
+                    }
                   }
                   checkForVideo(node, node.parentNode || mutation.target, true);
                 }
