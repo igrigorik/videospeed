@@ -17,10 +17,9 @@ var tcDefaults = {
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
     { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
   ],
-  blacklist: `\
-    www.instagram.com
+  blacklist: 
+   `www.instagram.com
     twitter.com
-    vine.co
     imgur.com
     teams.microsoft.com
   `.replace(regStrip, "")
@@ -148,7 +147,7 @@ function add_shortcut() {
     <input class="customValue" type="text" placeholder="value (0.10)"/>
     <select class="customForce">
     <option value="false">Do not disable website key bindings</option>
-    <option value="true">Disable websites key bindings</option>
+    <option value="true">Disable website key bindings</option>
     </select>
     <button class="removeParent">X</button>`;
   var div = document.createElement("div");
