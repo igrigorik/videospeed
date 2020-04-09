@@ -75,7 +75,7 @@ button:focus {
 }
 
 button:hover {
-  opacity: 1.0;
+  opacity: 1;
 }
 
 button:active {

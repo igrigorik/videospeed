@@ -1,9 +1,9 @@
 {
   "name": "Video Speed Controller",
   "short_name": "videospeed",
-  "version": "0.5.9.1",
+  "version": "0.6.1",
   "manifest_version": 2,
-  "description": "Speed up, slow down, advance and rewind any HTML5 video with quick shortcuts.",
+  "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "homepage_url": "https://github.com/codebicycle/videospeed",
   "browser_specific_settings": {
     "gecko": {
@@ -15,7 +15,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": [ "activeTab", "storage" ],
+  "permissions": ["activeTab", "storage"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
@@ -28,22 +28,19 @@
     },
     "default_popup": "popup.html"
   },
-  "content_scripts": [{
+  "content_scripts": [
+    {
       "all_frames": true,
-      "matches": [ "http://*/*", "https://*/*", "file:///*" ],
+      "matches": ["http://*/*", "https://*/*", "file:///*"],
       "match_about_blank": true,
       "exclude_matches": [
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/*",
-        "https://meet.google.com/*",
-        "https://teamtreehouse.com/*",
-        "http://www.hitbox.tv/*"
+        "https://meet.google.com/*"
       ],
-      "css": [ "inject.css" ],
-      "js":  [ "inject.js" ]
+      "css": ["inject.css"],
+      "js": ["inject.js"]
     }
   ],
-  "web_accessible_resources": [
-    "inject.css", "shadow.css"
-  ]
+  "web_accessible_resources": ["inject.css", "shadow.css"]
 }
