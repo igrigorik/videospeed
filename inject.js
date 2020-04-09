@@ -436,32 +436,9 @@ function inIframe() {
     return true;
   }
 }
-function getShadow(parent) {
-  let result = [];
-  function getChild(parent) {
-    if (parent.firstElementChild) {
-      var child = parent.firstElementChild;
-      do {
-        result.push(child);
-        getChild(child);
-        if (child.shadowRoot) {
-          result.push(getShadow(child.shadowRoot));
-        }
-        child = child.nextElementSibling;
-      } while (child);
-    }
-  }
-  getChild(parent);
-  return result.flat(Infinity);
-}
+
 function getController(id) {
-  return getShadow(document.body).filter(x => {
-    return (
-      x.attributes["data-vscid"] &&
-      x.tagName == "DIV" &&
-      x.attributes["data-vscid"].value == `${id}`
-    );
-  })[0];
+  return document.querySelector(`div[data-vscid="${id}"]`);
 }
 
 function initializeNow(document) {
@@ -525,7 +502,7 @@ function initializeNow(document) {
 
         // Ignore keydown event if typing in a page without vsc
         if (
-          !getShadow(document.body).filter(x => x.tagName == "vsc-controller")
+          !document.querySelector(".vsc-controller")
         ) {
           return false;
         }
@@ -587,28 +564,6 @@ function initializeNow(document) {
                 checkForVideo(node, node.parentNode || mutation.target, false);
               });
               break;
-            case "attributes":
-              if (
-                mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false"
-              ) {
-                var flattenedNodes = getShadow(document.body);
-                var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
-                if (node) {
-                  var oldController = flattenedNodes.filter(x =>
-                    x.classList.contains("vsc-controller")
-                  )[0];
-                  if (oldController) {
-                    oldController.remove();
-                    if (node.vsc) {
-                      delete node.dataset.vscid;
-                      delete node.vsc;
-                    }
-                  }
-                  checkForVideo(node, node.parentNode || mutation.target, true);
-                }
-              }
-              break;
           }
         });
       },
@@ -655,11 +610,9 @@ function setSpeed(controller, video, speed) {
 function runAction(action, document, value, e) {
   log("runAction Begin", 5);
   if (tc.settings.audioBoolean) {
-    var mediaTags = getShadow(document.body).filter(x => {
-      return x.tagName == "AUDIO" || x.tagName == "VIDEO";
-    });
+    var mediaTags = document.querySelectorAll("video,audio");
   } else {
-    var mediaTags = getShadow(document.body).filter(x => x.tagName == "VIDEO");
+    var mediaTags = document.querySelectorAll("video");
   }
 
   mediaTags.forEach = Array.prototype.forEach;
