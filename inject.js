@@ -382,11 +382,8 @@ function setupListener() {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
       }
-      var controller = event.target.parentElement.querySelector(
-        ".vsc-controller"
-      );
-      var speedIndicator = controller.shadowRoot.querySelector("span");
-      var video = controller.parentElement.querySelector("video");
+      var video = event.target;
+      var speedIndicator = video.vsc.speedIndicator;
       var src = video.currentSrc;
       var speed = video.playbackRate.toFixed(2);
 
