@@ -21,7 +21,8 @@ var tc = {
     `.replace(regStrip, ""),
     defaultLogLevel: 4,
     logLevel: 3
-  }
+  },
+  mediaElements: []
 };
 
 /* Log levels (depends on caller specifying the correct level)
@@ -153,16 +154,15 @@ function setKeyBindings(action, value) {
 
 function defineVideoController() {
   tc.videoController = function(target, parent) {
-    if (target.dataset["vscid"]) {
+    if (target.vsc) {
       return target.vsc;
     }
+
+    tc.mediaElements.push(target);
 
     this.video = target;
     this.parent = target.parentElement || parent;
     this.document = target.ownerDocument;
-    this.id = Math.random()
-      .toString(36)
-      .substr(2, 9);
     storedSpeed = tc.settings.speeds[target.currentSrc];
     if (!tc.settings.rememberSpeed) {
       if (!storedSpeed) {
@@ -221,7 +221,7 @@ function defineVideoController() {
           (mutation.attributeName === "src" ||
             mutation.attributeName === "currentSrc")
         ) {
-          var controller = getController(this.id);
+          var controller = target.vsc.div;
           if (!controller) {
             return;
           }
@@ -241,12 +241,16 @@ function defineVideoController() {
   tc.videoController.prototype.remove = function() {
     this.div.remove();
     this.video.removeEventListener("play", this.handlePlay);
-    delete this.video.dataset["vscid"];
     delete this.video.vsc;
+    let idx = tc.mediaElements.indexOf(this.video);
+    if (idx != -1) {
+      tc.mediaElements.splice(idx, 1);
+    }
   };
 
   tc.videoController.prototype.initializeControls = function() {
     log("initializeControls Begin", 5);
+
     var document = this.document;
     var speed = this.video.playbackRate.toFixed(2),
       top = Math.max(this.video.offsetTop, 0) + "px",
@@ -256,7 +260,6 @@ function defineVideoController() {
 
     var wrapper = document.createElement("div");
     wrapper.classList.add("vsc-controller");
-    wrapper.dataset["vscid"] = this.id;
 
     if (!this.video.currentSrc) {
       wrapper.classList.add("vsc-nosource");
@@ -286,26 +289,24 @@ function defineVideoController() {
         </div>
       `;
     shadow.innerHTML = shadowTemplate;
-    shadow.querySelector(".draggable").addEventListener("mousedown", e => {
-      runAction(e.target.dataset["action"], document, false, e);
+
+    this.speedIndicator = shadow.querySelector(".draggable");
+    this.speedIndicator.addEventListener("mousedown", e => {
+      runAction(e.target.dataset["action"], false, e);
     });
 
     forEach.call(shadow.querySelectorAll("button"), function(button) {
       button.onclick = e => {
         runAction(
           e.target.dataset["action"],
-          document,
           getKeyBindings(e.target.dataset["action"]),
           e
         );
       };
     });
 
-    this.speedIndicator = shadow.querySelector("span");
     var fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
-
-    this.video.dataset["vscid"] = this.id;
 
     switch (true) {
       case location.hostname == "www.amazon.com":
@@ -382,11 +383,11 @@ function setupListener() {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
       }
-      var controller = event.target.parentElement.querySelector(
-        ".vsc-controller"
-      );
-      var speedIndicator = controller.shadowRoot.querySelector("span");
-      var video = controller.parentElement.querySelector("video");
+      var video = event.target;
+      var vsc = video.vsc;
+      if (!vsc)
+        return;
+      var speedIndicator = video.vsc.speedIndicator;
       var src = video.currentSrc;
       var speed = video.playbackRate.toFixed(2);
 
@@ -402,7 +403,7 @@ function setupListener() {
         log("Speed setting saved: " + speed, 5);
       });
       // show the controller for 1000ms if it's hidden.
-      runAction("blink", document, null, null);
+      runAction("blink", null, null);
     },
     true
   );
@@ -453,15 +454,6 @@ function getShadow(parent) {
   }
   getChild(parent);
   return result.flat(Infinity);
-}
-function getController(id) {
-  return getShadow(document.body).filter(x => {
-    return (
-      x.attributes["data-vscid"] &&
-      x.tagName == "DIV" &&
-      x.attributes["data-vscid"].value == `${id}`
-    );
-  })[0];
 }
 
 function initializeNow(document) {
@@ -524,15 +516,13 @@ function initializeNow(document) {
         }
 
         // Ignore keydown event if typing in a page without vsc
-        if (
-          !getShadow(document.body).filter(x => x.tagName == "vsc-controller")
-        ) {
+        if (!tc.mediaElements.length) {
           return false;
         }
 
         var item = tc.settings.keyBindings.find(item => item.key === keyCode);
         if (item) {
-          runAction(item.action, document, item.value);
+          runAction(item.action, item.value);
           if (item.force === "true") {
             // disable websites key bindings
             event.preventDefault();
@@ -558,8 +548,7 @@ function initializeNow(document) {
       if (added) {
         node.vsc = new tc.videoController(node, parent);
       } else {
-        let id = node.dataset["vscid"];
-        if (id) {
+        if (node.vsc) {
           node.vsc.remove();
         }
       }
@@ -595,15 +584,8 @@ function initializeNow(document) {
                 var flattenedNodes = getShadow(document.body);
                 var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
                 if (node) {
-                  var oldController = flattenedNodes.filter(x =>
-                    x.classList.contains("vsc-controller")
-                  )[0];
-                  if (oldController) {
-                    oldController.remove();
-                    if (node.vsc) {
-                      delete node.dataset.vscid;
-                      delete node.vsc;
-                    }
+                  if (node.vsc) {
+                    node.vsc.remove();
                   }
                   checkForVideo(node, node.parentNode || mutation.target, true);
                 }
@@ -644,7 +626,7 @@ function initializeNow(document) {
   log("End initializeNow", 5);
 }
 
-function setSpeed(controller, video, speed) {
+function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   video.playbackRate = Number(speedvalue);
@@ -652,17 +634,10 @@ function setSpeed(controller, video, speed) {
   log("setSpeed finished: " + speed, 5);
 }
 
-function runAction(action, document, value, e) {
+function runAction(action, value, e) {
   log("runAction Begin", 5);
-  if (tc.settings.audioBoolean) {
-    var mediaTags = getShadow(document.body).filter(x => {
-      return x.tagName == "AUDIO" || x.tagName == "VIDEO";
-    });
-  } else {
-    var mediaTags = getShadow(document.body).filter(x => x.tagName == "VIDEO");
-  }
 
-  mediaTags.forEach = Array.prototype.forEach;
+  var mediaTags = tc.mediaElements;
 
   // Get the controller that was used if called from a button press event e
   if (e) {
@@ -670,10 +645,9 @@ function runAction(action, document, value, e) {
   }
 
   mediaTags.forEach(function(v) {
-    var id = v.dataset["vscid"];
     var controller = v.vsc.div;
     // Don't change video speed if the video has a different controller
-    if (e && !(targetController == controller)) {
+    if (e && (targetController != controller)) {
       return;
     }
 
@@ -697,16 +671,16 @@ function runAction(action, document, value, e) {
           (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value,
           16
         );
-        setSpeed(controller, v, s);
+        setSpeed(v, s);
       } else if (action === "slower") {
         log("Decrease speed", 5);
         // Video min rate is 0.0625:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
         var s = Math.max(v.playbackRate - value, 0.07);
-        setSpeed(controller, v, s);
+        setSpeed(v, s);
       } else if (action === "reset") {
         log("Reset speed", 5);
-        resetSpeed(v, controller, 1.0);
+        resetSpeed(v, 1.0);
       } else if (action === "display") {
         log("Showing controller", 5);
         controller.classList.add("vsc-manual");
@@ -731,7 +705,7 @@ function runAction(action, document, value, e) {
       } else if (action === "drag") {
         handleDrag(v, controller, e);
       } else if (action === "fast") {
-        resetSpeed(v, controller, value);
+        resetSpeed(v, value);
       } else if (action === "pause") {
         pause(v);
       } else if (action === "muted") {
@@ -756,24 +730,24 @@ function pause(v) {
   }
 }
 
-function resetSpeed(v, controller, target) {
+function resetSpeed(v, target) {
   if (v.playbackRate === target) {
     if (v.playbackRate === getKeyBindings("reset")) {
       if (target !== 1.0) {
         log("Resetting playback speed to 1.0", 4);
-        setSpeed(controller, v, 1.0);
+        setSpeed(v, 1.0);
       } else {
         log('Toggling playback speed to "fast" speed', 4);
-        setSpeed(controller, v, getKeyBindings("fast"));
+        setSpeed(v, getKeyBindings("fast"));
       }
     } else {
       log('Toggling playback speed to "reset" speed', 4);
-      setSpeed(controller, v, getKeyBindings("reset"));
+      setSpeed(v, getKeyBindings("reset"));
     }
   } else {
     log('Toggling playback speed to "reset" speed', 4);
     setKeyBindings("reset", v.playbackRate);
-    setSpeed(controller, v, target);
+    setSpeed(v, target);
   }
 }
 
@@ -837,18 +811,16 @@ function handleDrag(video, controller, e) {
   parentElement.addEventListener("mousemove", startDragging);
 }
 
-var timer;
-var animation = false;
+var timer = null;
 function showController(controller) {
   log("Showing controller", 4);
   controller.classList.add("vcs-show");
 
-  if (animation) clearTimeout(timer);
+  if (timer) clearTimeout(timer);
 
-  animation = true;
   timer = setTimeout(function() {
     controller.classList.remove("vcs-show");
-    animation = false;
+    timer = null;
     log("Hiding controller", 5);
   }, 2000);
 }
