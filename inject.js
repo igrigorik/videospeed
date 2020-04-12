@@ -317,10 +317,9 @@ function defineVideoController() {
         break;
       case location.hostname == "tv.apple.com":
         // insert after parent for correct stacking context
-        this.parent
-          .getRootNode()
-          .querySelector(".scrim")
-          .prepend(fragment);
+        let scrim = this.parent.getRootNode().querySelector(".scrim");
+        if (scrim)
+          scrim.prepend(fragment);
 
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
@@ -437,16 +436,19 @@ function inIframe() {
     return true;
   }
 }
-function getShadow(parent) {
+function getMediaElements(parent) {
   let result = [];
   function getChild(parent) {
     if (parent.firstElementChild) {
       var child = parent.firstElementChild;
       do {
-        result.push(child);
+        if (child.tagName == "VIDEO" || 
+            tc.settings.audioBoolean && child.tagName == "AUDIO") {
+          result.push(child);
+        }
         getChild(child);
         if (child.shadowRoot) {
-          result.push(getShadow(child.shadowRoot));
+          getChild(child.shadowRoot);
         }
         child = child.nextElementSibling;
       } while (child);
@@ -581,14 +583,11 @@ function initializeNow(document) {
                 mutation.target.attributes["aria-hidden"] &&
                 mutation.target.attributes["aria-hidden"].value == "false"
               ) {
-                var flattenedNodes = getShadow(document.body);
-                var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
-                if (node) {
-                  if (node.vsc) {
-                    node.vsc.remove();
+                getMediaElements(document.body).forEach(video => {
+                  if (!video.vsc) {
+                    video.vsc = new tc.videoController(video, video.parentNode || mutation.target);
                   }
-                  checkForVideo(node, node.parentNode || mutation.target, true);
-                }
+                });
               }
               break;
           }
@@ -597,10 +596,32 @@ function initializeNow(document) {
       { timeout: 1000 }
     );
   });
-  observer.observe(document, {
-    attributeFilter: ["aria-hidden"],
-    childList: true,
-    subtree: true
+
+  function getAllRoots(parent) {
+    let result = [ parent ];
+    function getChild(parent) {
+      if (parent.firstElementChild) {
+        var child = parent.firstElementChild;
+        do {
+          getChild(child);
+          if (child.shadowRoot) {
+            result.push(child.shadowRoot);
+            getChild(child.shadowRoot);
+          }
+          child = child.nextElementSibling;
+        } while (child);
+      }
+    }
+    getChild(parent);
+    return result.flat(Infinity);
+  }
+  
+  getAllRoots(document).forEach(root => {
+    observer.observe(root, {
+      attributeFilter: ["aria-hidden"],
+      childList: true,
+      subtree: true
+    });
   });
 
   if (tc.settings.audioBoolean) {
