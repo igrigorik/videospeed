@@ -671,7 +671,7 @@ function runAction(action, document, value, e) {
 
   mediaTags.forEach(function(v) {
     var id = v.dataset["vscid"];
-    var controller = getController(id);
+    var controller = v.vsc.div;
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
       return;
