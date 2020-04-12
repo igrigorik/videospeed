@@ -152,6 +152,68 @@ function setKeyBindings(action, value) {
   tc.settings.keyBindings.find(item => item.action === action)["value"] = value;
 }
 
+function checkForVideo(node, parent, added) {
+  // Only proceed with supposed removal if node is missing from DOM
+  if (!added && document.body.contains(node)) {
+    return;
+  }
+  if (
+    node.nodeName === "VIDEO" ||
+    (node.nodeName === "AUDIO" && tc.settings.audioBoolean)
+  ) {
+    if (added) {
+      node.vsc = new tc.videoController(node, parent);
+    } else {
+      if (node.vsc) {
+        node.vsc.remove();
+      }
+    }
+  } else if (node.children != undefined) {
+    for (var i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      checkForVideo(child, child.parentNode || parent, added);
+    }
+  }
+}
+
+var videoObserver = new MutationObserver(function(mutations) {
+  // Process the DOM nodes lazily
+  requestIdleCallback(
+    _ => {
+      mutations.forEach(function(mutation) {
+        if (mutation.target.parentNode && mutation.target.parentNode.getRootNode() == mutation.target.parentNode)
+          console.log(1, mutation.target.type, mutation.target.nodeName);
+
+        switch (mutation.type) {
+          case "childList":
+            forEach.call(mutation.addedNodes, function(node) {
+              if (typeof node === "function") return;
+              checkForVideo(node, node.parentNode || mutation.target, true);
+            });
+            forEach.call(mutation.removedNodes, function(node) {
+              if (typeof node === "function") return;
+              checkForVideo(node, node.parentNode || mutation.target, false);
+            });
+            break;
+          case "attributes":
+            if (
+              mutation.target.attributes["aria-hidden"] &&
+              mutation.target.attributes["aria-hidden"].value == "false"
+            ) {
+              getMediaElements(document.body).forEach(video => {
+                if (!video.vsc) {
+                  video.vsc = new tc.videoController(video, video.parentNode || mutation.target);
+                }
+              });
+            }
+            break;
+        }
+      });
+    },
+    { timeout: 1000 }
+  );
+});
+
 function defineVideoController() {
   tc.videoController = function(target, parent) {
     if (target.vsc) {
@@ -159,6 +221,16 @@ function defineVideoController() {
     }
 
     tc.mediaElements.push(target);
+
+    target.addEventListener(
+      "ratechange",
+      ratechangeEventHandler,
+      true
+    );
+    videoObserver.observe(target.parentNode, {
+      childList: true,
+      subtree: true
+    });                                
 
     this.video = target;
     this.parent = target.parentElement || parent;
@@ -362,50 +434,54 @@ function isBlacklisted() {
   return blacklisted;
 }
 
-var coolDown = false;
+var coolDown = null;
 function refreshCoolDown() {
   log("Begin refreshCoolDown", 5);
   if (coolDown) {
     clearTimeout(coolDown);
   }
   coolDown = setTimeout(function() {
-    coolDown = false;
+    coolDown = null;
   }, 1000);
   log("End refreshCoolDown", 5);
 }
 
+function ratechangeEventHandler(event) {
+  if (coolDown) {
+    log("Speed event propagation blocked", 4);
+    event.stopImmediatePropagation();
+  }
+  var video = event.target;
+  var vsc = video.vsc;
+  if (!vsc)
+    return;
+  var speedIndicator = video.vsc.speedIndicator;
+  var src = video.currentSrc;
+  var speed = video.playbackRate.toFixed(2);
+
+  log("Playback rate changed to " + speed, 4);
+
+  log("Updating controller with new speed", 5);
+  speedIndicator.textContent = speed;
+  tc.settings.speeds[src] = speed;
+  log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
+  tc.settings.lastSpeed = speed;
+  log("Syncing chrome settings for lastSpeed", 5);
+  chrome.storage.sync.set({ lastSpeed: speed }, function() {
+    log("Speed setting saved: " + speed, 5);
+  });
+  // show the controller for 1000ms if it's hidden.
+  runAction("blink", null, null);
+}
+
 function setupListener() {
-  document.body.addEventListener(
-    "ratechange",
-    function(event) {
-      if (coolDown) {
-        log("Speed event propagation blocked", 4);
-        event.stopImmediatePropagation();
-      }
-      var video = event.target;
-      var vsc = video.vsc;
-      if (!vsc)
-        return;
-      var speedIndicator = video.vsc.speedIndicator;
-      var src = video.currentSrc;
-      var speed = video.playbackRate.toFixed(2);
-
-      log("Playback rate changed to " + speed, 4);
-
-      log("Updating controller with new speed", 5);
-      speedIndicator.textContent = speed;
-      tc.settings.speeds[src] = speed;
-      log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
-      tc.settings.lastSpeed = speed;
-      log("Syncing chrome settings for lastSpeed", 5);
-      chrome.storage.sync.set({ lastSpeed: speed }, function() {
-        log("Speed setting saved: " + speed, 5);
-      });
-      // show the controller for 1000ms if it's hidden.
-      runAction("blink", null, null);
-    },
-    true
-  );
+  getAllRoots(document.body).forEach(root => {
+    root.addEventListener(
+      "ratechange",
+      ratechangeEventHandler,
+      true
+    );
+  });
 }
 
 function initializeWhenReady(document) {
@@ -538,65 +614,6 @@ function initializeNow(document) {
     );
   });
 
-  function checkForVideo(node, parent, added) {
-    // Only proceed with supposed removal if node is missing from DOM
-    if (!added && document.body.contains(node)) {
-      return;
-    }
-    if (
-      node.nodeName === "VIDEO" ||
-      (node.nodeName === "AUDIO" && tc.settings.audioBoolean)
-    ) {
-      if (added) {
-        node.vsc = new tc.videoController(node, parent);
-      } else {
-        if (node.vsc) {
-          node.vsc.remove();
-        }
-      }
-    } else if (node.children != undefined) {
-      for (var i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        checkForVideo(child, child.parentNode || parent, added);
-      }
-    }
-  }
-
-  var observer = new MutationObserver(function(mutations) {
-    // Process the DOM nodes lazily
-    requestIdleCallback(
-      _ => {
-        mutations.forEach(function(mutation) {
-          switch (mutation.type) {
-            case "childList":
-              forEach.call(mutation.addedNodes, function(node) {
-                if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, true);
-              });
-              forEach.call(mutation.removedNodes, function(node) {
-                if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, false);
-              });
-              break;
-            case "attributes":
-              if (
-                mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false"
-              ) {
-                getMediaElements(document.body).forEach(video => {
-                  if (!video.vsc) {
-                    video.vsc = new tc.videoController(video, video.parentNode || mutation.target);
-                  }
-                });
-              }
-              break;
-          }
-        });
-      },
-      { timeout: 1000 }
-    );
-  });
-
   function getAllRoots(parent) {
     let result = [ parent ];
     function getChild(parent) {
@@ -617,7 +634,7 @@ function initializeNow(document) {
   }
   
   getAllRoots(document).forEach(root => {
-    observer.observe(root, {
+    videoObserver.observe(root, {
       attributeFilter: ["aria-hidden"],
       childList: true,
       subtree: true
@@ -666,6 +683,9 @@ function runAction(action, value, e) {
   }
 
   mediaTags.forEach(function(v) {
+    if (!v.vsc)
+      return;
+
     var controller = v.vsc.div;
     // Don't change video speed if the video has a different controller
     if (e && (targetController != controller)) {
