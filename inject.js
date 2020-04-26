@@ -413,9 +413,9 @@ function initializeWhenReady(document) {
   if (isBlacklisted()) {
     return;
   }
-  window.onload = () => {
+  window.addEventListener('load', () => {
     initializeNow(window.document);
-  };
+  });
   if (document) {
     if (document.readyState === "complete") {
       initializeNow(document);
