@@ -183,35 +183,47 @@ function defineVideoController() {
 
     this.div = this.initializeControls();
 
+    var mediaEventAction = function(event) {
+      storedSpeed = tc.settings.speeds[event.target.currentSrc];
+      if (!tc.settings.rememberSpeed) {
+        if (!storedSpeed) {
+          log(
+            "Overwriting stored speed to 1.0 (rememberSpeed not enabled)",
+            4
+          );
+          storedSpeed = 1.0;
+        }
+        // resetSpeed isn't really a reset, it's a toggle
+        log("Setting reset keybinding to fast", 5);
+        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+      } else {
+        log(
+          "Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",
+          5
+        );
+        storedSpeed = tc.settings.lastSpeed;
+      }
+      // TODO: Check if explicitly setting the playback rate to 1.0 is
+      // necessary when rememberSpeed is disabled (this may accidentally
+      // override a website's intentional initial speed setting interfering
+      // with the site's default behavior)
+      log("Explicitly setting playbackRate to: " + storedSpeed, 4);
+      var controller = event.target.parentElement.querySelector(
+        ".vsc-controller"
+      );
+      
+      var video = controller.parentElement.querySelector("video");
+      setSpeed(controller, video, storedSpeed)
+    };
+
     target.addEventListener(
       "play",
-      (this.handlePlay = function(event) {
-        storedSpeed = tc.settings.speeds[event.target.currentSrc];
-        if (!tc.settings.rememberSpeed) {
-          if (!storedSpeed) {
-            log(
-              "Overwriting stored speed to 1.0 (rememberSpeed not enabled)",
-              4
-            );
-            storedSpeed = 1.0;
-          }
-          // resetSpeed isn't really a reset, it's a toggle
-          log("Setting reset keybinding to fast", 5);
-          setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
-        } else {
-          log(
-            "Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",
-            5
-          );
-          storedSpeed = tc.settings.lastSpeed;
-        }
-        // TODO: Check if explicitly setting the playback rate to 1.0 is
-        // necessary when rememberSpeed is disabled (this may accidentally
-        // override a website's intentional initial speed setting interfering
-        // with the site's default behavior)
-        log("Explicitly setting playbackRate to: " + storedSpeed, 4);
-        event.target.playbackRate = storedSpeed;
-      }.bind(this))
+      (this.handlePlay = mediaEventAction.bind(this))
+    );
+
+    target.addEventListener(
+      "seeked",
+      (this.handleSeek = mediaEventAction.bind(this))
     );
 
     var observer = new MutationObserver(mutations => {
@@ -241,6 +253,7 @@ function defineVideoController() {
   tc.videoController.prototype.remove = function() {
     this.div.remove();
     this.video.removeEventListener("play", this.handlePlay);
+    this.video.removeEventListener("seek", this.handleSeek);
     delete this.video.dataset["vscid"];
     delete this.video.vsc;
   };
@@ -648,6 +661,11 @@ function setSpeed(controller, video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   video.playbackRate = Number(speedvalue);
+  if (controller) {
+    var speedIndicator = controller.shadowRoot.querySelector("span");
+    speedIndicator.textContent = speedvalue;
+  }
+  tc.settings.lastSpeed = speed;
   refreshCoolDown();
   log("setSpeed finished: " + speed, 5);
 }
@@ -672,6 +690,14 @@ function runAction(action, document, value, e) {
   mediaTags.forEach(function(v) {
     var id = v.dataset["vscid"];
     var controller = getController(id);
+    // if the controller isn't found, attempt to search the video element for the
+    // controller instead
+    if (!controller) {
+      controller = v.parentElement.querySelector(
+        ".vsc-controller"
+      );
+    }
+
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
       return;
