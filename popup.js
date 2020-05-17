@@ -1,25 +1,25 @@
-document.addEventListener("DOMContentLoaded", function() {
-  document.querySelector("#config").addEventListener("click", function() {
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelector("#config").addEventListener("click", function () {
     window.open(chrome.runtime.getURL("options.html"));
   });
 
-  document.querySelector("#about").addEventListener("click", function() {
+  document.querySelector("#about").addEventListener("click", function () {
     window.open("https://github.com/igrigorik/videospeed");
   });
 
-  document.querySelector("#feedback").addEventListener("click", function() {
+  document.querySelector("#feedback").addEventListener("click", function () {
     window.open("https://github.com/igrigorik/videospeed/issues");
   });
 
-  document.querySelector("#enable").addEventListener("click", function() {
+  document.querySelector("#enable").addEventListener("click", function () {
     toggleEnabled(true, settingsSavedReloadMessage);
   });
 
-  document.querySelector("#disable").addEventListener("click", function() {
+  document.querySelector("#disable").addEventListener("click", function () {
     toggleEnabled(false, settingsSavedReloadMessage);
   });
 
-  chrome.storage.sync.get({ enabled: true }, function(storage) {
+  chrome.storage.sync.get({ enabled: true }, function (storage) {
     toggleEnabledUI(storage.enabled);
   });
 
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function() {
       {
         enabled: enabled
       },
-      function() {
+      function () {
         toggleEnabledUI(enabled);
         if (callback) callback(enabled);
       }
