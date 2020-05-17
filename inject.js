@@ -53,7 +53,7 @@ function log(message, level) {
   }
 }
 
-chrome.storage.sync.get(tc.settings, function(storage) {
+chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.keyBindings = storage.keyBindings; // Array
   if (storage.keyBindings.length == 0) {
     // if first initialization of 0.5.3
@@ -124,7 +124,9 @@ chrome.storage.sync.get(tc.settings, function(storage) {
   tc.settings.blacklist = String(storage.blacklist);
 
   // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
-  if (tc.settings.keyBindings.filter(x => x.action == "display").length == 0) {
+  if (
+    tc.settings.keyBindings.filter((x) => x.action == "display").length == 0
+  ) {
     tc.settings.keyBindings.push({
       action: "display",
       key: Number(storage.displayKeyCode) || 86,
@@ -141,18 +143,20 @@ var forEach = Array.prototype.forEach;
 
 function getKeyBindings(action, what = "value") {
   try {
-    return tc.settings.keyBindings.find(item => item.action === action)[what];
+    return tc.settings.keyBindings.find((item) => item.action === action)[what];
   } catch (e) {
     return false;
   }
 }
 
 function setKeyBindings(action, value) {
-  tc.settings.keyBindings.find(item => item.action === action)["value"] = value;
+  tc.settings.keyBindings.find((item) => item.action === action)[
+    "value"
+  ] = value;
 }
 
 function defineVideoController() {
-  tc.videoController = function(target, parent) {
+  tc.videoController = function (target, parent) {
     if (target.dataset["vscid"]) {
       return target.vsc;
     }
@@ -160,9 +164,7 @@ function defineVideoController() {
     this.video = target;
     this.parent = target.parentElement || parent;
     this.document = target.ownerDocument;
-    this.id = Math.random()
-      .toString(36)
-      .substr(2, 9);
+    this.id = Math.random().toString(36).substr(2, 9);
     storedSpeed = tc.settings.speeds[target.currentSrc];
     if (!tc.settings.rememberSpeed) {
       if (!storedSpeed) {
@@ -183,14 +185,11 @@ function defineVideoController() {
 
     this.div = this.initializeControls();
 
-    var mediaEventAction = function(event) {
+    var mediaEventAction = function (event) {
       storedSpeed = tc.settings.speeds[event.target.currentSrc];
       if (!tc.settings.rememberSpeed) {
         if (!storedSpeed) {
-          log(
-            "Overwriting stored speed to 1.0 (rememberSpeed not enabled)",
-            4
-          );
+          log("Overwriting stored speed to 1.0 (rememberSpeed not enabled)", 4);
           storedSpeed = 1.0;
         }
         // resetSpeed isn't really a reset, it's a toggle
@@ -211,9 +210,9 @@ function defineVideoController() {
       var controller = event.target.parentElement.querySelector(
         ".vsc-controller"
       );
-      
+
       var video = controller.parentElement.querySelector("video");
-      setSpeed(controller, video, storedSpeed)
+      setSpeed(controller, video, storedSpeed);
     };
 
     target.addEventListener(
@@ -226,8 +225,8 @@ function defineVideoController() {
       (this.handleSeek = mediaEventAction.bind(this))
     );
 
-    var observer = new MutationObserver(mutations => {
-      mutations.forEach(mutation => {
+    var observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
         if (
           mutation.type === "attributes" &&
           (mutation.attributeName === "src" ||
@@ -250,7 +249,7 @@ function defineVideoController() {
     });
   };
 
-  tc.videoController.prototype.remove = function() {
+  tc.videoController.prototype.remove = function () {
     this.div.remove();
     this.video.removeEventListener("play", this.handlePlay);
     this.video.removeEventListener("seek", this.handleSeek);
@@ -258,7 +257,7 @@ function defineVideoController() {
     delete this.video.vsc;
   };
 
-  tc.videoController.prototype.initializeControls = function() {
+  tc.videoController.prototype.initializeControls = function () {
     log("initializeControls Begin", 5);
     var document = this.document;
     var speed = this.video.playbackRate.toFixed(2),
@@ -301,17 +300,17 @@ function defineVideoController() {
     shadow.innerHTML = shadowTemplate;
     shadow.querySelector(".draggable").addEventListener(
       "mousedown",
-      e => {
+      (e) => {
         runAction(e.target.dataset["action"], document, false, e);
         e.stopPropagation();
       },
       true
     );
 
-    forEach.call(shadow.querySelectorAll("button"), function(button) {
+    forEach.call(shadow.querySelectorAll("button"), function (button) {
       button.addEventListener(
         "click",
-        e => {
+        (e) => {
           runAction(
             e.target.dataset["action"],
             document,
@@ -326,10 +325,10 @@ function defineVideoController() {
 
     shadow
       .querySelector("#controller")
-      .addEventListener("click", e => e.stopPropagation(), false);
+      .addEventListener("click", (e) => e.stopPropagation(), false);
     shadow
       .querySelector("#controller")
-      .addEventListener("mousedown", e => e.stopPropagation(), false);
+      .addEventListener("mousedown", (e) => e.stopPropagation(), false);
 
     this.speedIndicator = shadow.querySelector("span");
     var fragment = document.createDocumentFragment();
@@ -346,10 +345,7 @@ function defineVideoController() {
         break;
       case location.hostname == "tv.apple.com":
         // insert after parent for correct stacking context
-        this.parent
-          .getRootNode()
-          .querySelector(".scrim")
-          .prepend(fragment);
+        this.parent.getRootNode().querySelector(".scrim").prepend(fragment);
 
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
@@ -368,7 +364,7 @@ function escapeStringRegExp(str) {
 
 function isBlacklisted() {
   blacklisted = false;
-  tc.settings.blacklist.split("\n").forEach(match => {
+  tc.settings.blacklist.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
     if (match.length == 0) {
       return;
@@ -398,7 +394,7 @@ function refreshCoolDown() {
   if (coolDown) {
     clearTimeout(coolDown);
   }
-  coolDown = setTimeout(function() {
+  coolDown = setTimeout(function () {
     coolDown = false;
   }, 1000);
   log("End refreshCoolDown", 5);
@@ -407,7 +403,7 @@ function refreshCoolDown() {
 function setupListener() {
   document.body.addEventListener(
     "ratechange",
-    function(event) {
+    function (event) {
       if (coolDown) {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
@@ -425,7 +421,7 @@ function setupListener() {
       log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
       tc.settings.lastSpeed = speed;
       log("Syncing chrome settings for lastSpeed", 5);
-      chrome.storage.sync.set({ lastSpeed: speed }, function() {
+      chrome.storage.sync.set({ lastSpeed: speed }, function () {
         log("Speed setting saved: " + speed, 5);
       });
       // show the controller for 1000ms if it's hidden.
@@ -482,7 +478,7 @@ function getShadow(parent) {
   return result.flat(Infinity);
 }
 function getController(id) {
-  return getShadow(document.body).filter(x => {
+  return getShadow(document.body).filter((x) => {
     return (
       x.attributes["data-vscid"] &&
       x.tagName == "DIV" &&
@@ -520,10 +516,10 @@ function initializeNow(document) {
     if (inIframe()) docs.push(window.top.document);
   } catch (e) {}
 
-  docs.forEach(function(doc) {
+  docs.forEach(function (doc) {
     doc.addEventListener(
       "keydown",
-      function(event) {
+      function (event) {
         var keyCode = event.keyCode;
         log("Processing keydown event: " + keyCode, 6);
 
@@ -552,12 +548,12 @@ function initializeNow(document) {
 
         // Ignore keydown event if typing in a page without vsc
         if (
-          !getShadow(document.body).filter(x => x.tagName == "vsc-controller")
+          !getShadow(document.body).filter((x) => x.tagName == "vsc-controller")
         ) {
           return false;
         }
 
-        var item = tc.settings.keyBindings.find(item => item.key === keyCode);
+        var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
         if (item) {
           runAction(item.action, document, item.value);
           if (item.force === "true") {
@@ -598,18 +594,18 @@ function initializeNow(document) {
     }
   }
 
-  var observer = new MutationObserver(function(mutations) {
+  var observer = new MutationObserver(function (mutations) {
     // Process the DOM nodes lazily
     requestIdleCallback(
-      _ => {
-        mutations.forEach(function(mutation) {
+      (_) => {
+        mutations.forEach(function (mutation) {
           switch (mutation.type) {
             case "childList":
-              forEach.call(mutation.addedNodes, function(node) {
+              forEach.call(mutation.addedNodes, function (node) {
                 if (typeof node === "function") return;
                 checkForVideo(node, node.parentNode || mutation.target, true);
               });
-              forEach.call(mutation.removedNodes, function(node) {
+              forEach.call(mutation.removedNodes, function (node) {
                 if (typeof node === "function") return;
                 checkForVideo(node, node.parentNode || mutation.target, false);
               });
@@ -620,9 +616,11 @@ function initializeNow(document) {
                 mutation.target.attributes["aria-hidden"].value == "false"
               ) {
                 var flattenedNodes = getShadow(document.body);
-                var node = flattenedNodes.filter(x => x.tagName == "VIDEO")[0];
+                var node = flattenedNodes.filter(
+                  (x) => x.tagName == "VIDEO"
+                )[0];
                 if (node) {
-                  var oldController = flattenedNodes.filter(x =>
+                  var oldController = flattenedNodes.filter((x) =>
                     x.classList.contains("vsc-controller")
                   )[0];
                   if (oldController) {
@@ -654,12 +652,12 @@ function initializeNow(document) {
     var mediaTags = document.querySelectorAll("video");
   }
 
-  forEach.call(mediaTags, function(video) {
+  forEach.call(mediaTags, function (video) {
     video.vsc = new tc.videoController(video);
   });
 
   var frameTags = document.getElementsByTagName("iframe");
-  forEach.call(frameTags, function(frame) {
+  forEach.call(frameTags, function (frame) {
     // Ignore frames we don't have permission to access (different origin).
     try {
       var childDocument = frame.contentDocument;
@@ -687,11 +685,13 @@ function setSpeed(controller, video, speed) {
 function runAction(action, document, value, e) {
   log("runAction Begin", 5);
   if (tc.settings.audioBoolean) {
-    var mediaTags = getShadow(document.body).filter(x => {
+    var mediaTags = getShadow(document.body).filter((x) => {
       return x.tagName == "AUDIO" || x.tagName == "VIDEO";
     });
   } else {
-    var mediaTags = getShadow(document.body).filter(x => x.tagName == "VIDEO");
+    var mediaTags = getShadow(document.body).filter(
+      (x) => x.tagName == "VIDEO"
+    );
   }
 
   mediaTags.forEach = Array.prototype.forEach;
@@ -701,15 +701,13 @@ function runAction(action, document, value, e) {
     var targetController = e.target.getRootNode().host;
   }
 
-  mediaTags.forEach(function(v) {
+  mediaTags.forEach(function (v) {
     var id = v.dataset["vscid"];
     var controller = getController(id);
     // if the controller isn't found, attempt to search the video element for the
     // controller instead
     if (!controller) {
-      controller = v.parentElement.querySelector(
-        ".vsc-controller"
-      );
+      controller = v.parentElement.querySelector(".vsc-controller");
     }
 
     // Don't change video speed if the video has a different controller
@@ -855,7 +853,7 @@ function handleDrag(video, controller, e) {
     parseInt(shadowController.style.top)
   ];
 
-  const startDragging = e => {
+  const startDragging = (e) => {
     let style = shadowController.style;
     let dx = e.clientX - initialMouseXY[0];
     let dy = e.clientY - initialMouseXY[1];
@@ -886,7 +884,7 @@ function showController(controller) {
   if (animation) clearTimeout(timer);
 
   animation = true;
-  timer = setTimeout(function() {
+  timer = setTimeout(function () {
     controller.classList.remove("vcs-show");
     animation = false;
     log("Hiding controller", 5);
