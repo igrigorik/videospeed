@@ -671,7 +671,7 @@ function initializeNow(document) {
 
 function setSpeed(controller, video, speed) {
   log("setSpeed started: " + speed, 5);
-  var speedvalue = speed.toFixed(2);
+  var speedvalue = parseFloat(speed).toFixed(2);
   video.playbackRate = Number(speedvalue);
   if (controller) {
     var speedIndicator = controller.shadowRoot.querySelector("span");
