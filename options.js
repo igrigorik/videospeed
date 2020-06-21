@@ -350,7 +350,7 @@ document.addEventListener("DOMContentLoaded", function() {
     .addEventListener("click", show_experimental);
 
   function eventCaller(event, className, funcName) {
-    if (!event.target.classList.contains(className)) {
+    if (!event.target.classList || !event.target.classList.contains(className)) {
       return;
     }
     funcName(event);
