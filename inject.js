@@ -411,12 +411,12 @@ function setupListener() {
       var video = event.target;
       var speedIndicator = video.vsc.speedIndicator;
       var src = video.currentSrc;
-      var speed = video.playbackRate.toFixed(2);
+      var speed = Number(video.playbackRate.toFixed(2));
 
       log("Playback rate changed to " + speed, 4);
 
       log("Updating controller with new speed", 5);
-      speedIndicator.textContent = speed;
+      speedIndicator.textContent = speed.toFixed(2);
       tc.settings.speeds[src] = speed;
       log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
       tc.settings.lastSpeed = speed;
