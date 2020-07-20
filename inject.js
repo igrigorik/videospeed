@@ -426,6 +426,7 @@ function setupListener() {
       });
       // show the controller for 1000ms if it's hidden.
       runAction("blink", document, null, null);
+      savedTimerRateChanged(event);
     },
     true
   );
@@ -666,6 +667,13 @@ function initializeNow(document) {
     }
     initializeWhenReady(childDocument);
   });
+
+  forEach.call(mediaTags, function (video) {
+    video.addEventListener('playing', savedTimerBegin.bind(this));
+    video.addEventListener('pause', savedTimerEnd);
+    video.addEventListener('waiting', savedTimerEnd);
+  });
+
   log("End initializeNow", 5);
 }
 
@@ -890,3 +898,55 @@ function showController(controller) {
     log("Hiding controller", 5);
   }, 2000);
 }
+
+let savedTimerSetDuration = function(target, add) {
+  let from = Number(target.dataset['playFrom']);
+  let to = Number(target.dataset['playTo']);
+  let rate = Number(target.dataset['playRate']);
+  if (target.dataset['playStatus'] === "playing") {
+    to = Date.now();
+    rate = target.playbackRate;
+  }
+
+  let t = {
+    spentDuration: (to-from),
+    playedDuration: (to-from)*rate,
+  };
+  let diff = Math.floor(t.playedDuration-t.spentDuration);
+
+  chrome.runtime.sendMessage({
+    vscid: target.dataset["vscid"],
+    duration: diff,
+    add: add,
+  });
+}
+
+let savedTimerBegin = function(e) {
+  e.target.dataset['playStatus'] = "playing";
+  e.target.dataset['playFrom'] = Date.now();
+  e.target.dataset['playRate'] = e.target.playbackRate;
+  e.target.dataset['interval'] = setInterval(function() {
+    log("setInterval called", 2);
+    savedTimerSetDuration(e.target, false);
+  }.bind(this), 1000);
+}
+
+let savedTimerEnd = function(e) {
+  if(e.target.dataset['playStatus'] !== "playing") {
+    return;
+  }
+  clearInterval(e.target.dataset['interval']);
+  delete e.target.dataset['interval'];
+  delete e.target.dataset['playStatus'];
+  e.target.dataset['playTo'] = Date.now();
+
+  savedTimerSetDuration(e.target, true);
+}
+
+let savedTimerRateChanged = function(e) {
+  if (e.target.dataset['playStatus'] !== "playing") {
+    return;
+  }
+  savedTimerEnd(e);
+  savedTimerBegin.bind(this)(e);
+}.bind(this);
