@@ -17,21 +17,17 @@ let savedTimerReset = function() {
 
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-    console.info("request", request);
-
     let vscid = request.vscid;
 
     chrome.storage.sync.get({saved_durations: {}}, function(store) {
-      console.info("store:", store);
-
       if(store.saved_durations[vscid] == null)
         store.saved_durations[vscid] = 0;
 
-      if(request.add) {
-        store.saved_durations[vscid] = store.saved_durations[vscid] + request.duration;
-        delete store.saved_durations["tmp."+vscid];
+      if(request.stillPlaying) {
+        store.saved_durations["stillPlaying."+vscid] = request.duration;
       } else {
-        store.saved_durations["tmp."+vscid] = request.duration;
+        store.saved_durations[vscid] = store.saved_durations[vscid] + request.duration;
+        delete store.saved_durations["stillPlaying."+vscid];
       }
 
       let sum = 0;

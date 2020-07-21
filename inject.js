@@ -899,11 +899,13 @@ function showController(controller) {
   }, 2000);
 }
 
-let savedTimerSetDuration = function(target, add) {
+let savedTimerSetDuration = function(target) {
   let from = Number(target.dataset['playFrom']);
   let to = Number(target.dataset['playTo']);
   let rate = Number(target.dataset['playRate']);
-  if (target.dataset['playStatus'] === "playing") {
+  let stillPlaying = target.dataset['playStatus'] === "playing";
+
+  if (stillPlaying) {
     to = Date.now();
     rate = target.playbackRate;
   }
@@ -917,7 +919,7 @@ let savedTimerSetDuration = function(target, add) {
   chrome.runtime.sendMessage({
     vscid: target.dataset["vscid"],
     duration: diff,
-    add: add,
+    stillPlaying: stillPlaying,
   });
 }
 
@@ -926,8 +928,7 @@ let savedTimerBegin = function(e) {
   e.target.dataset['playFrom'] = Date.now();
   e.target.dataset['playRate'] = e.target.playbackRate;
   e.target.dataset['interval'] = setInterval(function() {
-    log("setInterval called", 2);
-    savedTimerSetDuration(e.target, false);
+    savedTimerSetDuration(e.target);
   }.bind(this), 1000);
 }
 
@@ -940,7 +941,7 @@ let savedTimerEnd = function(e) {
   delete e.target.dataset['playStatus'];
   e.target.dataset['playTo'] = Date.now();
 
-  savedTimerSetDuration(e.target, true);
+  savedTimerSetDuration(e.target);
 }
 
 let savedTimerRateChanged = function(e) {
