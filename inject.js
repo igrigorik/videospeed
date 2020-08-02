@@ -207,11 +207,15 @@ function defineVideoController() {
       // override a website's intentional initial speed setting interfering
       // with the site's default behavior)
       log("Explicitly setting playbackRate to: " + storedSpeed, 4);
-      var controller = event.target.parentElement.querySelector(
-        ".vsc-controller"
-      );
+      //fixes issue #690: why hunt for the vsc-controller when we already got it!
+      var controller = this.div;
+      //var controller = event.target.parentElement.querySelector(
+      //  ".vsc-controller"
+      //);
 
-      var video = controller.parentElement.querySelector("video");
+      //fixes issue #690: why hunt for the vsc-controller when we already got it!
+      //var video = controller.parentElement.querySelector("video");
+      var video = this.video;
       setSpeed(controller, video, storedSpeed);
     };
 
@@ -346,6 +350,14 @@ function defineVideoController() {
       case location.hostname == "tv.apple.com":
         // insert after parent for correct stacking context
         this.parent.getRootNode().querySelector(".scrim").prepend(fragment);
+
+      //fixes issue #690: site specific vsc-controller stacking.
+      case location.hostname == "www.primevideo.com":
+      case location.hostname == "www.abc.net.au":
+      case location.hostname == "www.sbs.com.au":
+        // insert before parent to bypass overlay
+        //log("Adding exceptions for ggParent layer stacking.", 5);
+        this.parent.parentElement.parentElement.insertBefore(fragment, this.parent.parentElement.parentElement.firstChild)
 
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
