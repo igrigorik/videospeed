@@ -342,6 +342,8 @@ function defineVideoController() {
 
     switch (true) {
       case location.hostname == "www.amazon.com":
+      //fixes issue #690: site specific vsc-controller stacking.
+      case location.hostname == "iview.abc.net.au":
       case location.hostname == "www.reddit.com":
       case /hbogo\./.test(location.hostname):
         // insert before parent to bypass overlay
@@ -353,7 +355,6 @@ function defineVideoController() {
 
       //fixes issue #690: site specific vsc-controller stacking.
       case location.hostname == "www.primevideo.com":
-      case location.hostname == "www.abc.net.au":
       case location.hostname == "www.sbs.com.au":
         // insert before parent to bypass overlay
         //log("Adding exceptions for ggParent layer stacking.", 5);
