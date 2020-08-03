@@ -1,8 +1,12 @@
-.vsc-nosource { display: none !important; }
-.vsc-hidden { display: none !important; }
+.vsc-nosource {
+  display: none !important;
+}
+.vsc-hidden {
+  display: none !important;
+}
 .vsc-manual {
   visibility: visible !important;
-  opacity: 1.0 !important;
+  opacity: 1 !important;
 }
 
 /* Origin specific overrides */
@@ -14,13 +18,13 @@
 
 .ytp-autohide .vsc-controller {
   visibility: hidden;
-  transition: opacity .25s cubic-bezier(0.4,0,0.2,1);
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
 }
 
 .ytp-autohide .vcs-show {
   visibility: visible;
-  opacity: 1.0;
+  opacity: 1;
 }
 
 /* YouTube embedded player */
@@ -32,8 +36,8 @@
 
 /* Facebook player */
 #facebook .vsc-controller {
- position: relative;
- top: 40px;
+  position: relative;
+  top: 40px;
 }
 
 /* Google Photos player */
@@ -76,7 +80,8 @@ div.video-wrapper + div.target {
 }
 
 /* Fix black overlay on Kickstarter */
-div.video-player.has_played.vertically_center:before, div.legacy-video-player.has_played.vertically_center:before {
+div.video-player.has_played.vertically_center:before,
+div.legacy-video-player.has_played.vertically_center:before {
   content: none !important;
 }
 

@@ -1,129 +1,185 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Video Speed Controller: Options</title>
-        <link rel="stylesheet" href="options.css" />
-        <script src="options.js"></script>
-    </head>
-    <body>
-        <header>
-            <h1>Video Speed Controller</h1>
-        </header>
+  <head>
+    <title>Video Speed Controller: Options</title>
+    <link rel="stylesheet" href="options.css" />
+    <script src="options.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Video Speed Controller</h1>
+    </header>
 
     <section id="customs">
       <h3>Shortcuts</h3>
-        <div class="row customs" id="display">
-            <select class="customDo">
-                <option value="display">Show/hide controller</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (0.10)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="slower">
-            <select class="customDo">
-                <option value="slower">Decrease speed</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (0.10)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="faster">
-            <select class="customDo">
-                <option value="faster">Increase speed</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-                <input class="customValue" type="text" placeholder="value (0.10)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="rewind">
-            <select class="customDo">
-                <option value="rewind">Rewind</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (10)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="advance">
-            <select class="customDo">
-                <option value="advance">Advance</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (10)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="reset">
-            <select class="customDo">
-                <option value="reset">Reset speed</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (1.00)" disabled>
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="fast">
-            <select class="customDo">
-                <option value="fast">Preferred speed</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (1.80)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
-        <div class="row customs" id="adaptive">
-            <select class="customDo">
-                <option value="adaptive">Adaptive speed</option>
-            </select>
-            <input class="customKey" type="text" value="" placeholder="press a key">
-            <input class="customValue" type="text" placeholder="value (1.80)">
-            <select class="customForce">
-                <option value="false">Do not disable website key bindings</option>
-                <option value="true">Disable websites key bindings</option>
-            </select></div>
+      <div class="row customs" id="display">
+        <select class="customDo">
+          <option value="display">Show/hide controller</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (0.10)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="slower">
+        <select class="customDo">
+          <option value="slower">Decrease speed</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (0.10)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="faster">
+        <select class="customDo">
+          <option value="faster">Increase speed</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (0.10)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="rewind">
+        <select class="customDo">
+          <option value="rewind">Rewind</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (10)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="advance">
+        <select class="customDo">
+          <option value="advance">Advance</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (10)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="reset">
+        <select class="customDo">
+          <option value="reset">Reset speed</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input
+          class="customValue"
+          type="text"
+          placeholder="value (1.00)"
+          disabled
+        />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="fast">
+        <select class="customDo">
+          <option value="fast">Preferred speed</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (1.80)" />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
+      <div class="row customs" id="adaptive">
+        <select class="customDo">
+            <option value="adaptive">Adaptive speed</option>
+        </select>
+        <input 
+          class="customKey" 
+          type="text" 
+          value="" 
+          placeholder="press a key"
+        />
+        <input class="customValue" type="text" placeholder="value (3.00)">
+        <select class="customForce">
+            <option value="false">Do not disable website key bindings</option>
+            <option value="true">Disable websites key bindings</option>
+        </select></div>
 
-        <button id="add">Add New</button>
+      <button id="add">Add New</button>
     </section>
 
     <section>
       <h3>Other</h3>
       <div class="row">
-        <label for="enabled">Enabled</label>
-        <input id="enabled" type="checkbox"/>
+        <label for="enabled">Enable</label>
+        <input id="enabled" type="checkbox" />
       </div>
       <div class="row">
         <label for="startHidden">Hide controller by default</label>
-        <input id="startHidden" type="checkbox"/>
+        <input id="startHidden" type="checkbox" />
       </div>
       <div class="row">
-        <label for="rememberSpeed">Remember Playback Speed</label>
-        <input id="rememberSpeed" type="checkbox"/>
+        <label for="rememberSpeed">Remember playback speed</label>
+        <input id="rememberSpeed" type="checkbox" />
       </div>
       <div class="row">
         <label for="audioBoolean">Work on audio</label>
-        <input id="audioBoolean" type="checkbox"/>
+        <input id="audioBoolean" type="checkbox" />
       </div>
       <div class="row">
         <label for="controllerOpacity">Controller opacity</label>
-        <input id="controllerOpacity" type="text" value="">
+        <input id="controllerOpacity" type="text" value="" />
       </div>
       <div class="row">
-        <label for="blacklist">Blacklisted sites on which extension is disabled<br/>
-            (one per line)<br/>
-            <br/>
-            <em><a href="https://www.regexpal.com/">Regex</a> is supported. Be sure it is in "//g" format.<br/>
-            ie: /(.+)youtube\.com(\/*)$/gi</em>
+        <label for="blacklist"
+          >Sites on which extension is disabled<br />
+          (one per line)<br />
+          <br />
+          <em>
+            <a href="https://www.regexpal.com/">Regex</a> is supported.<br />
+            Be sure it is in "//g" format.<br />
+            ie: /(.+)youtube\.com(\/*)$/gi
+          </em>
         </label>
         <textarea id="blacklist" rows="10" cols="50"></textarea>
       </div>
@@ -131,29 +187,48 @@
 
     <button id="save">Save</button>
     <button id="restore">Restore Defaults</button>
-    <button id="experimental">Show experimental features</button>
+    <button id="experimental">Show Experimental Features</button>
 
     <div id="status"></div>
 
     <div id="faq">
       <hr />
 
-      <h4>The video controls are not showing up?</h4>
-      <p>This extension is only compatible with HTML5 video. If you don't see the controls showing up, chances are you are viewing a Flash video. If you want to confirm, try right-clicking on the video and inspect the menu: if it mentions flash, then that's the issue. That said, <b>most sites will fallback to HTML5</b> if they detect that Flash it not available. You can try manually disabling Flash plugin in Chrome:</p>
+      <h4>Extension controls not appearing?</h4>
+      <p>
+        This extension is only compatible with HTML5 audio and video. If you
+        don't see the controls showing up, chances are you are viewing a Flash
+        content. If you want to confirm, try right-clicking on the content and
+        inspect the menu: if it mentions flash, then that's the issue. That
+        said, <b>most sites will fallback to HTML5</b> if they detect that Flash
+        is not available. You can try manually disabling Flash plugin in the
+        browser:
+      </p>
 
       <ul>
-        <li>In a new tab, navigate to <code>chrome://settings/content/flash</code></li>
+        <li>
+          In a new tab, navigate to <code>chrome://settings/content/flash</code>
+        </li>
         <li>Disable "Allow sites to run Flash"</li>
-        <li>Restart your browser and try playing your video again</li>
+        <li>Restart your browser and try playing your audio or video again</li>
       </ul>
 
       <h4>The speed controls are not showing up for local videos?</h4>
-      <p>To enable playback of local media (e.g. File &gt; Open File), you need to grant additional permissions to the extension.</p>
+      <p>
+        To enable playback of local media (e.g. File &gt; Open File), you need
+        to grant additional permissions to the extension.
+      </p>
 
       <ul>
         <li>In a new tab, navigate to <code>chrome://extensions</code></li>
-        <li>Find "Video Speed Controller" extension in the list and enable "Allow access to file URLs"</li>
-        <li>Open a new tab and try opening a local file, the controls should show up</li>
+        <li>
+          Find "Video Speed Controller" extension in the list and enable "Allow
+          access to file URLs"
+        </li>
+        <li>
+          Open a new tab and try opening a local file, the controls should show
+          up
+        </li>
       </ul>
     </div>
   </body>
