@@ -799,6 +799,7 @@ function runAction(action, document, value, e) {
 }
 
 function toggleAdaptiveSpeed(v, controller) {
+  log('Toggling adaptive speed', 4);
   tc.settings.adaptiveSpeed = !tc.settings.adaptiveSpeed;
   const shadowController = controller.shadowRoot.querySelector("#controller");
   var button = shadowController.querySelector(`button[data-action="adaptive"]`);
@@ -818,27 +819,32 @@ function toggleAdaptiveSpeed(v, controller) {
     );
 
     function audioSample() {
+      log("Calling audioSample", 6);
       if (!v.paused) {
         var audioLimit = 45; // TODO maybe could be configurable in the future
         var lowerLimit = audioLimit - 4;
         var upperLimit = audioLimit + 4;
         tc.adaptiveSpeedAnalyserNode.getFloatFrequencyData(myDataArray);
         var dbValue = Math.max(...myDataArray) + 100;
-        if (dbValue < lowerLimit) {
-          if (v.playbackRate === getKeyBindings("reset")) {
-            v.playbackRate = getKeyBindings("adaptive"); 
-          }
-        } else if (dbValue > upperLimit) {
-          if (v.playbackRate !== getKeyBindings("reset")) {
-            v.playbackRate = getKeyBindings("reset");
-          }
+        if (
+          dbValue < lowerLimit &&
+          v.playbackRate !== getKeyBindings("adaptive")
+        ) {
+          log("Increase speed due to low audio level", 5);
+          v.playbackRate = getKeyBindings("adaptive"); // set playbackrate directly to not overwrite lastSpeed
+        } else if (
+          dbValue > upperLimit &&
+          v.playbackRate === getKeyBindings("adaptive")
+        ) {
+          log("Decrease speed due to higher audio level", 5);
+          setSpeed(controller, v, tc.settings.lastSpeed);
         }
       }
 
       if (tc.settings.adaptiveSpeed) {
         setTimeout(audioSample, 0);
       } else {
-        v.playbackRate = getKeyBindings("reset"); // TODO Decide which speed to use when deactivating adaprive speed.
+        setSpeed(controller, v, tc.settings.lastSpeed);
       }
     }
 
