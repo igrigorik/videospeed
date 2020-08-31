@@ -1,6 +1,6 @@
 * {
   line-height: 1.8em;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: Product Sans;
   font-size: 13px;
 }
 
@@ -13,11 +13,11 @@
   top: 0;
   left: 0;
 
-  background: black;
-  color: white;
+  background: rgba(255,255,255,0.7);
+  color: black;
 
-  border-radius: 5px;
-  padding: 5px;
+  border-radius: 30px;
+  padding: 6px 12px 6px 12px;
   margin: 10px 10px 10px 15px;
 
   cursor: default;
@@ -25,7 +25,7 @@
 }
 
 #controller:hover {
-  opacity: 0.7;
+  opacity: 1.0;
 }
 
 #controller:hover > .draggable {
@@ -56,15 +56,15 @@
 button {
   cursor: pointer;
   color: black;
-  background: white;
-  font-weight: bold;
-  border-radius: 5px;
-  padding: 1px 6px 3px 6px;
+  background: rgba(255,255,255,0.8);
+  font-weight: normal;
+  border-radius: 20px;
+  padding: 1px 10px 3px 10px;
   font-size: 14px;
   line-height: 14px;
-  border: 1px solid white;
-  font-family: "Lucida Console", Monaco, monospace;
-  margin-bottom: 2px;
+  border: 0px solid white;
+  font-family: "Product Sans";
+  margin: 0px 2px 2px 2px;
 }
 
 button:focus {
@@ -76,7 +76,7 @@ button:hover {
 }
 
 button:active {
-  background: #ccc;
+  background: #2196f3;
 }
 
 button.rw {
