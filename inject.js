@@ -293,7 +293,7 @@ function defineVideoController() {
             <button data-action="slower">-</button>
             <button data-action="faster">+</button>
             <button data-action="advance" class="rw">»</button>
-            <button data-action="display" class="hideButton">x</button>
+            <button data-action="display" class="hideButton">&times;</button>
           </span>
         </div>
       `;
