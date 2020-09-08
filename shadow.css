@@ -1,6 +1,6 @@
 * {
   line-height: 1.8em;
-  font-family: Product Sans;
+  font-family: Verdana, Geneva, sans-serif;
   font-size: 13px;
 }
 
@@ -59,13 +59,12 @@ button {
   background: rgba(255,255,255,0.4);
   font-weight: normal;
   border-radius: 20px;
-  padding: 3px 8px 3px 8px;
+  padding: 1px 8px 3px 8px;
   font-size: 14px;
   line-height: 14px;
   border: 0px solid white;
-  font-family: "Product Sans";
+  font-family: "Lucida Console", Monaco, monospace;
   margin: 0px 2px 2px 2px;
-
   transition: background 0.3s;
 }
 
@@ -75,11 +74,11 @@ button:focus {
 
 button:hover {
   opacity: 1;
-  background: #00b79f;
+  background: #f44336;
 }
 
 button:active {
-  background: #00b79f;
+  background: #f44336;
 }
 
 button.rw {
