@@ -37,5 +37,8 @@
       "js": ["inject.js"]
     }
   ],
+  "background": {
+    "scripts": ["background.js"]
+  },
   "web_accessible_resources": ["inject.css", "shadow.css"]
 }
