@@ -10,7 +10,7 @@ var tc = {
     rememberSpeed: false, // default: false
     audioBoolean: false, // default: false
     startHidden: false, // default: false
-    controllerOpacity: 0.3, // default: 0.3
+    controllerOpacity: 1.0, // default: 0.3
     keyBindings: [],
     blacklist: `\
       www.instagram.com
@@ -61,14 +61,14 @@ chrome.storage.sync.get(tc.settings, function (storage) {
     tc.settings.keyBindings.push({
       action: "slower",
       key: Number(storage.slowerKeyCode) || 83,
-      value: Number(storage.speedStep) || 0.1,
+      value: Number(storage.speedStep) || 0.5,
       force: false,
       predefined: true
     }); // default S
     tc.settings.keyBindings.push({
       action: "faster",
       key: Number(storage.fasterKeyCode) || 68,
-      value: Number(storage.speedStep) || 0.1,
+      value: Number(storage.speedStep) || 0.5,
       force: false,
       predefined: true
     }); // default: D

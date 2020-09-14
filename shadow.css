@@ -1,6 +1,6 @@
 * {
   line-height: 1.8em;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: Product Sans;
   font-size: 13px;
 }
 
@@ -13,8 +13,9 @@
   top: 0;
   left: 0;
 
-  background: rgba(255,255,255,0.2);
-  color: white;
+  background: rgba(255,255,255,1);
+  color: #757575;
+  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.2);
 
   border-radius: 30px;
   padding: 6px 12px 6px 12px;
@@ -30,6 +31,7 @@
 
 #controller:hover > .draggable {
   margin-right: 0.8em;
+  transition: padding 1s;
 }
 
 #controls {
@@ -53,32 +55,38 @@
   cursor: -webkit-grabbing;
 }
 
+/* opacity needed here for when user moves away from hovering over button. otherwise it flashes full 1.0 opacity of the background color that is applied while hovering real quick before transitioning back to this background*/
 button {
+  opacity: 0.65;
   cursor: pointer;
-  color: white;
-  background: rgba(255,255,255,0.4);
+  color: #757575;
+  background: rgba(255,255,255,1.0);
   font-weight: normal;
   border-radius: 20px;
-  padding: 1px 8px 3px 8px;
+  padding: 3px 8px 3px 8px;
   font-size: 14px;
   line-height: 14px;
   border: 0px solid white;
-  font-family: "Lucida Console", Monaco, monospace;
+  font-family: "Product Sans";
   margin: 0px 2px 2px 2px;
-  transition: background 0.3s;
+  transition: background 0.3s, color 0.3s;
 }
 
 button:focus {
+  opacity: 0.65;
   outline: 0;
 }
 
 button:hover {
-  opacity: 1;
-  background: #f44336;
+  opacity: 0.65;
+  background: #2196f3;
+  color: #ffffff;
 }
 
 button:active {
-  background: #f44336;
+  opacity: 0.65;
+  background: #2196f3;
+  color: #ffffff;
 }
 
 button.rw {
@@ -86,6 +94,6 @@ button.rw {
 }
 
 button.hideButton {
+  opacity: 0.65;
   margin-right: 2px;
-  opacity: 0.5;
 }
