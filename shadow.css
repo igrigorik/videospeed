@@ -16,8 +16,8 @@
   background: black;
   color: white;
 
-  border-radius: 5px;
-  padding: 5px;
+  border-radius: 30px;
+  padding: 6px 12px 6px 12px;
   margin: 10px 10px 10px 15px;
 
   cursor: default;
@@ -58,13 +58,14 @@ button {
   color: black;
   background: white;
   font-weight: bold;
-  border-radius: 5px;
-  padding: 1px 6px 3px 6px;
+  border-radius: 20px;
+  padding: 3px 8px 3px 8px;
   font-size: 14px;
   line-height: 14px;
-  border: 1px solid white;
+  border: 0px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin-bottom: 2px;
+  margin: 0px 2px 2px 2px;
+  transition: background 0.3s, color 0.3s;
 }
 
 button:focus {
@@ -73,10 +74,13 @@ button:focus {
 
 button:hover {
   opacity: 1;
+  background: #2196f3;
+  color: #ffffff;
 }
 
 button:active {
-  background: #ccc;
+  background: #2196f3;
+  color: #ffffff;
 }
 
 button.rw {
