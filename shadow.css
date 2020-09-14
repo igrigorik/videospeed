@@ -1,6 +1,6 @@
 * {
   line-height: 1.8em;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: sans-serif;
   font-size: 13px;
 }
 
@@ -54,18 +54,19 @@
 }
 
 button {
+  opacity: 1;
   cursor: pointer;
   color: black;
   background: white;
-  font-weight: bold;
+  font-weight: normal;
   border-radius: 20px;
-  padding: 3px 8px 3px 8px;
+  padding: 1px 5px 3px 5px;
   font-size: 14px;
   line-height: 14px;
   border: 0px solid white;
   font-family: "Lucida Console", Monaco, monospace;
   margin: 0px 2px 2px 2px;
-  transition: background 0.3s, color 0.3s;
+  transition: background 0.2s, color 0.2s;
 }
 
 button:focus {
@@ -81,6 +82,7 @@ button:hover {
 button:active {
   background: #2196f3;
   color: #ffffff;
+  font-weight: bold;
 }
 
 button.rw {
@@ -88,6 +90,6 @@ button.rw {
 }
 
 button.hideButton {
+  opacity: 0.65;
   margin-right: 2px;
-  opacity: 0.5;
 }
