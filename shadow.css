@@ -1,7 +1,6 @@
 * {
-  line-height: 1.8em;
   font-family: Verdana, Geneva, sans-serif;
-  font-size: 13px;
+  font-size: 1.15em;
 }
 
 :host(:hover) #controls {
@@ -12,14 +11,11 @@
   position: absolute;
   top: 0;
   left: 0;
-
   background: black;
   color: white;
-
   border-radius: 5px;
   padding: 5px;
-  margin: 10px 10px 10px 15px;
-
+  margin: 10px 10px 10px 10px;
   cursor: default;
   z-index: 9999999;
 }
@@ -59,12 +55,12 @@ button {
   background: white;
   font-weight: bold;
   border-radius: 5px;
-  padding: 1px 6px 3px 6px;
-  font-size: 14px;
-  line-height: 14px;
+  padding: 1px 6px 1px 6px;
+  font-size: 1em;
   border: 1px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin-bottom: 2px;
+  vertical-align:middle;
+  opacity: 0.9;
 }
 
 button:focus {
@@ -83,7 +79,15 @@ button.rw {
   opacity: 0.65;
 }
 
+button.rw:hover {
+  opacity: 1;
+}
+
 button.hideButton {
   margin-right: 2px;
   opacity: 0.5;
+}
+
+button.hideButton:hover {
+  opacity: 1;
 }
