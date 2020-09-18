@@ -8,6 +8,7 @@ var tc = {
 
     displayKeyCode: 86, // default: V
     rememberSpeed: false, // default: false
+    forceLastSavedSpeed: false, //default: false
     audioBoolean: false, // default: false
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
@@ -107,6 +108,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       version: tc.settings.version,
       displayKeyCode: tc.settings.displayKeyCode,
       rememberSpeed: tc.settings.rememberSpeed,
+      forceLastSavedSpeed: tc.settings.forceLastSavedSpeed,
       audioBoolean: tc.settings.audioBoolean,
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
@@ -117,6 +119,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.lastSpeed = Number(storage.lastSpeed);
   tc.settings.displayKeyCode = Number(storage.displayKeyCode);
   tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
+  tc.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
   tc.settings.audioBoolean = Boolean(storage.audioBoolean);
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
@@ -408,6 +411,33 @@ function refreshCoolDown() {
 }
 
 function setupListener() {
+  /**
+   * This function is run whenever a video speed rate change occurs.
+   * It is used to update the speed that shows up in the display as well as save
+   * that latest speed into the local storage.
+   * 
+   * @param {*} video The video element to update the speed indicators for.
+   */
+  function updateSpeedFromEvent(video) {
+    var speedIndicator = video.vsc.speedIndicator;
+    var src = video.currentSrc;
+    var speed = Number(video.playbackRate.toFixed(2));
+
+    log("Playback rate changed to " + speed, 4);
+
+    log("Updating controller with new speed", 5);
+    speedIndicator.textContent = speed.toFixed(2);
+    tc.settings.speeds[src] = speed;
+    log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
+    tc.settings.lastSpeed = speed;
+    log("Syncing chrome settings for lastSpeed", 5);
+    chrome.storage.sync.set({ lastSpeed: speed }, function () {
+      log("Speed setting saved: " + speed, 5);
+    });
+    // show the controller for 1000ms if it's hidden.
+    runAction("blink", document, null, null);
+  }
+  
   document.body.addEventListener(
     "ratechange",
     function (event) {
@@ -416,23 +446,21 @@ function setupListener() {
         event.stopImmediatePropagation();
       }
       var video = event.target;
-      var speedIndicator = video.vsc.speedIndicator;
-      var src = video.currentSrc;
-      var speed = Number(video.playbackRate.toFixed(2));
 
-      log("Playback rate changed to " + speed, 4);
-
-      log("Updating controller with new speed", 5);
-      speedIndicator.textContent = speed.toFixed(2);
-      tc.settings.speeds[src] = speed;
-      log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
-      tc.settings.lastSpeed = speed;
-      log("Syncing chrome settings for lastSpeed", 5);
-      chrome.storage.sync.set({ lastSpeed: speed }, function () {
-        log("Speed setting saved: " + speed, 5);
-      });
-      // show the controller for 1000ms if it's hidden.
-      runAction("blink", document, null, null);
+      /**
+       * If the last speed is forced, only update the speed based on events created by
+       * video speed instead of all video speed change events.
+       */
+      if (tc.settings.forceLastSavedSpeed) {
+        if (event.detail && event.detail.origin === "videoSpeed") {
+          video.playbackRate = event.detail.speed;
+          updateSpeedFromEvent(video);
+        } else {
+          video.playbackRate = tc.settings.lastSpeed;
+        }
+      } else {
+        updateSpeedFromEvent(video)
+      }
     },
     true
   );
@@ -679,7 +707,11 @@ function initializeNow(document) {
 function setSpeed(controller, video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
-  video.playbackRate = Number(speedvalue);
+  if (tc.settings.forceLastSavedSpeed) {
+    video.dispatchEvent(new CustomEvent('ratechange', { detail: { origin: "videoSpeed", speed: speedvalue}}));
+  } else {
+    video.playbackRate = Number(speedvalue);
+  }
   if (controller) {
     var speedIndicator = controller.shadowRoot.querySelector("span");
     speedIndicator.textContent = speedvalue;
