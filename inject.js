@@ -145,8 +145,6 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   initializeWhenReady(document);
 });
 
-var forEach = Array.prototype.forEach;
-
 function getKeyBindings(action, what = "value") {
   try {
     return tc.settings.keyBindings.find((item) => item.action === action)[what];
@@ -322,7 +320,7 @@ function defineVideoController() {
       true
     );
 
-    forEach.call(shadow.querySelectorAll("button"), function (button) {
+    shadow.querySelectorAll("button").forEach(function (button) {
       button.addEventListener(
         "click",
         (e) => {
@@ -633,11 +631,11 @@ function initializeNow(document) {
         mutations.forEach(function (mutation) {
           switch (mutation.type) {
             case "childList":
-              forEach.call(mutation.addedNodes, function (node) {
+              mutation.addedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
                 checkForVideo(node, node.parentNode || mutation.target, true);
               });
-              forEach.call(mutation.removedNodes, function (node) {
+              mutation.removedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
                 checkForVideo(node, node.parentNode || mutation.target, false);
               });
@@ -683,12 +681,12 @@ function initializeNow(document) {
     var mediaTags = document.querySelectorAll("video");
   }
 
-  forEach.call(mediaTags, function (video) {
+  mediaTags.forEach(function (video) {
     video.vsc = new tc.videoController(video);
   });
 
   var frameTags = document.getElementsByTagName("iframe");
-  forEach.call(frameTags, function (frame) {
+  Array.prototype.forEach.call(frameTags, function (frame) {
     // Ignore frames we don't have permission to access (different origin).
     try {
       var childDocument = frame.contentDocument;
