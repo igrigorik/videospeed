@@ -765,7 +765,7 @@ function runAction(action, document, value, e) {
         setSpeed(v, s);
       } else if (action === "reset") {
         log("Reset speed", 5);
-        resetSpeed(v, controller, 1.0);
+        resetSpeed(v, 1.0);
       } else if (action === "display") {
         log("Showing controller", 5);
         controller.classList.add("vsc-manual");
@@ -790,7 +790,7 @@ function runAction(action, document, value, e) {
       } else if (action === "drag") {
         handleDrag(v, controller, e);
       } else if (action === "fast") {
-        resetSpeed(v, controller, value);
+        resetSpeed(v, value);
       } else if (action === "pause") {
         pause(v);
       } else if (action === "muted") {
@@ -815,7 +815,7 @@ function pause(v) {
   }
 }
 
-function resetSpeed(v, controller, target) {
+function resetSpeed(v, target) {
   if (v.playbackRate === target) {
     if (v.playbackRate === getKeyBindings("reset")) {
       if (target !== 1.0) {
