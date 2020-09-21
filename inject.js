@@ -782,7 +782,7 @@ function runAction(action, value, e) {
           );
         }
       } else if (action === "drag") {
-        handleDrag(v, controller, e);
+        handleDrag(v, e);
       } else if (action === "fast") {
         resetSpeed(v, value);
       } else if (action === "pause") {
@@ -846,7 +846,8 @@ function jumpToMark(v) {
   }
 }
 
-function handleDrag(video, controller, e) {
+function handleDrag(video, e) {
+  const controller = video.vsc.div;
   const shadowController = controller.shadowRoot.querySelector("#controller");
 
   // Find nearest parent of same size as video parent.
