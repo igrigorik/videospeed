@@ -229,7 +229,7 @@ function defineVideoController() {
       // override a website's intentional initial speed setting interfering
       // with the site's default behavior)
       log("Explicitly setting playbackRate to: " + storedSpeed, 4);
-      setSpeed(event.target.vsc.div, event.target, storedSpeed);
+      setSpeed(event.target, storedSpeed);
     };
 
     target.addEventListener(
@@ -703,7 +703,8 @@ function initializeNow(document) {
   log("End initializeNow", 5);
 }
 
-function setSpeed(controller, video, speed) {
+function setSpeed(video, speed) {
+  var controller = video.vsc.div;
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   if (tc.settings.forceLastSavedSpeed) {
@@ -738,7 +739,7 @@ function runAction(action, document, value, e) {
       return;
     }
 
-      showController(controller);
+    showController(controller);
 
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
@@ -755,13 +756,13 @@ function runAction(action, document, value, e) {
           (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value,
           16
         );
-        setSpeed(controller, v, s);
+        setSpeed(v, s);
       } else if (action === "slower") {
         log("Decrease speed", 5);
         // Video min rate is 0.0625:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
         var s = Math.max(v.playbackRate - value, 0.07);
-        setSpeed(controller, v, s);
+        setSpeed(v, s);
       } else if (action === "reset") {
         log("Reset speed", 5);
         resetSpeed(v, controller, 1.0);
@@ -819,19 +820,19 @@ function resetSpeed(v, controller, target) {
     if (v.playbackRate === getKeyBindings("reset")) {
       if (target !== 1.0) {
         log("Resetting playback speed to 1.0", 4);
-        setSpeed(controller, v, 1.0);
+        setSpeed(v, 1.0);
       } else {
         log('Toggling playback speed to "fast" speed', 4);
-        setSpeed(controller, v, getKeyBindings("fast"));
+        setSpeed(v, getKeyBindings("fast"));
       }
     } else {
       log('Toggling playback speed to "reset" speed', 4);
-      setSpeed(controller, v, getKeyBindings("reset"));
+      setSpeed(v, getKeyBindings("reset"));
     }
   } else {
     log('Toggling playback speed to "reset" speed', 4);
     setKeyBindings("reset", v.playbackRate);
-    setSpeed(controller, v, target);
+    setSpeed(v, target);
   }
 }
 
