@@ -22,7 +22,10 @@ var tc = {
     `.replace(regStrip, ""),
     defaultLogLevel: 4,
     logLevel: 3
-  }
+  },
+
+  // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
+  mediaElements: []
 };
 
 /* Log levels (depends on caller specifying the correct level)
@@ -178,6 +181,8 @@ function defineVideoController() {
       return target.vsc;
     }
 
+    tc.mediaElements.push(target);
+
     this.video = target;
     this.parent = target.parentElement || parent;
     this.document = target.ownerDocument;
@@ -269,6 +274,10 @@ function defineVideoController() {
     this.video.removeEventListener("play", this.handlePlay);
     this.video.removeEventListener("seek", this.handleSeek);
     delete this.video.vsc;
+    let idx = tc.mediaElements.indexOf(this.video);
+    if (idx != -1) {
+      tc.mediaElements.splice(idx, 1);
+    }
   };
 
   tc.videoController.prototype.initializeControls = function () {
@@ -581,9 +590,7 @@ function initializeNow(document) {
         }
 
         // Ignore keydown event if typing in a page without vsc
-        if (
-          !getShadow(document.body).filter((x) => x.tagName == "vsc-controller")
-        ) {
+        if (!tc.mediaElements.length) {
           return false;
         }
 
@@ -720,17 +727,8 @@ function setSpeed(controller, video, speed) {
 
 function runAction(action, document, value, e) {
   log("runAction Begin", 5);
-  if (tc.settings.audioBoolean) {
-    var mediaTags = getShadow(document.body).filter((x) => {
-      return x.tagName == "AUDIO" || x.tagName == "VIDEO";
-    });
-  } else {
-    var mediaTags = getShadow(document.body).filter(
-      (x) => x.tagName == "VIDEO"
-    );
-  }
 
-  mediaTags.forEach = Array.prototype.forEach;
+  var mediaTags = tc.mediaElements;
 
   // Get the controller that was used if called from a button press event e
   if (e) {
