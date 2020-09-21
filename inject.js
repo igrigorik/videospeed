@@ -318,7 +318,7 @@ function defineVideoController() {
     shadow.querySelector(".draggable").addEventListener(
       "mousedown",
       (e) => {
-        runAction(e.target.dataset["action"], document, false, e);
+        runAction(e.target.dataset["action"], false, e);
         e.stopPropagation();
       },
       true
@@ -330,7 +330,6 @@ function defineVideoController() {
         (e) => {
           runAction(
             e.target.dataset["action"],
-            document,
             getKeyBindings(e.target.dataset["action"]),
             e
           );
@@ -447,7 +446,7 @@ function setupListener() {
       log("Speed setting saved: " + speed, 5);
     });
     // show the controller for 1000ms if it's hidden.
-    runAction("blink", document, null, null);
+    runAction("blink", null, null);
   }
 
   document.body.addEventListener(
@@ -591,7 +590,7 @@ function initializeNow(document) {
 
         var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
         if (item) {
-          runAction(item.action, document, item.value);
+          runAction(item.action, item.value);
           if (item.force === "true") {
             // disable websites key bindings
             event.preventDefault();
@@ -721,7 +720,7 @@ function setSpeed(video, speed) {
   log("setSpeed finished: " + speed, 5);
 }
 
-function runAction(action, document, value, e) {
+function runAction(action, value, e) {
   log("runAction Begin", 5);
 
   var mediaTags = tc.mediaElements;
@@ -794,7 +793,7 @@ function runAction(action, document, value, e) {
       } else if (action === "pause") {
         pause(v);
       } else if (action === "muted") {
-        muted(v, value);
+        muted(v);
       } else if (action === "mark") {
         setMark(v);
       } else if (action === "jump") {
@@ -836,7 +835,7 @@ function resetSpeed(v, target) {
   }
 }
 
-function muted(v, value) {
+function muted(v) {
   v.muted = v.muted !== true;
 }
 
