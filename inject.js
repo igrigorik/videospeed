@@ -732,21 +732,13 @@ function runAction(action, document, value, e) {
 
   mediaTags.forEach(function (v) {
     var controller = v.vsc.div;
-    // if the controller isn't found, attempt to search the video element for the
-    // controller instead
-    if (!controller) {
-      controller = v.parentElement.querySelector(".vsc-controller");
-    }
 
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
       return;
     }
 
-    // Controller may have been (force) removed by the site, guard to prevent crashes but run the command
-    if (controller) {
       showController(controller);
-    }
 
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
