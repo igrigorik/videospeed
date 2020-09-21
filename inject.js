@@ -701,7 +701,6 @@ function initializeNow(document) {
 }
 
 function setSpeed(video, speed) {
-  var controller = video.vsc.div;
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   if (tc.settings.forceLastSavedSpeed) {
@@ -709,10 +708,8 @@ function setSpeed(video, speed) {
   } else {
     video.playbackRate = Number(speedvalue);
   }
-  if (controller) {
-    var speedIndicator = controller.shadowRoot.querySelector("span");
-    speedIndicator.textContent = speedvalue;
-  }
+  var speedIndicator = video.vsc.speedIndicator;
+  speedIndicator.textContent = speedvalue;
   tc.settings.lastSpeed = speed;
   refreshCoolDown();
   log("setSpeed finished: " + speed, 5);
