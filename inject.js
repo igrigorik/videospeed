@@ -169,7 +169,6 @@ function defineVideoController() {
   //   parent = A/V DOM element's parentElement OR
   //            (A/V elements discovered from the Mutation Observer)
   //            A/V element's parentNode OR the node whose children changed.
-  //   document = A/V DOM element's ownerDocument
   //   id = Random number generated when the video controller is created
   //   div = Controller's DOM element (which happens to be a DIV)
   //   speedIndicator = DOM element in the Controller of the speed indicator
@@ -185,7 +184,6 @@ function defineVideoController() {
 
     this.video = target;
     this.parent = target.parentElement || parent;
-    this.document = target.ownerDocument;
     this.id = Math.random().toString(36).substr(2, 9);
     storedSpeed = tc.settings.speeds[target.currentSrc];
     if (!tc.settings.rememberSpeed) {
@@ -277,7 +275,7 @@ function defineVideoController() {
 
   tc.videoController.prototype.initializeControls = function () {
     log("initializeControls Begin", 5);
-    var document = this.document;
+    var document = this.video.ownerDocument;
     var speed = this.video.playbackRate.toFixed(2),
       top = Math.max(this.video.offsetTop, 0) + "px",
       left = Math.max(this.video.offsetLeft, 0) + "px";
