@@ -229,12 +229,7 @@ function defineVideoController() {
       // override a website's intentional initial speed setting interfering
       // with the site's default behavior)
       log("Explicitly setting playbackRate to: " + storedSpeed, 4);
-      var controller = event.target.parentElement.querySelector(
-        ".vsc-controller"
-      );
-
-      var video = controller.parentElement.querySelector("video");
-      setSpeed(controller, video, storedSpeed);
+      setSpeed(event.target.vsc.div, event.target, storedSpeed);
     };
 
     target.addEventListener(
