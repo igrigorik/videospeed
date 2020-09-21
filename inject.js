@@ -424,6 +424,10 @@ function setupListener() {
    * @param {*} video The video element to update the speed indicators for.
    */
   function updateSpeedFromEvent(video) {
+    // It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
+    // a video controller attached to it.  If we do, ignore it.
+    if (!video.vsc)
+      return;
     var speedIndicator = video.vsc.speedIndicator;
     var src = video.currentSrc;
     var speed = Number(video.playbackRate.toFixed(2));
