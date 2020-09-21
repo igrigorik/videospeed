@@ -253,10 +253,8 @@ function defineVideoController() {
           (mutation.attributeName === "src" ||
             mutation.attributeName === "currentSrc")
         ) {
-          var controller = getController(this.id);
-          if (!controller) {
-            return;
-          }
+          log("mutation of A/V element", 5);
+          var controller = this.div;
           if (!mutation.target.src && !mutation.target.currentSrc) {
             controller.classList.add("vsc-nosource");
           } else {
@@ -530,15 +528,6 @@ function getShadow(parent) {
   getChild(parent);
   return result.flat(Infinity);
 }
-function getController(id) {
-  return getShadow(document.body).filter((x) => {
-    return (
-      x.attributes["data-vscid"] &&
-      x.tagName == "DIV" &&
-      x.attributes["data-vscid"].value == `${id}`
-    );
-  })[0];
-}
 
 function initializeNow(document) {
   log("Begin initializeNow", 5);
@@ -759,8 +748,7 @@ function runAction(action, document, value, e) {
   }
 
   mediaTags.forEach(function (v) {
-    var id = v.dataset["vscid"];
-    var controller = getController(id);
+    var controller = v.vsc.div;
     // if the controller isn't found, attempt to search the video element for the
     // controller instead
     if (!controller) {
