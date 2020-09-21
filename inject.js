@@ -891,18 +891,16 @@ function handleDrag(video, e) {
   parentElement.addEventListener("mousemove", startDragging);
 }
 
-var timer;
-var animation = false;
+var timer = null;
 function showController(controller) {
   log("Showing controller", 4);
   controller.classList.add("vcs-show");
 
-  if (animation) clearTimeout(timer);
+  if (timer) clearTimeout(timer);
 
-  animation = true;
   timer = setTimeout(function () {
     controller.classList.remove("vcs-show");
-    animation = false;
+    timer = false;
     log("Hiding controller", 5);
   }, 2000);
 }
