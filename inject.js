@@ -235,7 +235,7 @@ function defineVideoController() {
           (mutation.attributeName === "src" ||
             mutation.attributeName === "currentSrc")
         ) {
-          var controller = getController(this.id);
+          var controller = getController(this.id, target);
           if (!controller) {
             return;
           }
@@ -410,12 +410,12 @@ function refreshCoolDown() {
   log("End refreshCoolDown", 5);
 }
 
-function setupListener() {
+function setupListener(target) {
   /**
    * This function is run whenever a video speed rate change occurs.
    * It is used to update the speed that shows up in the display as well as save
    * that latest speed into the local storage.
-   * 
+   *
    * @param {*} video The video element to update the speed indicators for.
    */
   function updateSpeedFromEvent(video) {
@@ -437,8 +437,8 @@ function setupListener() {
     // show the controller for 1000ms if it's hidden.
     runAction("blink", document, null, null);
   }
-  
-  document.body.addEventListener(
+
+  target.addEventListener(
     "ratechange",
     function (event) {
       if (coolDown) {
@@ -459,7 +459,7 @@ function setupListener() {
           video.playbackRate = tc.settings.lastSpeed;
         }
       } else {
-        updateSpeedFromEvent(video)
+        updateSpeedFromEvent(video);
       }
     },
     true
@@ -512,14 +512,21 @@ function getShadow(parent) {
   getChild(parent);
   return result.flat(Infinity);
 }
-function getController(id) {
-  return getShadow(document.body).filter((x) => {
+function getController(id, target) {
+  var controller = getShadow(document.body).filter((x) => {
     return (
       x.attributes["data-vscid"] &&
       x.tagName == "DIV" &&
       x.attributes["data-vscid"].value == `${id}`
     );
   })[0];
+  if (controller) {
+    return controller;
+  }
+
+  // if the controller isn't found, attempt to search the video element for the
+  // controller instead
+  return target.parentElement.querySelector(".vsc-controller");
 }
 
 function initializeNow(document) {
@@ -530,7 +537,7 @@ function initializeNow(document) {
     return;
   }
   try {
-    setupListener();
+    setupListener(document);
   } catch {
     // no operation
   }
@@ -708,7 +715,11 @@ function setSpeed(controller, video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   if (tc.settings.forceLastSavedSpeed) {
-    video.dispatchEvent(new CustomEvent('ratechange', { detail: { origin: "videoSpeed", speed: speedvalue}}));
+    video.dispatchEvent(
+      new CustomEvent("ratechange", {
+        detail: { origin: "videoSpeed", speed: speedvalue }
+      })
+    );
   } else {
     video.playbackRate = Number(speedvalue);
   }
@@ -742,12 +753,7 @@ function runAction(action, document, value, e) {
 
   mediaTags.forEach(function (v) {
     var id = v.dataset["vscid"];
-    var controller = getController(id);
-    // if the controller isn't found, attempt to search the video element for the
-    // controller instead
-    if (!controller) {
-      controller = v.parentElement.querySelector(".vsc-controller");
-    }
+    var controller = getController(id, v);
 
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
