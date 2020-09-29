@@ -447,7 +447,7 @@ function setupListener() {
     runAction("blink", null, null);
   }
 
-  document.body.addEventListener(
+  document.addEventListener(
     "ratechange",
     function (event) {
       if (coolDown) {
@@ -468,7 +468,7 @@ function setupListener() {
           video.playbackRate = tc.settings.lastSpeed;
         }
       } else {
-        updateSpeedFromEvent(video)
+        updateSpeedFromEvent(video);
       }
     },
     true
@@ -704,7 +704,11 @@ function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
   if (tc.settings.forceLastSavedSpeed) {
-    video.dispatchEvent(new CustomEvent('ratechange', { detail: { origin: "videoSpeed", speed: speedvalue}}));
+    video.dispatchEvent(
+      new CustomEvent("ratechange", {
+        detail: { origin: "videoSpeed", speed: speedvalue }
+      })
+    );
   } else {
     video.playbackRate = Number(speedvalue);
   }
