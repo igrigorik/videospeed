@@ -6,6 +6,7 @@ var tcDefaults = {
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
   startHidden: false, // default: false
+  forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
@@ -210,6 +211,7 @@ function save_options() {
   ); // Remove added shortcuts
 
   var rememberSpeed = document.getElementById("rememberSpeed").checked;
+  var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
   var audioBoolean = document.getElementById("audioBoolean").checked;
   var enabled = document.getElementById("enabled").checked;
   var startHidden = document.getElementById("startHidden").checked;
@@ -232,6 +234,7 @@ function save_options() {
   chrome.storage.sync.set(
     {
       rememberSpeed: rememberSpeed,
+      forceLastSavedSpeed: forceLastSavedSpeed,
       audioBoolean: audioBoolean,
       enabled: enabled,
       startHidden: startHidden,
@@ -254,6 +257,7 @@ function save_options() {
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function (storage) {
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
+    document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("enabled").checked = storage.enabled;
     document.getElementById("startHidden").checked = storage.startHidden;
