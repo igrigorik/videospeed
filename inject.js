@@ -859,14 +859,14 @@ function toggleAdaptiveSpeed(v, controller) {
           v.playbackRate === getKeyBindings("adaptive")
         ) {
           log("Decrease speed due to higher audio level", 5);
-          setSpeed(controller, v, tc.settings.lastSpeed);
+          setSpeed(v, tc.settings.lastSpeed);
         }
       }
 
       if (tc.settings.adaptiveSpeed) {
         setTimeout(audioSample, 0);
       } else {
-        setSpeed(controller, v, tc.settings.lastSpeed);
+        setSpeed(v, tc.settings.lastSpeed);
       }
     }
 
