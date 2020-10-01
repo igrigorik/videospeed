@@ -758,7 +758,8 @@ function runAction(action, value, e) {
       } else if (action === "advance") {
         log("Fast forward", 5);
         v.currentTime += value;
-      } else if (action === "faster") {
+        // prevent changing speed in adaptive mode while fast. Otherwise lastSpeed is overwritten
+      } else if (action === "faster" && (!tc.settings.adaptiveSpeed || v.playbackRate !== getKeyBindings("adaptive"))) {
         log("Increase speed", 5);
         // Maximum playback speed in Chrome is set to 16:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
@@ -767,7 +768,8 @@ function runAction(action, value, e) {
           16
         );
         setSpeed(v, s);
-      } else if (action === "slower") {
+        // prevent changing speed in adaptive mode while fast. Otherwise lastSpeed is overwritten
+      } else if (action === "slower"  && (!tc.settings.adaptiveSpeed || v.playbackRate !== getKeyBindings("adaptive"))) {
         log("Decrease speed", 5);
         // Video min rate is 0.0625:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
@@ -850,7 +852,8 @@ function toggleAdaptiveSpeed(v, controller) {
           v.playbackRate !== getKeyBindings("adaptive")
         ) {
           log("Increase speed due to low audio level", 5);
-          v.playbackRate = getKeyBindings("adaptive"); // set playbackrate directly to not overwrite lastSpeed
+          // set playbackrate directly to not overwrite lastSpeed
+          v.playbackRate = getKeyBindings("adaptive"); 
         } else if (
           dbValue > upperLimit &&
           v.playbackRate === getKeyBindings("adaptive")
