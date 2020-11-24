@@ -652,15 +652,8 @@ function initializeNow(document) {
                   (x) => x.tagName == "VIDEO"
                 )[0];
                 if (node) {
-                  var oldController = flattenedNodes.filter((x) =>
-                    x.classList.contains("vsc-controller")
-                  )[0];
-                  if (oldController) {
-                    oldController.remove();
-                    if (node.vsc) {
-                      delete node.vsc;
-                    }
-                  }
+                  if (node.vsc)
+                    node.vsc.remove();
                   checkForVideo(node, node.parentNode || mutation.target, true);
                 }
               }
