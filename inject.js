@@ -453,6 +453,10 @@ function setupListener() {
       if (coolDown) {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
+
+        // Send custom event for other extensions
+        const customEvent = new Event('videoSpeed_ratechange');
+        event.target.dispatchEvent(customEvent);
       }
       var video = event.target;
 
