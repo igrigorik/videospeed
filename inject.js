@@ -467,6 +467,7 @@ function setupListener() {
         } else {
           video.playbackRate = tc.settings.lastSpeed;
         }
+        event.stopImmediatePropagation();
       } else {
         updateSpeedFromEvent(video);
       }
