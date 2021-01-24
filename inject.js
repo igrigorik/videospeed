@@ -19,6 +19,7 @@ var tc = {
       vine.co
       imgur.com
       teams.microsoft.com
+      honeycode.aws
     `.replace(regStrip, ""),
     defaultLogLevel: 4,
     logLevel: 3
