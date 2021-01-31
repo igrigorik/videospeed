@@ -104,6 +104,13 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); // default: G
+    tc.settings.keyBindings.push({
+      action: "reposition",
+      key: Number(storage.repositionKeyCode) || 72,
+      value: 0,
+      force: false,
+      predefined: true
+    }); // default: H
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -792,8 +799,9 @@ function runAction(action, value, e) {
         setMark(v);
       } else if (action === "jump") {
         jumpToMark(v);
+      } else if (action === 'reposition') {
+        handleReposition(v, controller);
       }
-    }
   });
   log("runAction End", 5);
 }
@@ -876,11 +884,25 @@ function handleDrag(video, e) {
     style.top = initialControllerXY[1] + dy + "px";
   };
 
+  function handleReposition(video, controller) { // 481_NEW: handling reposition
+    const shadowController = controller.shadowRoot.querySelector('#controller');
+    // Find nearest parent of same size as video parent.
+    var parentElement = controller.parentElement;
+    while (parentElement.parentNode &&
+      parentElement.parentNode.offsetHeight === parentElement.offsetHeight &&
+      parentElement.parentNode.offsetWidth === parentElement.offsetWidth) {
+      parentElement = parentElement.parentNode;
+    }
+
+    let style = shadowController.style;
+    style.left = Math.max(video.offsetLeft, 0) + "px";
+    style.top  = Math.max(video.offsetTop, 0) + "px";
+  }
+
   const stopDragging = () => {
     parentElement.removeEventListener("mousemove", startDragging);
     parentElement.removeEventListener("mouseup", stopDragging);
     parentElement.removeEventListener("mouseleave", stopDragging);
-
     shadowController.classList.remove("dragging");
     video.classList.remove("vcs-dragging");
   };
