@@ -1,5 +1,5 @@
 * {
-  line-height: 1.8em;
+  line-height: 1.9em;
   font-family: sans-serif;
   font-size: 13px;
 }
@@ -16,8 +16,8 @@
   background: black;
   color: white;
 
-  border-radius: 30px;
-  padding: 6px 12px 6px 12px;
+  border-radius: 5px;
+  padding: 5px;
   margin: 10px 10px 10px 15px;
 
   cursor: default;
@@ -57,19 +57,17 @@
 }
 
 button {
-  opacity: 1;
   cursor: pointer;
   color: black;
   background: white;
-  font-weight: normal;
-  border-radius: 20px;
-  padding: 1px 5px 3px 5px;
+  font-weight: bold;
+  border-radius: 5px;
+  padding: 3px 6px 3px 6px;
   font-size: 14px;
   line-height: 14px;
-  border: 0px solid white;
+  border: 1px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin: 0px 2px 2px 2px;
-  transition: background 0.2s, color 0.2s;
+  margin-bottom: 2px;
 }
 
 button:focus {
@@ -78,14 +76,10 @@ button:focus {
 
 button:hover {
   opacity: 1;
-  background: #2196f3;
-  color: #ffffff;
 }
 
 button:active {
-  background: #2196f3;
-  color: #ffffff;
-  font-weight: bold;
+  background: #ccc;
 }
 
 button.rw {

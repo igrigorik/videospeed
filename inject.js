@@ -273,7 +273,6 @@ function defineVideoController() {
     log("initializeControls Begin", 5);
     const document = this.video.ownerDocument;
     const speed = this.video.playbackRate.toFixed(2);
-    const rect = this.video.getBoundingClientRect();
     var top = Math.max(this.video.offsetTop, 0) + "px",
       left = Math.max(this.video.offsetLeft, 0) + "px";
 
