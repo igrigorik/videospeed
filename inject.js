@@ -26,7 +26,12 @@ var tc = {
   },
 
   // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
-  mediaElements: []
+  mediaElements: [],
+
+  adaptiveSpeed: {
+    isSilent: false,
+    fallbackSpeed: 1.0
+  }
 };
 
 /* Log levels (depends on caller specifying the correct level)
@@ -436,8 +441,7 @@ function setupListener() {
   function updateSpeedFromEvent(video) {
     // It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
     // a video controller attached to it.  If we do, ignore it.
-    if (!video.vsc)
-      return;
+    if (!video.vsc) return;
     var speedIndicator = video.vsc.speedIndicator;
     var src = video.currentSrc;
     var speed = Number(video.playbackRate.toFixed(2));
@@ -446,18 +450,15 @@ function setupListener() {
 
     log("Updating controller with new speed", 5);
     speedIndicator.textContent = speed.toFixed(2);
-    // when adaptiveSpeed is activated, there are too many changes.
-    if(!tc.settings.adaptiveSpeed) {
-      tc.settings.speeds[src] = speed;
-      log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
-      tc.settings.lastSpeed = speed;
-      log("Syncing chrome settings for lastSpeed", 5);
-      chrome.storage.sync.set({ lastSpeed: speed }, function () {
-        log("Speed setting saved: " + speed, 5);
-      });
-      // show the controller for 1000ms if it's hidden.
-      runAction("blink", null, null);
-    }
+    tc.settings.speeds[src] = speed;
+    log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
+    tc.settings.lastSpeed = speed;
+    log("Syncing chrome settings for lastSpeed", 5);
+    chrome.storage.sync.set({ lastSpeed: speed }, function () {
+      log("Speed setting saved: " + speed, 5);
+    });
+    // show the controller for 1000ms if it's hidden.
+    runAction("blink", null, null);
   }
 
   document.addEventListener(
@@ -466,6 +467,9 @@ function setupListener() {
       if (coolDown) {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
+      }
+      if (tc.settings.adaptiveSpeed && tc.adaptiveSpeed.isSilent) {
+        return;
       }
       var video = event.target;
 
@@ -666,8 +670,7 @@ function initializeNow(document) {
                   (x) => x.tagName == "VIDEO"
                 )[0];
                 if (node) {
-                  if (node.vsc)
-                    node.vsc.remove();
+                  if (node.vsc) node.vsc.remove();
                   checkForVideo(node, node.parentNode || mutation.target, true);
                 }
               }
@@ -726,6 +729,42 @@ function setSpeed(video, speed) {
   log("setSpeed finished: " + speed, 5);
 }
 
+function getIncreasedSpeed(speed, increment) {
+  // Maximum playback speed in Chrome is set to 16:
+  // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
+  return Math.min((speed < 0.1 ? 0.0 : speed) + increment, 16);
+}
+
+function getDecreasedSpeed(speed, decrement) {
+  // Video min rate is 0.0625:
+  // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
+  return Math.max(speed - decrement, 0.07);
+}
+
+function increaseSpeed(v, value) {
+  if (tc.settings.adaptiveSpeed && tc.adaptiveSpeed.isSilent) {
+    tc.adaptiveSpeed.fallbackSpeed = getIncreasedSpeed(
+      tc.adaptiveSpeed.fallbackSpeed,
+      value
+    );
+  } else {
+    var s = getIncreasedSpeed(v.playbackRate, value);
+    setSpeed(v, s);
+  }
+}
+
+function decreaseSpeed(v, value) {
+  if (tc.settings.adaptiveSpeed && tc.adaptiveSpeed.isSilent) {
+    tc.adaptiveSpeed.fallbackSpeed = getDecreasedSpeed(
+      tc.adaptiveSpeed.fallbackSpeed,
+      value
+    );
+  } else {
+    var s = getDecreasedSpeed(v.playbackRate, value);
+    setSpeed(v, s);
+  }
+}
+
 function runAction(action, value, e) {
   log("runAction Begin", 5);
 
@@ -756,20 +795,10 @@ function runAction(action, value, e) {
         // prevent changing speed in adaptive mode while fast. Otherwise lastSpeed is overwritten
       } else if (action === "faster" && (!tc.settings.adaptiveSpeed || v.playbackRate !== getKeyBindings("adaptive"))) {
         log("Increase speed", 5);
-        // Maximum playback speed in Chrome is set to 16:
-        // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
-        var s = Math.min(
-          (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value,
-          16
-        );
-        setSpeed(v, s);
-        // prevent changing speed in adaptive mode while fast. Otherwise lastSpeed is overwritten
-      } else if (action === "slower"  && (!tc.settings.adaptiveSpeed || v.playbackRate !== getKeyBindings("adaptive"))) {
+        increaseSpeed(v, value);
+      } else if (action === "slower") {
         log("Decrease speed", 5);
-        // Video min rate is 0.0625:
-        // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
-        var s = Math.max(v.playbackRate - value, 0.07);
-        setSpeed(v, s);
+        decreaseSpeed(v, value);
       } else if (action === "reset") {
         log("Reset speed", 5);
         resetSpeed(v, 1.0);
@@ -806,7 +835,7 @@ function runAction(action, value, e) {
         setMark(v);
       } else if (action === "jump") {
         jumpToMark(v);
-      } else if (action === 'adaptive') {
+      } else if (action === "adaptive") {
         toggleAdaptiveSpeed(v, controller);
       }
     }
@@ -815,23 +844,27 @@ function runAction(action, value, e) {
 }
 
 function toggleAdaptiveSpeed(v, controller) {
-  log('Toggling adaptive speed', 4);
+  log("Toggling adaptive speed", 4);
   tc.settings.adaptiveSpeed = !tc.settings.adaptiveSpeed;
   const shadowController = controller.shadowRoot.querySelector("#controller");
   var button = shadowController.querySelector(`button[data-action="adaptive"]`);
   button.setAttribute("class", tc.settings.adaptiveSpeed ? "" : "hideButton");
 
   if (tc.settings.adaptiveSpeed) {
-    if (!tc.adaptiveSpeedCtx) {
-      tc.adaptiveSpeedCtx = new AudioContext();
-      tc.adaptiveSpeedSrc = tc.adaptiveSpeedCtx.createMediaElementSource(v);
-      tc.adaptiveSpeedAnalyserNode = tc.adaptiveSpeedCtx.createAnalyser();
-      tc.adaptiveSpeedSrc.connect(tc.adaptiveSpeedAnalyserNode);
-      tc.adaptiveSpeedAnalyserNode.connect(tc.adaptiveSpeedCtx.destination);
-      tc.adaptiveSpeedAnalyserNode.fftSize = 512;
+    if (!tc.adaptiveSpeed.context) {
+      tc.adaptiveSpeed.context = new AudioContext();
+      tc.adaptiveSpeed.source = tc.adaptiveSpeed.context.createMediaElementSource(
+        v
+      );
+      tc.adaptiveSpeed.analyserNode = tc.adaptiveSpeed.context.createAnalyser();
+      tc.adaptiveSpeed.source.connect(tc.adaptiveSpeed.analyserNode);
+      tc.adaptiveSpeed.analyserNode.connect(
+        tc.adaptiveSpeed.context.destination
+      );
+      tc.adaptiveSpeed.analyserNode.fftSize = 512;
     }
     const myDataArray = new Float32Array(
-      tc.adaptiveSpeedAnalyserNode.frequencyBinCount
+      tc.adaptiveSpeed.analyserNode.frequencyBinCount
     );
 
     function audioSample() {
@@ -840,26 +873,23 @@ function toggleAdaptiveSpeed(v, controller) {
         var audioLimit = 45; // TODO maybe could be configurable in the future
         var lowerLimit = audioLimit - 4;
         var upperLimit = audioLimit + 4;
-        tc.adaptiveSpeedAnalyserNode.getFloatFrequencyData(myDataArray);
+        tc.adaptiveSpeed.analyserNode.getFloatFrequencyData(myDataArray);
         var dbValue = Math.max(...myDataArray) + 100;
-        if (
-          dbValue < lowerLimit &&
-          v.playbackRate !== getKeyBindings("adaptive")
-        ) {
+        var skipSpeed = getKeyBindings("adaptive");
+        if (dbValue < lowerLimit && v.playbackRate !== skipSpeed) {
           log("Increase speed due to low audio level", 5);
-          // set playbackrate directly to not overwrite lastSpeed
-          v.playbackRate = getKeyBindings("adaptive"); 
-        } else if (
-          dbValue > upperLimit &&
-          v.playbackRate === getKeyBindings("adaptive")
-        ) {
+          tc.adaptiveSpeed.isSilent = true;
+          tc.adaptiveSpeed.fallbackSpeed = tc.settings.lastSpeed;
+          setSpeed(v, skipSpeed);
+        } else if (dbValue > upperLimit && v.playbackRate === skipSpeed) {
           log("Decrease speed due to higher audio level", 5);
-          setSpeed(v, tc.settings.lastSpeed);
+          tc.adaptiveSpeed.isSilent = false;
+          setSpeed(v, tc.adaptiveSpeed.fallbackSpeed);
         }
       }
 
       if (tc.settings.adaptiveSpeed) {
-        setTimeout(audioSample, 0);
+        setTimeout(audioSample, 10);
       } else {
         setSpeed(v, tc.settings.lastSpeed);
       }
