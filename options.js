@@ -16,7 +16,8 @@ var tcDefaults = {
     { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
     { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "fast", key: 71, value: 1.8, force: false, predefined: true }, // G
+    { action: "adaptive", key: 65, value: 3, force: false, predefined: true } // A
   ],
   blacklist: `www.instagram.com
     twitter.com
