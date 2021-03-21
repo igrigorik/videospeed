@@ -187,7 +187,12 @@ function validate() {
       match = match.replace(regStrip, "");
       if (match.startsWith("/")) {
         try {
-          var regexp = new RegExp(match);
+          var parts = match.split("/");
+          
+          var flags = parts.pop();
+          var regex = parts.slice(1).join("/");
+    
+          var regexp = new RegExp(regex, flags);
         } catch (err) {
           status.textContent =
             "Error: Invalid blacklist regex: " + match + ". Unable to save";

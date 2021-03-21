@@ -388,7 +388,12 @@ function isBlacklisted() {
 
     if (match.startsWith("/")) {
       try {
-        var regexp = new RegExp(match);
+        var parts = match.split("/");
+        
+        var flags = parts.pop();
+        var regex = parts.slice(1).join("/");
+  
+        var regexp = new RegExp(regex, flags);
       } catch (err) {
         return;
       }
