@@ -1,4 +1,5 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
 var tc = {
   settings: {
@@ -389,10 +390,15 @@ function isBlacklisted() {
     if (match.startsWith("/")) {
       try {
         var parts = match.split("/");
-        
-        var flags = parts.pop();
-        var regex = parts.slice(1).join("/");
-  
+
+        if (regEndsWithFlags.test(match)) {
+          var flags = parts.pop();
+          var regex = parts.slice(1).join("/");
+        } else {
+          var flags = "";
+          var regex = match;
+        }
+
         var regexp = new RegExp(regex, flags);
       } catch (err) {
         return;

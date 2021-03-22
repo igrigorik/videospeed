@@ -1,4 +1,5 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
 var tcDefaults = {
   speed: 1.0, // default:
@@ -180,27 +181,35 @@ function createKeyBindings(item) {
 function validate() {
   var valid = true;
   var status = document.getElementById("status");
-  document
-    .getElementById("blacklist")
-    .value.split("\n")
-    .forEach((match) => {
-      match = match.replace(regStrip, "");
-      if (match.startsWith("/")) {
-        try {
-          var parts = match.split("/");
-          
-          var flags = parts.pop();
-          var regex = parts.slice(1).join("/");
+  var blacklist = document.getElementById("blacklist");
+
+  blacklist.value.split("\n").forEach((match) => {
+    match = match.replace(regStrip, "");
     
-          var regexp = new RegExp(regex, flags);
-        } catch (err) {
-          status.textContent =
-            "Error: Invalid blacklist regex: " + match + ". Unable to save";
-          valid = false;
-          return;
+    if (match.startsWith("/")) {
+      try {
+        if (!regEndsWithFlags.test(match)) {
+          blacklist.value = blacklist.value.replace(match, "/" + match + "/");
+          match = "/" + match + "/";
         }
+
+        var parts = match.split("/");
+
+        if (parts.length < 3)
+          throw "invalid regex";
+
+        var flags = parts.pop();
+        var regex = parts.slice(1).join("/");
+
+        var regexp = new RegExp(regex, flags);
+      } catch (err) {
+        status.textContent =
+          "Error: Invalid blacklist regex: " + match + ". Unable to save";
+        valid = false;
+        return;
       }
-    });
+    }
+  });
   return valid;
 }
 
