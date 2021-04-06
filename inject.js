@@ -281,7 +281,7 @@ function defineVideoController() {
     var wrapper = document.createElement("div");
     wrapper.classList.add("vsc-controller");
 
-    if (!this.video.currentSrc) {
+    if (!this.video.src && !this.video.currentSrc) {
       wrapper.classList.add("vsc-nosource");
     }
 
