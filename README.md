@@ -70,6 +70,14 @@ and inspect the menu: if it mentions flash, then that's the issue. That said,
 most sites will fallback to HTML5 if they detect that Flash is not available.
 You can try manually disabling Flash from the browser.
 
+**What is this fork of `igrigorik/videospeed` all about?** This fork of the
+[`igrigorik/videospeed`](https://github.com/igrigorik/videospeed) repository
+is a port of [`igrigorik`](https://github.com/igrigorik)'s videospeed Chrome 
+add-on for Firefox. This fork modifies the Chrome add-on code so that it works 
+in Firefox. This repo is the code behind the [Firefox Extension](https://addons.mozilla.org/en-us/firefox/addon/videospeed/)
+whereas the [`igrigorik/videospeed`](https://github.com/igrigorik/videospeed)
+repository contains the code behind the [Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk).
+
 ### License
 
 (MIT License) - Copyright (c) 2014 Ilya Grigorik
