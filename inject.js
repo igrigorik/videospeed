@@ -273,9 +273,19 @@ function defineVideoController() {
     log("initializeControls Begin", 5);
     const document = this.video.ownerDocument;
     const speed = this.video.playbackRate.toFixed(2);
-    const rect = this.video.getBoundingClientRect();
-    const top = Math.max(rect.top, 0) + "px";
-    const left = Math.max(rect.left, 0) + "px";
+    let top;
+    let left;
+    if(location.hostname == "www.hulu.com"){
+      const rect = this.video.getBoundingClientRect();
+      top = Math.max(rect.top, 0) + "px";
+      left = Math.max(rect.left, 0) + "px";
+    }
+    else{
+      top = Math.max(this.video.offsetTop, 0) + "px",
+      left = Math.max(this.video.offsetLeft, 0) + "px";
+    }
+
+
 
     log("Speed variable set to: " + speed, 5);
 
