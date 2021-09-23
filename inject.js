@@ -365,8 +365,9 @@ function defineVideoController() {
         p.insertBefore(fragment, p.firstChild);
         break;
       case location.hostname == "tv.apple.com":
-        // insert after parent for correct stacking context
-        this.parent.getRootNode().querySelector(".scrim").prepend(fragment);
+        // insert before parent to bypass overlay
+        this.parent.parentNode.insertBefore(fragment, this.parent.parentNode.firstChild);
+        break;
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
         // target is not the immediate parent. This appends the controller as
@@ -650,14 +651,18 @@ function initializeNow(document) {
               break;
             case "attributes":
               if (
-                mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false"
+                (mutation.target.attributes["aria-hidden"] &&
+                mutation.target.attributes["aria-hidden"].value == "false")
+                || mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER'
               ) {
                 var flattenedNodes = getShadow(document.body);
-                var node = flattenedNodes.filter(
+                var nodes = flattenedNodes.filter(
                   (x) => x.tagName == "VIDEO"
-                )[0];
-                if (node) {
+                );
+                for (let node of nodes) {
+                  // only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
+                  if (node.vsc && mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER')
+                    continue;
                   if (node.vsc)
                     node.vsc.remove();
                   checkForVideo(node, node.parentNode || mutation.target, true);
@@ -671,7 +676,7 @@ function initializeNow(document) {
     );
   });
   observer.observe(document, {
-    attributeFilter: ["aria-hidden"],
+    attributeFilter: ["aria-hidden", "data-focus-method"],
     childList: true,
     subtree: true
   });
