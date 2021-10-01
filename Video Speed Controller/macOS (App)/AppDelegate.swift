@@ -1,8 +1,8 @@
 //
 //  AppDelegate.swift
-//  Video Speed Controller
+//  macOS (App)
 //
-//  Created by Kyle on 2021/1/31.
+//  Created by Kyle on 2021/10/1.
 //
 
 import Cocoa
@@ -11,11 +11,7 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Insert code here to initialize your application
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        // Insert code here to tear down your application
+        // Override point for customization after application launch.
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
