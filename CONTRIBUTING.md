@@ -1,7 +1,7 @@
 # Contributing
 
 Video Speed Controller is an open source project licensed under the MIT license
-with many contributers. Contributions are welcome, and greatly appreciated.
+with many contributors. Contributions are welcome, and greatly appreciated.
 
 If you would like to help, getting started is easy.
 

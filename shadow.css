@@ -16,8 +16,8 @@
   background: black;
   color: white;
 
-  border-radius: 30px;
-  padding: 6px 12px 6px 12px;
+  border-radius: 6px;
+  padding: 4px;
   margin: 10px 10px 10px 15px;
 
   cursor: default;
@@ -59,7 +59,7 @@ button {
   color: black;
   background: white;
   font-weight: normal;
-  border-radius: 20px;
+  border-radius: 5px;
   padding: 1px 5px 3px 5px;
   font-size: 14px;
   line-height: 14px;
