@@ -1,5 +1,4 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
-var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
 var tcDefaults = {
   speed: 1.0, // default:
@@ -188,11 +187,6 @@ function validate() {
     
     if (match.startsWith("/")) {
       try {
-        if (!regEndsWithFlags.test(match)) {
-          blacklist.value = blacklist.value.replace(match, "/" + match + "/");
-          match = "/" + match + "/";
-        }
-
         var parts = match.split("/");
 
         if (parts.length < 3)
@@ -204,7 +198,7 @@ function validate() {
         var regexp = new RegExp(regex, flags);
       } catch (err) {
         status.textContent =
-          "Error: Invalid blacklist regex: " + match + ". Unable to save";
+          "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
         valid = false;
         return;
       }
