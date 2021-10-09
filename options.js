@@ -180,22 +180,30 @@ function createKeyBindings(item) {
 function validate() {
   var valid = true;
   var status = document.getElementById("status");
-  document
-    .getElementById("blacklist")
-    .value.split("\n")
-    .forEach((match) => {
-      match = match.replace(regStrip, "");
-      if (match.startsWith("/")) {
-        try {
-          var regexp = new RegExp(match);
-        } catch (err) {
-          status.textContent =
-            "Error: Invalid blacklist regex: " + match + ". Unable to save";
-          valid = false;
-          return;
-        }
+  var blacklist = document.getElementById("blacklist");
+
+  blacklist.value.split("\n").forEach((match) => {
+    match = match.replace(regStrip, "");
+    
+    if (match.startsWith("/")) {
+      try {
+        var parts = match.split("/");
+
+        if (parts.length < 3)
+          throw "invalid regex";
+
+        var flags = parts.pop();
+        var regex = parts.slice(1).join("/");
+
+        var regexp = new RegExp(regex, flags);
+      } catch (err) {
+        status.textContent =
+          "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
+        valid = false;
+        return;
       }
-    });
+    }
+  });
   return valid;
 }
 
