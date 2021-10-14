@@ -373,7 +373,11 @@ function defineVideoController() {
         // Note: when triggered via a MutationRecord, it's possible that the
         // target is not the immediate parent. This appends the controller as
         // the first element of the target, which may not be the parent.
-        this.parent.insertBefore(fragment, this.parent.firstChild);
+        if (offsetRect===undefined) {
+          document.documentElement.appendChild(fragment)
+        } else {
+          this.parent.insertBefore(fragment, this.parent.firstChild);
+        }
     }
     return wrapper;
   };
