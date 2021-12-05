@@ -35,6 +35,7 @@ header {
   right: 0;
   border-bottom: 1px solid #eee;
   background: linear-gradient(white, white 40%, rgba(255, 255, 255, 0.92));
+  z-index: 1;
 }
 header,
 section {
