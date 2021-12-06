@@ -1,112 +1,151 @@
-body {
+/* Reset browser defaults */
+* {
+  box-sizing: border-box;
   margin: 0;
-  padding-left: 15px;
-  padding-top: 53px;
-  font-family: sans-serif;
-  font-size: 12px;
-  color: rgb(48, 57, 66);
+  padding: 0;
 }
 
-h1,
-h2,
-h3 {
-  font-weight: normal;
-  line-height: 1;
-  user-select: none;
-  cursor: default;
+:root {
+  --dark: 36 38 40;
+
+  --light-gray: #eee;
+  --gray: #dedede;
+  --dark-gray: #9d9d9d;
+
+  --gutter: 1.75rem;
 }
-h1 {
-  font-size: 1.5em;
-  margin: 21px 0 13px;
+
+:any-link {
+  color: inherit;
 }
-h3 {
-  font-size: 1.2em;
-  margin-bottom: 0.8em;
-  color: black;
-}
-p {
-  margin: 0.65em 0;
+
+body {
+  color: rgb(var(--dark));
+  font-size: .875rem; /* 14 px */
 }
 
 header {
-  position: fixed;
-  top: 0;
-  left: 15px;
-  right: 0;
-  border-bottom: 1px solid #eee;
-  background: linear-gradient(white, white 40%, rgba(255, 255, 255, 0.92));
-}
-header,
-section {
-  min-width: 600px;
-  max-width: 738px;
-}
-section {
-  padding-left: 18px;
-  margin-top: 8px;
-  margin-bottom: 24px;
-}
-section h3 {
-  margin-left: -18px;
-}
-
-button {
-  -webkit-appearance: none;
-  position: relative;
-
-  margin: 0 1px 0 0;
-  padding: 0 10px;
-  min-width: 4em;
-  min-height: 2em;
-
-  background-image: linear-gradient(#ededed, #ededed 38%, #dedede);
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 2px;
-  outline: none;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08),
-    inset 0 1px 2px rgba(255, 255, 255, 0.75);
-  color: #444;
-  text-shadow: 0 1px 0 rgb(240, 240, 240);
-  font: inherit;
-
-  user-select: none;
-}
-
-input[type="text"] {
-  width: 75px;
+  backdrop-filter: blur(8px);
+  background: rgba(255 255 255 / .75);
+  border-bottom: 2px solid var(--light-gray);
+  position: sticky;
   text-align: center;
+  top: 0;
+  z-index: 1;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 700px;
+  padding: 0 var(--gutter);
+}
+
+section,
+#faq {
+  margin: var(--gutter) 0;
+}
+
+/* Header title */
+h1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: .75em;
+}
+
+/* Section titles */
+h3,
+h4 {
+  font-weight: 600;
+  margin: 1em 0 .25em;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+h4 {
+  font-size: 1rem;
+}
+
+p {
+  margin-bottom: .5em;
 }
 
 .row {
-  margin: 5px 0px;
+  margin: .5rem 0;
+}
+
+select,
+input,
+button {
+  font: inherit;
+  margin-right: .25rem;
+}
+
+select {
+  width: 11rem;
+}
+
+input[type="text"] {
+  text-align: center;
+  width: 5rem;
+}
+
+button {
+  background: var(--light-gray);
+  border-radius: 5px;
+  border: 1px solid rgba(var(--dark) / 0.25);
+  box-shadow: 0 2px 3px rgba(var(--dark) / .08),
+        inset 0 -2px 3px rgba(var(--dark) / .15);
+  color: rgba(var(--dark) / .9);
+  padding: .5em 1em;
+  text-shadow: 0 1px 1px var(--light-gray);
+}
+
+/* "X" to remove new shortcuts */
+button.removeParent {
+  padding: 1px;
+  width: 3em;
+}
+
+/* (Do not) disable website keybindings */
+.customForce {
+  display: none;
+  width: 16rem;
 }
 
 label {
   display: inline-block;
-  width: 170px;
+  margin-right: .75rem;
   vertical-align: top;
+  width: 12.5rem;
 }
 
+/* e.g. "Default options restored" */
 #status {
-  color: #9d9d9d;
+  color: var(--dark-gray);
   display: inline-block;
-  margin-left: 50px;
 }
 
-#faq {
-  margin-top: 2em;
+ol {
+  margin-left: 2.5rem;
 }
 
-select {
-  width: 170px;
+hr {
+  border: 2px dashed var(--light-gray);
 }
 
-.customForce {
-  display: none;
-  width: 250px;
-}
+@media (prefers-color-scheme: dark) {
+  body {
+    background: rgb(var(--dark));
+    color: white;
+  }
 
-.customKey {
-  color: transparent;
-  text-shadow: 0 0 0 #000000;
+  header {
+    background: rgb(var(--dark) / .85);
+  }
+
+  #status {
+    color: var(--gray);
+  }
 }
