@@ -11,7 +11,7 @@ const tcDefaults = {
   forceLastSavedSpeed: false,
   enabled: true,
   controllerOpacity: 0.3,
-  controllerSize: "13px",
+  controllerSize: "14px",
   keyBindings: [
     { action: "display", key: "v", value: 0, force: false, predefined: true },
     { action: "slower", key: "s", value: 0.1, force: false, predefined: true },
@@ -42,7 +42,7 @@ var tc = {
     audioBoolean: false,
     startHidden: false,
     controllerOpacity: 0.3,
-    controllerSize: "13px",
+    controllerSize: "14px",
     keyBindings: [],
     blacklist: `\
 www.instagram.com

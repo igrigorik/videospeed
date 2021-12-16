@@ -15,9 +15,9 @@
   background: black;
   color: white;
 
-  border-radius: 0.4em;
+  border-radius: 0.55em;
   padding: 0.4em;
-  margin: 4px;
+  margin: 12px;
 
   cursor: default;
   z-index: 9999999;
@@ -58,9 +58,9 @@ button {
   color: black;
   background: white;
   font-weight: normal;
-  border-radius: 0.4em;
-  padding: 0.1em 0.2em 0.1em 0.2em;
-  line-height: 0.5em;
+  border-radius: 0.3em;
+  padding: 0.3em 0.4em 0.3em 0.4em;
+  line-height: 1.2em;
   border: 0px solid white;
   font-family: "Lucida Console", Monaco, monospace;
   transition: background 0.2s, color 0.2s;
