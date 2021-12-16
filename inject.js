@@ -1,26 +1,55 @@
-var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
-var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
+// Sadly, this import statement is not possible so we duplicate the contents of constants.js
+//import {regStrip, tcDefaults} from "./constants.js";
+const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+const regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
+const tcDefaults = {
+  speed: 1.0,
+  displayKey: "v",
+  rememberSpeed: false,
+  audioBoolean: false,
+  startHidden: false,
+  forceLastSavedSpeed: false,
+  enabled: true,
+  controllerOpacity: 0.3,
+  controllerSize: "13px",
+  keyBindings: [
+    { action: "display", key: "v", value: 0, force: false, predefined: true },
+    { action: "slower", key: "s", value: 0.1, force: false, predefined: true },
+    { action: "faster", key: "d", value: 0.1, force: false, predefined: true },
+    { action: "rewind", key: "z", value: 10, force: false, predefined: true },
+    { action: "advance", key: "x", value: 10, force: false, predefined: true },
+    { action: "reset", key: "r", value: 1, force: false, predefined: true },
+    { action: "fast", key: "g", value: 1.8, force: false, predefined: true }
+  ],
+  blacklist: `\
+www.instagram.com
+twitter.com
+imgur.com
+teams.microsoft.com
+`
+};
 
+//TODO parts of this this may be able to be refactored out by using tcDefaults
 var tc = {
   settings: {
     lastSpeed: 1.0, // default 1x
-    enabled: true, // default enabled
+    enabled: true,
     speeds: {}, // empty object to hold speed for each source
 
-    displayKeyCode: 86, // default: V
-    rememberSpeed: false, // default: false
-    forceLastSavedSpeed: false, //default: false
-    audioBoolean: false, // default: false
-    startHidden: false, // default: false
-    controllerOpacity: 0.3, // default: 0.3
+    displayKey: "v",
+    rememberSpeed: false,
+    forceLastSavedSpeed: false,
+    audioBoolean: false,
+    startHidden: false,
+    controllerOpacity: 0.3,
+    controllerSize: "13px",
     keyBindings: [],
     blacklist: `\
-      www.instagram.com
-      twitter.com
-      vine.co
-      imgur.com
-      teams.microsoft.com
-    `.replace(regStrip, ""),
+www.instagram.com
+twitter.com
+imgur.com
+teams.microsoft.com
+`,
     defaultLogLevel: 4,
     logLevel: 3
   },
@@ -39,109 +68,77 @@ var tc = {
 */
 function log(message, level) {
   verbosity = tc.settings.logLevel;
-  if (typeof level === "undefined") {
-    level = tc.settings.defaultLogLevel;
-  }
+  let to_print = "";
   if (verbosity >= level) {
-    if (level === 2) {
-      console.log("ERROR:" + message);
-    } else if (level === 3) {
-      console.log("WARNING:" + message);
-    } else if (level === 4) {
-      console.log("INFO:" + message);
-    } else if (level === 5) {
-      console.log("DEBUG:" + message);
-    } else if (level === 6) {
-      console.log("DEBUG (VERBOSE):" + message);
-      console.trace();
+    switch (level) {
+      case 2:
+        to_print = "ERROR: ";
+        break;
+      case 3:
+        to_print = "WARNING: ";
+        break;
+      case 4:
+        to_print = "INFO: ";
+        break;
+      case 5:
+        to_print = "DEBUG: ";
+        break;
+      case 6:
+        to_print = "VERBOSE DEBUG: ";
+        console.trace();
+        break;
+      default:
+        console.log("ALERT: Please report how you got this to VideoSpeed");
+        console.trace();
     }
+    console.log(to_print + message);
+  }
+}
+
+// Needed because you cannot || with "undefined". Only used in the next lambda function
+function storageToString(stored_key, default_key) {
+  if (stored_key) {
+    return String(stored_key);
+  } else {
+    return default_key;
   }
 }
 
 chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.keyBindings = storage.keyBindings; // Array
+
+  // The first time the extension runs...
   if (storage.keyBindings.length == 0) {
-    // if first initialization of 0.5.3
-    // UPDATE
-    tc.settings.keyBindings.push({
-      action: "slower",
-      key: Number(storage.slowerKeyCode) || 83,
-      value: Number(storage.speedStep) || 0.1,
-      force: false,
-      predefined: true
-    }); // default S
-    tc.settings.keyBindings.push({
-      action: "faster",
-      key: Number(storage.fasterKeyCode) || 68,
-      value: Number(storage.speedStep) || 0.1,
-      force: false,
-      predefined: true
-    }); // default: D
-    tc.settings.keyBindings.push({
-      action: "rewind",
-      key: Number(storage.rewindKeyCode) || 90,
-      value: Number(storage.rewindTime) || 10,
-      force: false,
-      predefined: true
-    }); // default: Z
-    tc.settings.keyBindings.push({
-      action: "advance",
-      key: Number(storage.advanceKeyCode) || 88,
-      value: Number(storage.advanceTime) || 10,
-      force: false,
-      predefined: true
-    }); // default: X
-    tc.settings.keyBindings.push({
-      action: "reset",
-      key: Number(storage.resetKeyCode) || 82,
-      value: 1.0,
-      force: false,
-      predefined: true
-    }); // default: R
-    tc.settings.keyBindings.push({
-      action: "fast",
-      key: Number(storage.fastKeyCode) || 71,
-      value: Number(storage.fastSpeed) || 1.8,
-      force: false,
-      predefined: true
-    }); // default: G
+    tc.settings.keyBindings = tcDefaults.keyBindings;
+
+    //TODO what does this do?
     tc.settings.version = "0.5.3";
 
+    //TODO we should refactor tc so we can just call chrome.storage.sync.set(tc.settings)
     chrome.storage.sync.set({
       keyBindings: tc.settings.keyBindings,
       version: tc.settings.version,
-      displayKeyCode: tc.settings.displayKeyCode,
+      displayKey: tc.settings.displayKey,
       rememberSpeed: tc.settings.rememberSpeed,
       forceLastSavedSpeed: tc.settings.forceLastSavedSpeed,
       audioBoolean: tc.settings.audioBoolean,
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
+      controllerSize: tc.settings.controllerSize,
       blacklist: tc.settings.blacklist.replace(regStrip, "")
     });
   }
   tc.settings.lastSpeed = Number(storage.lastSpeed);
-  tc.settings.displayKeyCode = Number(storage.displayKeyCode);
+  tc.settings.displayKey = String(storage.displayKey);
   tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
   tc.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
   tc.settings.audioBoolean = Boolean(storage.audioBoolean);
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
+  tc.settings.controllerSize = String(storage.controllerSize);
   tc.settings.blacklist = String(storage.blacklist);
-
-  // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
-  if (
-    tc.settings.keyBindings.filter((x) => x.action == "display").length == 0
-  ) {
-    tc.settings.keyBindings.push({
-      action: "display",
-      key: Number(storage.displayKeyCode) || 86,
-      value: 0,
-      force: false,
-      predefined: true
-    }); // default V
-  }
 
   initializeWhenReady(document);
 });
@@ -299,11 +296,14 @@ function defineVideoController() {
     var shadowTemplate = `
         <style>
           @import "${chrome.runtime.getURL("shadow.css")}";
+          * {
+            font-size:${tc.settings.controllerSize};
+          }
         </style>
 
         <div id="controller" style="top:${top}; left:${left}; opacity:${
       tc.settings.controllerOpacity
-    }">
+    }";>
           <span data-action="drag" class="draggable">${speed}</span>
           <span id="controls">
             <button data-action="rewind" class="rw">«</button>
@@ -350,42 +350,44 @@ function defineVideoController() {
     var fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
 
+    let p = this.parent;
+    // This seemed strange to me at first, but switching on true here allows matching regexes
     switch (true) {
-      case location.hostname == "www.amazon.com":
-      case location.hostname == "www.reddit.com":
+      case location.hostname === "www.amazon.com":
+      case /\.*.reddit.com/.test(location.hostname):
       case /hbogo\./.test(location.hostname):
         // insert before parent to bypass overlay
-        this.parent.parentElement.insertBefore(fragment, this.parent);
+        p = p.parentElement;
         break;
-      case location.hostname == "www.facebook.com":
+      case location.hostname === "www.facebook.com":
         // this is a monstrosity but new FB design does not have *any*
         // semantic handles for us to traverse the tree, and deep nesting
         // that we need to bubble up from to get controller to stack correctly
-        let p = this.parent.parentElement.parentElement.parentElement
+        p = p.parentElement.parentElement.parentElement
           .parentElement.parentElement.parentElement.parentElement;
-        p.insertBefore(fragment, p.firstChild);
         break;
-      case location.hostname == "tv.apple.com":
-        // insert before parent to bypass overlay
-        this.parent.parentNode.insertBefore(fragment, this.parent.parentNode.firstChild);
+      case location.hostname === "www.netflix.com":
+        p = p.parentElement.parentElement.parentElement;
         break;
+      case location.hostname === "tv.apple.com":
+        // insert after parent for correct stacking context
+        p.getRootNode().querySelector(".scrim").prepend(fragment);
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
         // target is not the immediate parent. This appends the controller as
         // the first element of the target, which may not be the parent.
-        this.parent.insertBefore(fragment, this.parent.firstChild);
     }
+    p.insertBefore(fragment,p.firstChild);
     return wrapper;
   };
 }
 
 function escapeStringRegExp(str) {
-  matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
+  const matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
   return str.replace(matchOperatorsRe, "\\$&");
 }
 
 function isBlacklisted() {
-  blacklisted = false;
   tc.settings.blacklist.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
     if (match.length == 0) {
@@ -413,11 +415,10 @@ function isBlacklisted() {
     }
 
     if (regexp.test(location.href)) {
-      blacklisted = true;
       return;
     }
   });
-  return blacklisted;
+  return false;
 }
 
 var coolDown = false;
@@ -573,8 +574,8 @@ function initializeNow(document) {
     doc.addEventListener(
       "keydown",
       function (event) {
-        var keyCode = event.keyCode;
-        log("Processing keydown event: " + keyCode, 6);
+        let key = event.key;
+        log("Processing keydown event: " + key, 6);
 
         // Ignore if following modifier is active.
         if (
@@ -586,7 +587,7 @@ function initializeNow(document) {
           event.getModifierState("Hyper") ||
           event.getModifierState("OS")
         ) {
-          log("Keydown event ignored due to active modifier: " + keyCode, 5);
+          log("Keydown event ignored due to active modifier: " + key, 5);
           return;
         }
 
@@ -604,7 +605,7 @@ function initializeNow(document) {
           return false;
         }
 
-        var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
+        var item = tc.settings.keyBindings.find((item) => item.key === key);
         if (item) {
           runAction(item.action, item.value);
           if (item.force === "true") {

@@ -1,80 +1,6 @@
-var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
-
-var tcDefaults = {
-  speed: 1.0, // default:
-  displayKeyCode: 86, // default: V
-  rememberSpeed: false, // default: false
-  audioBoolean: false, // default: false
-  startHidden: false, // default: false
-  forceLastSavedSpeed: false, //default: false
-  enabled: true, // default enabled
-  controllerOpacity: 0.3, // default: 0.3
-  keyBindings: [
-    { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
-    { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
-    { action: "faster", key: 68, value: 0.1, force: false, predefined: true }, // D
-    { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
-    { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
-    { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
-  ],
-  blacklist: `www.instagram.com
-    twitter.com
-    imgur.com
-    teams.microsoft.com
-  `.replace(regStrip, "")
-};
+import { regStrip, tcDefaults } from "./constants.js";
 
 var keyBindings = [];
-
-var keyCodeAliases = {
-  0: "null",
-  null: "null",
-  undefined: "null",
-  32: "Space",
-  37: "Left",
-  38: "Up",
-  39: "Right",
-  40: "Down",
-  96: "Num 0",
-  97: "Num 1",
-  98: "Num 2",
-  99: "Num 3",
-  100: "Num 4",
-  101: "Num 5",
-  102: "Num 6",
-  103: "Num 7",
-  104: "Num 8",
-  105: "Num 9",
-  106: "Num *",
-  107: "Num +",
-  109: "Num -",
-  110: "Num .",
-  111: "Num /",
-  112: "F1",
-  113: "F2",
-  114: "F3",
-  115: "F4",
-  116: "F5",
-  117: "F6",
-  118: "F7",
-  119: "F8",
-  120: "F9",
-  121: "F10",
-  122: "F11",
-  123: "F12",
-  186: ";",
-  188: "<",
-  189: "-",
-  187: "+",
-  190: ">",
-  191: "/",
-  192: "~",
-  219: "[",
-  220: "\\",
-  221: "]",
-  222: "'"
-};
 
 function recordKeyPress(e) {
   if (
@@ -82,18 +8,19 @@ function recordKeyPress(e) {
     (e.keyCode >= 65 && e.keyCode <= 90) || // Letters A-Z
     keyCodeAliases[e.keyCode] // Other character keys
   ) {
-    e.target.value =
-      keyCodeAliases[e.keyCode] || String.fromCharCode(e.keyCode);
+    e.target.value = getKeyCodeName(e);
+    e.target.key = e.key;
     e.target.keyCode = e.keyCode;
 
     e.preventDefault();
     e.stopPropagation();
   } else if (e.keyCode === 8) {
-    // Clear input when backspace pressed
+    // Clear input when backspace pressed, but keep the keycode the same
     e.target.value = "";
   } else if (e.keyCode === 27) {
-    // When esc clicked, clear input
+    // When esc clicked, clear input and unbind the key
     e.target.value = "null";
+    e.target.key = null;
     e.target.keyCode = null;
   }
 }
@@ -111,26 +38,19 @@ function inputFocus(e) {
 }
 
 function inputBlur(e) {
-  e.target.value =
-    keyCodeAliases[e.target.keyCode] || String.fromCharCode(e.target.keyCode);
+  e.target.value = getKeyCodeName(e);
 }
 
-function updateShortcutInputText(inputId, keyCode) {
-  document.getElementById(inputId).value =
-    keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
-  document.getElementById(inputId).keyCode = keyCode;
-}
-
-function updateCustomShortcutInputText(inputItem, keyCode) {
-  inputItem.value = keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
-  inputItem.keyCode = keyCode;
+function updateCustomShortcutInputText(inputItem, key) {
+  inputItem.value = key;
+  inputItem.key = key;
 }
 
 // List of custom actions for which customValue should be disabled
-var customActionsNoValues = ["pause", "muted", "mark", "jump", "display"];
+const customActionsNoValues = ["pause", "muted", "mark", "jump", "display"];
 
 function add_shortcut() {
-  var html = `<select class="customDo">
+  const html = `<select class="customDo">
     <option value="slower">Decrease speed</option>
     <option value="faster">Increase speed</option>
     <option value="rewind">Rewind</option>
@@ -162,7 +82,7 @@ function add_shortcut() {
 
 function createKeyBindings(item) {
   const action = item.querySelector(".customDo").value;
-  const key = item.querySelector(".customKey").keyCode;
+  const key = item.querySelector(".customKey").key;
   const value = Number(item.querySelector(".customValue").value);
   const force = item.querySelector(".customForce").value;
   const predefined = !!item.id; //item.id ? true : false;
@@ -178,33 +98,31 @@ function createKeyBindings(item) {
 
 // Validates settings before saving
 function validate() {
-  var valid = true;
-  var status = document.getElementById("status");
-  var blacklist = document.getElementById("blacklist");
+  let status = document.getElementById("status");
+  let blacklist = document.getElementById("blacklist");
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
     
     if (match.startsWith("/")) {
       try {
-        var parts = match.split("/");
+        let parts = match.split("/");
 
         if (parts.length < 3)
           throw "invalid regex";
 
-        var flags = parts.pop();
-        var regex = parts.slice(1).join("/");
+        let flags = parts.pop();
+        let regex = parts.slice(1).join("/");
 
         var regexp = new RegExp(regex, flags);
       } catch (err) {
         status.textContent =
           "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
-        valid = false;
-        return;
+        return false;
       }
     }
   });
-  return valid;
+  return true;
 }
 
 // Saves options to chrome.storage
@@ -217,13 +135,16 @@ function save_options() {
     createKeyBindings(item)
   ); // Remove added shortcuts
 
-  var rememberSpeed = document.getElementById("rememberSpeed").checked;
-  var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
-  var audioBoolean = document.getElementById("audioBoolean").checked;
-  var enabled = document.getElementById("enabled").checked;
-  var startHidden = document.getElementById("startHidden").checked;
-  var controllerOpacity = document.getElementById("controllerOpacity").value;
-  var blacklist = document.getElementById("blacklist").value;
+  let rememberSpeed = document.getElementById("rememberSpeed").checked;
+  let forceLastSavedSpeed = document.getElementById(
+    "forceLastSavedSpeed"
+  ).checked;
+  let audioBoolean = document.getElementById("audioBoolean").checked;
+  let enabled = document.getElementById("enabled").checked;
+  let startHidden = document.getElementById("startHidden").checked;
+  let controllerOpacity = document.getElementById("controllerOpacity").value;
+  let controllerSize = document.getElementById("controllerSize").value;
+  let blacklist = document.getElementById("blacklist").value;
 
   chrome.storage.sync.remove([
     "resetSpeed",
@@ -231,12 +152,12 @@ function save_options() {
     "fastSpeed",
     "rewindTime",
     "advanceTime",
-    "resetKeyCode",
-    "slowerKeyCode",
-    "fasterKeyCode",
-    "rewindKeyCode",
-    "advanceKeyCode",
-    "fastKeyCode"
+    "resetKey",
+    "slowerKey",
+    "fasterKey",
+    "rewindKey",
+    "advanceKey",
+    "fastKey"
   ]);
   chrome.storage.sync.set(
     {
@@ -246,12 +167,13 @@ function save_options() {
       enabled: enabled,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
+      controllerSize: controllerSize,
       keyBindings: keyBindings,
-      blacklist: blacklist.replace(regStrip, "")
+      blacklist: blacklist
     },
     function () {
       // Update status to let user know options were saved.
-      var status = document.getElementById("status");
+      let status = document.getElementById("status");
       status.textContent = "Options saved";
       setTimeout(function () {
         status.textContent = "";
@@ -264,23 +186,16 @@ function save_options() {
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function (storage) {
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
-    document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
+    document.getElementById("forceLastSavedSpeed").checked =
+      storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("enabled").checked = storage.enabled;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value =
       storage.controllerOpacity;
+    document.getElementById("controllerSize").value =
+      storage.controllerSize;
     document.getElementById("blacklist").value = storage.blacklist;
-
-    // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
-    if (storage.keyBindings.filter((x) => x.action == "display").length == 0) {
-      storage.keyBindings.push({
-        action: "display",
-        value: 0,
-        force: false,
-        predefined: true
-      });
-    }
 
     for (let i in storage.keyBindings) {
       var item = storage.keyBindings[i];
@@ -288,7 +203,7 @@ function restore_options() {
         //do predefined ones because their value needed for overlay
         // document.querySelector("#" + item["action"] + " .customDo").value = item["action"];
         if (item["action"] == "display" && typeof item["key"] === "undefined") {
-          item["key"] = storage.displayKeyCode || tcDefaults.displayKeyCode; // V
+          item["key"] = storage.displayKey || tcDefaults.displayKey;
         }
 
         if (customActionsNoValues.includes(item["action"]))
@@ -392,3 +307,64 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+function getKeyCodeName(e) {
+  // Letters A-Z may be capital or lowercase
+  if (e.keyCode >= 65 && e.keyCode <= 90) {
+    return e.key;
+  }
+  return keyCodeAliases[e.keyCode] || String.fromCharCode(e.keyCode);
+}
+
+// May be a prettier name than e.key, mostly useless
+const keyCodeAliases = {
+  0: "null",
+  null: "null",
+  undefined: "null",
+  32: "Space",
+  37: "Left",
+  38: "Up",
+  39: "Right",
+  40: "Down",
+  96: "Num 0",
+  97: "Num 1",
+  98: "Num 2",
+  99: "Num 3",
+  100: "Num 4",
+  101: "Num 5",
+  102: "Num 6",
+  103: "Num 7",
+  104: "Num 8",
+  105: "Num 9",
+  106: "Num *",
+  107: "Num +",
+  109: "Num -",
+  110: "Num .",
+  111: "Num /",
+  112: "F1",
+  113: "F2",
+  114: "F3",
+  115: "F4",
+  116: "F5",
+  117: "F6",
+  118: "F7",
+  119: "F8",
+  120: "F9",
+  121: "F10",
+  122: "F11",
+  123: "F12",
+  186: ";",
+  188: "<",
+  189: "-",
+  187: "+",
+  190: ">",
+  191: "/",
+  192: "~",
+  219: "[",
+  220: "\\",
+  221: "]",
+  222: "'",
+  59: ";",
+  61: "+",
+  173: "-"
+};
