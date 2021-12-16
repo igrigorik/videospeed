@@ -1,7 +1,6 @@
 * {
   line-height: 1.8em;
   font-family: sans-serif;
-  font-size: 13px;
 }
 
 :host(:hover) #controls {
@@ -16,9 +15,9 @@
   background: black;
   color: white;
 
-  border-radius: 6px;
-  padding: 4px;
-  margin: 10px 10px 10px 15px;
+  border-radius: 0.4em;
+  padding: 0.4em;
+  margin: 4px;
 
   cursor: default;
   z-index: 9999999;
@@ -59,13 +58,11 @@ button {
   color: black;
   background: white;
   font-weight: normal;
-  border-radius: 5px;
-  padding: 1px 5px 3px 5px;
-  font-size: 14px;
-  line-height: 14px;
+  border-radius: 0.4em;
+  padding: 0.1em 0.2em 0.1em 0.2em;
+  line-height: 0.5em;
   border: 0px solid white;
   font-family: "Lucida Console", Monaco, monospace;
-  margin: 0px 2px 2px 2px;
   transition: background 0.2s, color 0.2s;
 }
 
