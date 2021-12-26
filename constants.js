@@ -3,7 +3,7 @@
 export const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 
 //TODO no idea what this does
-const regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
+export const regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
 // The default values for each setting
 export const tcDefaults = {
