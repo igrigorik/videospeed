@@ -923,3 +923,65 @@ function showController(controller) {
     log("Hiding controller", 5);
   }, 2000);
 }
+
+const multiplyPlaybackRate = (media, multiplier) => {
+  if (media != null && media.playbackRate != null) {
+    media.playbackRate *= multiplier;
+  }
+}
+
+const speedMod = (multiplier) => {
+  const videos = document.querySelectorAll('video');
+  if (videos != null && videos.length != null && videos.length >= 1) {
+    for (let i = 0; i < videos.length; ++i) {
+      try {
+        const video = videos[i];
+        if (video != null) {
+          multiplyPlaybackRate(video, multiplier);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+
+  const audios = document.querySelectorAll('audio');
+  if (audios != null && audios.length != null && audios.length >= 1) {
+    for (let i = 0; i < audios.length; ++i) {
+      try {
+        const audio = audios[i];
+        if (audio != null) {
+          multiplyPlaybackRate(audio, multiplier);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+}
+
+chrome.runtime.onMessage.addListener((req, snd, rsp) => {
+  if (req === 'slow-down-01') {
+    speedMod(0.1);
+  } else if (req === 'slow-down-02') {
+    speedMod(0.2);
+  } else if (req === 'slow-down-04') {
+    speedMod(0.4);
+  } else if (req === 'slow-down-06') {
+    speedMod(0.6);
+  } else if (req === 'slow-down-08') {
+    speedMod(0.8);
+  } else if (req === 'speed-up-12') {
+    speedMod(1.2);
+  } else if (req === 'speed-up-14') {
+    speedMod(1.4);
+  } else if (req === 'speed-up-16') {
+    speedMod(1.6);
+  } else if (req === 'speed-up-18') {
+    speedMod(1.8);
+  } else if (req === 'speed-up-20') {
+    speedMod(2.0);
+  }
+
+  rsp();
+});
