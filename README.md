@@ -2,7 +2,7 @@
 
 **TL;DR: faster playback translates to better engagement and retention.**
 
-Average adult reads prose text at
+The average adult reads prose text at
 [250 to 300 words per minute](http://www.paperbecause.com/PIOP/files/f7/f7bb6bc5-2c4a-466f-9ae7-b483a2c0dca4.pdf)
 (wpm). By contrast, the average rate of speech for English speakers is ~150 wpm,
 with slide presentations often closer to 100 wpm. As a result, when given the
@@ -21,8 +21,8 @@ if they are forced to return to normal rate of presentation.
 ## Faster HTML5 Video
 
 HTML5 video provides a native API to accelerate playback of any video. The
-problem is, many players either hide, or limit this functionality. For best
-results playback speed adjustments should be easy and frequent to match the pace
+problem is many players either hide or limit this functionality. For the best
+results, playback speed adjustments should be easy and frequent to match the pace
 and content being covered: we don't read at a fixed speed, and similarly, we
 need an easy way to accelerate the video, slow it down, and quickly rewind the
 last point to listen to it a few more times.
@@ -46,19 +46,16 @@ even better, simply use your keyboard:
 - **V** - show/hide the controller.
 
 You can customize and reassign the default shortcut keys in the extensions
-settings page, as well as add additional shortcut keys to match your
-preferences. For example, you can assign multiple different "preferred speed"
-shortcuts with different values, which will allow you to quickly toggle between
-your most commonly used speeds. To add a new shortcut, open extension settings
+settings page as well as add additional shortcut keys to match your
+preferences. As an example, you can assign multiple "preferred speed" shortcuts with different values, allowing you to quickly toggle between your most frequently used speeds. To add a new shortcut, open extension settings
 and click "Add New".
 
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
 
-Some sites may assign other functionality to one of the assigned shortcut keys —
-these collisions are inevitable, unfortunately. As a workaround, the extension
+Unfortunately, some sites may assign other functionality to one of the shortcut keys - this is inevitable. As a workaround, the extension
 listens both for lower and upper case values (i.e. you can use
 `Shift-<shortcut>`) if there is other functionality assigned to the lowercase
-key. This is not a perfect solution, as some sites may listen to both, but works
+key. This is not a perfect solution since some sites may listen to both, but it works
 most of the time.
 
 ### FAQ
@@ -81,7 +78,7 @@ to the extension.
 - In a new tab, navigate to `chrome://extensions`
 - Find "Video Speed Controller" extension in the list and enable "Allow access
   to file URLs"
-- Open a new tab and try opening a local file, the controls should show up
+- Open a new tab and try opening a local file; the controls should show up.
 
 ### License
 
