@@ -33,7 +33,7 @@
         "https://plus.google.com/hangouts/*",
         "https://hangouts.google.com/*",
         "https://meet.google.com/*",
-        "https://hellosaurus.com/*"
+        "https://www.hellosaurus.com/*"
       ],
       "css": ["inject.css"],
       "js": ["inject.js"]
