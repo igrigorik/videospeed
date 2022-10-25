@@ -1,29 +1,31 @@
-name: Upload To Chrome Web Store
-# This workflow is triggered on pushes to the repository.
+name: Publish
+
 on:
   push:
     tags:
       - v**
+
 jobs:
   build:
-    name: Upload
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v1
-
-      - name: zip
-        uses: montudor/action-zip@v0.1.0
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
-          args: zip -r ./vscd.zip . -i * -x *.git*
+          node-version: 16
 
-      - name: Upload to
-        uses: trmcnvn/chrome-addon@v2
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build zip file
+        run: npm run build
+
+      - name: Upload to Chrome Web Store
+        uses: mobilefirstllc/cws-publish@latest
         with:
-          # extension is only necessary when updating an existing addon,
-          # omitting it will create a new addon
-          extension: "nffaoalbilbmmfgbnbgppjihopabppdk"
-          zip: vscd.zip
-          client-id: ${{ secrets.CHROME_CLIENT_ID }}
-          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          action: 'upload'
+          client_id: ${{ secrets.CHROME_CLIENT_ID }}
+          client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension_id: 'nffaoalbilbmmfgbnbgppjihopabppdk'
+          zip_file: 'release.zip'
