@@ -653,6 +653,13 @@ function initializeNow(document) {
             case "childList":
               mutation.addedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
+                if (node === document.documentElement) {
+                  // This happens on sites that use document.write, e.g. watch.sling.com
+                  // When the document gets replaced, we lose all event handlers, so we need to reinitialize
+                  log("Document was replaced, reinitializing", 5);
+                  initializeWhenReady(document);
+                  return;
+                }
                 checkForVideo(node, node.parentNode || mutation.target, true);
               });
               mutation.removedNodes.forEach(function (node) {
