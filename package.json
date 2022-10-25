@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "cws-publish": "^2.1.1"
+  }
+}
