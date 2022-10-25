@@ -14,11 +14,10 @@ jobs:
         with:
           node-version: 16
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build zip file
-        run: npm run build
+      - name: zip
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip -r ./release.zip . -i * -x *.git*
 
       - name: Upload to Chrome Web Store
         uses: mobilefirstllc/cws-publish@latest
