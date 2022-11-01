@@ -555,6 +555,8 @@ function initializeNow(document) {
   document.body.classList.add("vsc-initialized");
   log("initializeNow: vsc-initialized added to document body", 5);
 
+  injectScriptForSite();
+
   if (document === window.document) {
     defineVideoController();
   } else {
@@ -825,23 +827,29 @@ function runAction(action, value, e) {
   log("runAction End", 5);
 }
 
-if(location.hostname == "www.netflix.com") {
+function injectScriptForSite() {
+  let inject = true;
   const elt = document.createElement("script");
-  elt.innerHTML = "window.addEventListener('message', function(event) {" +
-    "if (event.origin != 'https://www.netflix.com' || event.data.action != 'videospeed-seek' || !event.data.seekMs) { return; };" +
-    "const videoPlayer = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;" +
-    "const playerSessionId = videoPlayer.getAllPlayerSessionIds()[0];" +
-    "const currentTime = videoPlayer.getCurrentTimeBySessionId(playerSessionId);" +
-    "videoPlayer.getVideoPlayerBySessionId(playerSessionId).seek(currentTime + event.data.seekMs);" +
-    "}, false);";
-  document.head.appendChild(elt);
+
+  switch (true) {
+    case location.hostname == "www.netflix.com":
+      elt.src= chrome.runtime.getURL('scriptforsite/netflix.js');
+      break;
+    default:
+      inject = false;
+  }
+  if (inject) {
+    document.head.appendChild(elt);
+  }
 }
 
 function seek(mediaTag, seekSeconds) {
-  if (location.hostname == "www.netflix.com") {
-    window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
-  } else {
-    mediaTag.currentTime += seekSeconds;
+  switch (true) {
+    case location.hostname == "www.netflix.com":
+      window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
+      break;
+    default:
+      mediaTag.currentTime += seekSeconds;
   }
 }
 
