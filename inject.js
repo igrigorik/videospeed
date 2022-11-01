@@ -764,10 +764,10 @@ function runAction(action, value, e) {
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
         log("Rewind", 5);
-        v.currentTime -= value;
+        seek(v, -value);
       } else if (action === "advance") {
         log("Fast forward", 5);
-        v.currentTime += value;
+        seek(v, value);
       } else if (action === "faster") {
         log("Increase speed", 5);
         // Maximum playback speed in Chrome is set to 16:
@@ -823,6 +823,26 @@ function runAction(action, value, e) {
     }
   });
   log("runAction End", 5);
+}
+
+if(location.hostname == "www.netflix.com") {
+  const elt = document.createElement("script");
+  elt.innerHTML = "window.addEventListener('message', function(event) {" +
+    "if (event.origin != 'https://www.netflix.com' || event.data.action != 'videospeed-seek' || !event.data.seekMs) { return; };" +
+    "const videoPlayer = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;" +
+    "const playerSessionId = videoPlayer.getAllPlayerSessionIds()[0];" +
+    "const currentTime = videoPlayer.getCurrentTimeBySessionId(playerSessionId);" +
+    "videoPlayer.getVideoPlayerBySessionId(playerSessionId).seek(currentTime + event.data.seekMs);" +
+    "}, false);";
+  document.head.appendChild(elt);
+}
+
+function seek(mediaTag, seekSeconds) {
+  if (location.hostname == "www.netflix.com") {
+    window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
+  } else {
+    mediaTag.currentTime += seekSeconds;
+  }
 }
 
 function pause(v) {
