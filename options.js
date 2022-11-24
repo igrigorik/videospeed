@@ -142,6 +142,8 @@ function add_shortcut() {
     <option value="mark">Set marker</option>
     <option value="jump">Jump to marker</option>
     <option value="display">Show/hide controller</option>
+    <option value="increase_volume">Increase Volume</option>
+    <option value="decrease_volume">Decrease Volume</option>
     </select>
     <input class="customKey" type="text" placeholder="press a key"/>
     <input class="customValue" type="text" placeholder="value (0.10)"/>

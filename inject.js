@@ -819,6 +819,10 @@ function runAction(action, value, e) {
         setMark(v);
       } else if (action === "jump") {
         jumpToMark(v);
+      } else if (action === "increase_volume") {
+        increaseVolume(v)
+      } else if (action === "decrease_volume") {
+        decreaseVolume(v)
       }
     }
   });
@@ -870,6 +874,15 @@ function jumpToMark(v) {
   if (v.vsc.mark && typeof v.vsc.mark === "number") {
     v.currentTime = v.vsc.mark;
   }
+}
+
+function increaseVolume(v) {
+  v.mute = false;
+  v.volume += 0.1;
+}
+
+function decreaseVolume(v) {
+  v.volume -= 0.1;
 }
 
 function handleDrag(video, e) {
