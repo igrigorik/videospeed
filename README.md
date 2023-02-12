@@ -3,6 +3,7 @@
 ## _[Install Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk)_
 
 ## **Benefits of Faster HTML5 Video**
+
 ---
 
 ![Player](https://cloud.githubusercontent.com/assets/2400185/24076745/5723e6ae-0c41-11e7-820c-1d8e814a2888.png)
@@ -23,6 +24,7 @@ HTML5 video provides a native API to accelerate playback of any video. The probl
 - Easily slow down, speed up, rewind, or advance videos with keyboard shortcuts
 - Customizable keyboard shortcuts to match your preferred speeds and control methods
 - Compatible with HTML5 videos on any website
+- Allows the exclusion of sites to disable the extension
 
 ## **Installation and Usage**
 
