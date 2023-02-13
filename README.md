@@ -42,11 +42,37 @@ Install the Video Speed Controller Extension from the [Chrome Web Store](https:/
 - **G** - toggle between current and user configurable preferred speed.
 - **V** - show/hide the controller.
 
+## **Settings**
+
+---
+
 ### **Keyboard Shortcut Customization**
 
 You can customize and reassign the default shortcut keys in the extensions settings page as well as add additional shortcut keys to match your preferences. As an example, you can assign multiple "preferred speed" shortcuts with different values, allowing you to quickly toggle between your most frequently used speeds. To add a new shortcut, open extension settings and click "Add New".
 
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
+
+### **Full List of Shortcut Options**
+
+- Decrease Speed
+- Increase Speed
+- Rewind
+- Advance
+- Reset Speed
+- Preferred Speed
+- Mute
+- Pause
+- Set Marker
+- Jump to Marker
+- Show/Hide Controller
+
+### **Other Customizations**
+
+- Toggle Remember playback speed
+- Force last saved speed (Useful for video players that override the speeds set by Video Speed Controller)
+- Toggle Video Speed Controller working for audio
+- Regex or text based exclusion list
+- Opacity customization
 
 ## **FAQ**
 
