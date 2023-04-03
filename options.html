@@ -2,6 +2,12 @@
 <html>
   <head>
     <title>Video Speed Controller: Options</title>
+    <script src="json_editor/prism.js"></script>
+    <link href="json_editor/prism.css" rel="stylesheet" />
+    <script src="json_editor/code-input.js"></script>
+    <script src="json_editor/indent.js"></script>
+
+    <link href="json_editor/code-input.css" rel="stylesheet" />
     <link rel="stylesheet" href="options.css" />
     <script src="options.js"></script>
   </head>
@@ -153,8 +159,24 @@
         <input id="forceLastSavedSpeed" type="checkbox" />
       </div>
       <div class="row">
+        <label for="ifSpeedIsNormalDontSaveUnlessWeSetIt">Don't allow normal (1.0) speed to be saved to DB unless we set it ourselves<br />
+        <em>Useful for making sure sites don't screw last used value</em></label>
+        <input id="ifSpeedIsNormalDontSaveUnlessWeSetIt" type="checkbox" />
+      </div>
+
+      <div class="row">
         <label for="audioBoolean">Work on audio</label>
         <input id="audioBoolean" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="logLevel">Console Log Level</label>
+        <select id="logLevel">
+          <option value="2">Error</option>
+          <option value="3">Warning</option>
+          <option value="4">Info</option>
+          <option value="5">Debug</option>
+          <option value="6">Verbose</option>
+        </select>
       </div>
       <div class="row">
         <label for="controllerOpacity">Controller opacity</label>
@@ -178,9 +200,12 @@
     <button id="save">Save</button>
     <button id="restore">Restore Defaults</button>
     <button id="experimental">Show Experimental Features</button>
-
     <div id="status"></div>
-
+    <br />
+    <br />
+    <code-input lang="JSON" id="rawJson" style="resize: vertical; overflow: auto; height: 400px; width: 700px;" class="customForce"></code-input>
+        <br />
+        <button id="saveRaw">Save From RawJson</button>
     <div id="faq">
       <hr />
 

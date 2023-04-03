@@ -1,0 +1,101 @@
+/* Code-Input Compatibility */
+/* By WebCoder49 */
+/* First Published on CSS-Tricks.com */
+
+
+code-input {
+  /* Allow other elems to be inside */
+  position: relative;
+  top: 0;
+  left: 0;
+  display: block;
+  /* Only scroll inside elems */
+  overflow: hidden;
+
+  /* Normal inline styles */
+  padding: 8px;
+  margin: 8px;
+  width: calc(100% - 16px);
+  height: 250px;
+
+  font-size: normal;
+  font-family: monospace;
+  line-height: normal;
+  tab-size: 2;
+  caret-color: darkgrey;
+  white-space: pre;
+}
+
+code-input textarea, code-input:not(.code-input_pre-element-styled) pre code, code-input.code-input_pre-element-styled pre {
+  /* Both elements need the same text and space styling so they are directly on top of each other */
+  margin: 0px!important;
+  padding: var(--padding, 16px)!important;
+  border: 0;
+  width: calc(100% - var(--padding, 16px) * 2);
+  height: calc(100% - var(--padding, 16px) * 2);
+}
+code-input:not(.code-input_pre-element-styled) pre, code-input.code-input_pre-element-styled pre code {
+  /* Remove all margin and padding from others */
+  margin: 0px!important;
+  padding: 0px!important;
+  width: 100%;
+  height: 100%;
+}
+
+code-input textarea, code-input pre, code-input pre * {
+  /* Also add text styles to highlighing tokens */
+  font-size: inherit!important;
+  font-family: inherit!important;
+  line-height: inherit!important;
+  tab-size: inherit!important;
+}
+
+
+code-input textarea, code-input pre {
+  /* In the same place */
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+
+/* Move the textarea in front of the result */
+
+code-input textarea {
+  z-index: 1;
+}
+code-input pre {
+  z-index: 0;
+}
+
+
+/* Make textarea almost completely transparent */
+
+code-input textarea {
+  color: transparent;
+  background: transparent;
+  caret-color: inherit!important; /* Or choose your favourite color */
+}
+
+/* Can be scrolled */
+code-input textarea, code-input pre {
+  overflow: auto!important;
+
+  white-space: inherit;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+}
+
+/* No resize on textarea; stop outline */
+code-input textarea {
+  resize: none;
+  outline: none!important;
+}
+
+code-input:not(.code-input_registered)::before {
+  /* Display message to register */
+  content: "Use codeInput.registerTemplate to set up.";
+  display: block;
+  color: grey;
+}

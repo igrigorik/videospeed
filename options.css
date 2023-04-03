@@ -72,6 +72,17 @@ button {
   user-select: none;
 }
 
+button:hover{
+  background:  #ccc;
+  transition: all 0.2s;
+}
+button:active{
+    background-color: #bbb;
+    box-shadow: 0 2px #999;
+    transform: translateY(4px);
+    transition: 0s;
+}
+
 input[type="text"] {
   width: 75px;
   text-align: center;
