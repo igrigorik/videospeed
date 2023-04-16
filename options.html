@@ -169,6 +169,14 @@
         <input id="audioBoolean" type="checkbox" />
       </div>
       <div class="row">
+        <label for="ytAutoEnableClosedCaptions">For Youtube.com auto enable closed captions</label>
+        <input id="ytAutoEnableClosedCaptions" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="ytAutoDisableAutoPlay">For Youtube.com auto disable autoplay</label>
+        <input id="ytAutoDisableAutoPlay" type="checkbox" />
+      </div>
+      <div class="row">
         <label for="logLevel">Console Log Level</label>
         <select id="logLevel">
           <option value="2">Error</option>
@@ -201,11 +209,22 @@
     <button id="restore">Restore Defaults</button>
     <button id="experimental">Show Experimental Features</button>
     <div id="status"></div>
-    <br />
-    <br />
-    <code-input lang="JSON" id="rawJson" style="resize: vertical; overflow: auto; height: 400px; width: 700px;" class="customForce"></code-input>
+    <br /><br /><br />
+    <div class="customForce">
+
+   <!-- <fieldset>
+      <legend>Javascript to execute on youtube.com domains</legend>
+    <code-input lang="javascript" id="ytJS" style="resize: vertical; overflow: auto; height: 200px; width: 700px;" class="language-js-extras"></code-input>
+  </fieldset>
+    <br /> -->
+   <fieldset>
+      <legend>Raw JSON Settings Edit</legend>
+    <code-input lang="JSON" id="rawJson" style="resize: vertical; overflow: auto; height: 400px; width: 700px;"></code-input>
         <br />
         <button id="saveRaw">Save From RawJson</button>
+   </fieldset>
+</div>
+
     <div id="faq">
       <hr />
 

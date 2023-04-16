@@ -1,8 +1,9 @@
 /* Shared between inject.js and options.js */
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
-var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","forceLastSavedSpeed","audioBoolean","startHidden",
-"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt"];
+var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","forceLastSavedSpeed","audioBoolean","startHidden","lastSpeed",
+"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
+ ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
 var SettingFieldsBeforeSync = new Map();
 SettingFieldsBeforeSync.set("blacklist",(data) => data.replace(regStrip, ""));
 let syncFieldObj = {};
@@ -23,6 +24,8 @@ var tcDefaults = {
   defaultLogLevel: 4, //for any command that doesn't specify a log level
   speeds: {}, // empty object to hold speed for each source
   ifSpeedIsNormalDontSaveUnlessWeSetIt: false,
+  ytAutoEnableClosedCaptions: false,
+  ytAutoDisableAutoPlay: false,
   keyBindings: [
     { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
     { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
@@ -40,7 +43,7 @@ var tcDefaults = {
   // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
   mediaElements: []
 };
-/* End Shared between inject.s and options.js */
+/* End Shared between inject.js and options.js */
 
 var tc = {
   settings: {
@@ -179,8 +182,8 @@ function defineVideoController() {
       }
       setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
     } else {
-      log("Recalling stored speed due to rememberSpeed being enabled", 5);
       storedSpeed = tc.settings.lastSpeed;
+      log(`Recalled stored speed due to rememberSpeed being enabled: ${storedSpeed}`, 5);
     }
 
     log("Explicitly setting playbackRate to: " + storedSpeed, 5);
@@ -738,8 +741,28 @@ function initializeNow(document) {
     initializeWhenReady(childDocument);
   });
   log("End initializeNow", 5);
-}
 
+  if ( window.location.hostname.endsWith("youtube.com") )
+    setTimeout(YTComAfterLoaded,1000);
+    //eval(tc.settings.ytJS);
+
+}
+function domItemByClass(classname){
+  var subButton = document.getElementsByClassName("ytp-subtitles-button ytp-button");
+  return subButton.length < 1 ? null : subButton[0];
+}
+function YTComAfterLoaded(){
+  if (tc.settings.ytAutoEnableClosedCaptions) {
+    let subButton = domItemByClass("ytp-subtitles-button ytp-button");
+    if (subButton && subButton.getAttribute("aria-pressed") == 'false')
+      subButton.click();
+  }
+  if (tc.settings.ytAutoDisableAutoPlay){
+    let subButton = domItemByClass("ytp-autonav-toggle-button");
+    if (subButton && subButton.getAttribute("aria-checked") == 'true')
+      subButton.click();
+  }
+}
 function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);

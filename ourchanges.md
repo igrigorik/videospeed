@@ -15,3 +15,5 @@
 - Made button presses on options page a bit more obvious by animating them and adding hover styling.
 
 - Improved logging adding the caller information (where available) and more details when a video event happens incase there may be multiple video players to determine which one.
+
+- Added the ability to automatically enable subtitles and auto disable autoplay for youtube.com.
