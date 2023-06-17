@@ -15,7 +15,7 @@ jobs:
           node-version: 16
 
       - name: zip
-        uses: montudor/action-zip@v0.1.0
+        uses: montudor/action-zip@v1
         with:
           args: zip -r ./release.zip . -i * -x *.git*
 
