@@ -622,7 +622,7 @@ function initializeNow(document) {
 
   function checkForVideo(node, parent, added) {
     // Only proceed with supposed removal if node is missing from DOM
-    if (!added && document.body.contains(node)) {
+    if (!added && document.body?.contains(node)) {
       return;
     }
     if (
