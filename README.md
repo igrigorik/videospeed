@@ -49,6 +49,7 @@ You can customize and reassign the default shortcut keys in the extensions
 settings page as well as add additional shortcut keys to match your
 preferences. As an example, you can assign multiple "preferred speed" shortcuts with different values, allowing you to quickly toggle between your most frequently used speeds. To add a new shortcut, open extension settings
 and click "Add New".
+After making changes or adding new settings, remember to refresh the video viewing page for them to take effect.
 
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
 
