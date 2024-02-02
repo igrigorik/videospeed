@@ -39,7 +39,7 @@
     }
   ],
   "web_accessible_resources": [{
-    "resources": ["inject.css", "shadow.css"],
+    "resources": ["inject.css", "shadow.css", "scriptforsite/*.js"],
     "matches": ["http://*/*", "https://*/*", "file:///*"]
   }]
 }
