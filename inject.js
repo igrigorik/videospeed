@@ -715,7 +715,7 @@ function initializeNow(document) {
 
   document.querySelectorAll("*").forEach((element) => {
     if (element.shadowRoot) {
-      documentAndShadowRootObserver.observe(element.shadowRoot);
+      documentAndShadowRootObserver.observe(element.shadowRoot, documentAndShadowRootObserverOptions);
       mediaTags.push(...element.shadowRoot.querySelectorAll(mediaTagSelector));
     };
   });
