@@ -155,9 +155,8 @@ function getKeyBindings(action, what = "value") {
 }
 
 function setKeyBindings(action, value) {
-  tc.settings.keyBindings.find((item) => item.action === action)[
-    "value"
-  ] = value;
+  tc.settings.keyBindings.find((item) => item.action === action)["value"] =
+    value;
 }
 
 function defineVideoController() {
@@ -237,7 +236,7 @@ function defineVideoController() {
       (this.handleSeek = mediaEventAction.bind(this))
     );
 
-    var observer = new MutationObserver((mutations) => {
+    var targetObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
           mutation.type === "attributes" &&
@@ -254,7 +253,7 @@ function defineVideoController() {
         }
       });
     });
-    observer.observe(target, {
+    targetObserver.observe(target, {
       attributeFilter: ["src", "currentSrc"]
     });
   };
@@ -302,8 +301,8 @@ function defineVideoController() {
         </style>
 
         <div id="controller" style="top:${top}; left:${left}; opacity:${
-      tc.settings.controllerOpacity
-    }">
+          tc.settings.controllerOpacity
+        }">
           <span data-action="drag" class="draggable">${speed}</span>
           <span id="controls">
             <button data-action="rewind" class="rw">«</button>
@@ -361,13 +360,17 @@ function defineVideoController() {
         // this is a monstrosity but new FB design does not have *any*
         // semantic handles for us to traverse the tree, and deep nesting
         // that we need to bubble up from to get controller to stack correctly
-        let p = this.parent.parentElement.parentElement.parentElement
-          .parentElement.parentElement.parentElement.parentElement;
+        let p =
+          this.parent.parentElement.parentElement.parentElement.parentElement
+            .parentElement.parentElement.parentElement;
         p.insertBefore(fragment, p.firstChild);
         break;
       case location.hostname == "tv.apple.com":
         // insert before parent to bypass overlay
-        this.parent.parentNode.insertBefore(fragment, this.parent.parentNode.firstChild);
+        this.parent.parentNode.insertBefore(
+          fragment,
+          this.parent.parentNode.firstChild
+        );
         break;
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
@@ -443,8 +446,7 @@ function setupListener() {
   function updateSpeedFromEvent(video) {
     // It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
     // a video controller attached to it.  If we do, ignore it.
-    if (!video.vsc)
-      return;
+    if (!video.vsc) return;
     var speedIndicator = video.vsc.speedIndicator;
     var src = video.currentSrc;
     var speed = Number(video.playbackRate.toFixed(2));
@@ -620,9 +622,12 @@ function initializeNow(document) {
     );
   });
 
-  function checkForVideo(node, parent, added) {
+  function checkForVideoAndShadowRoot(node, parent, added) {
     // Only proceed with supposed removal if node is missing from DOM
     if (!added && document.body?.contains(node)) {
+      // This was written prior to the addition of shadowRoot processing.
+      // TODO: Determine if shadowRoot deleted nodes need this sort of
+      // check as well.
       return;
     }
     if (
@@ -636,15 +641,27 @@ function initializeNow(document) {
           node.vsc.remove();
         }
       }
-    } else if (node.children != undefined) {
-      for (var i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        checkForVideo(child, child.parentNode || parent, added);
+    } else {
+      var children = [];
+      if (node.shadowRoot) {
+        documentAndShadowRootObserver.observe(
+          node.shadowRoot,
+          documentAndShadowRootObserverOptions
+        );
+        children = Array.from(node.shadowRoot.children);
+      }
+      if (node.children) {
+        children = [...children, ...node.children];
+      }
+      for (const child of children) {
+        checkForVideoAndShadowRoot(child, child.parentNode || parent, added);
       }
     }
   }
 
-  var observer = new MutationObserver(function (mutations) {
+  var documentAndShadowRootObserver = new MutationObserver(function (
+    mutations
+  ) {
     // Process the DOM nodes lazily
     requestIdleCallback(
       (_) => {
@@ -660,30 +677,42 @@ function initializeNow(document) {
                   initializeWhenReady(document);
                   return;
                 }
-                checkForVideo(node, node.parentNode || mutation.target, true);
+                checkForVideoAndShadowRoot(
+                  node,
+                  node.parentNode || mutation.target,
+                  true
+                );
               });
               mutation.removedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, false);
+                checkForVideoAndShadowRoot(
+                  node,
+                  node.parentNode || mutation.target,
+                  false
+                );
               });
               break;
             case "attributes":
               if (
                 (mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false")
-                || mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER'
+                  mutation.target.attributes["aria-hidden"].value == "false") ||
+                mutation.target.nodeName === "APPLE-TV-PLUS-PLAYER"
               ) {
                 var flattenedNodes = getShadow(document.body);
-                var nodes = flattenedNodes.filter(
-                  (x) => x.tagName == "VIDEO"
-                );
+                var nodes = flattenedNodes.filter((x) => x.tagName == "VIDEO");
                 for (let node of nodes) {
                   // only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
-                  if (node.vsc && mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER')
+                  if (
+                    node.vsc &&
+                    mutation.target.nodeName === "APPLE-TV-PLUS-PLAYER"
+                  )
                     continue;
-                  if (node.vsc)
-                    node.vsc.remove();
-                  checkForVideo(node, node.parentNode || mutation.target, true);
+                  if (node.vsc) node.vsc.remove();
+                  checkForVideoAndShadowRoot(
+                    node,
+                    node.parentNode || mutation.target,
+                    true
+                  );
                 }
               }
               break;
@@ -693,17 +722,25 @@ function initializeNow(document) {
       { timeout: 1000 }
     );
   });
-  observer.observe(document, {
+  documentAndShadowRootObserverOptions = {
     attributeFilter: ["aria-hidden", "data-focus-method"],
     childList: true,
     subtree: true
-  });
+  };
+  documentAndShadowRootObserver.observe(
+    document,
+    documentAndShadowRootObserverOptions
+  );
 
-  if (tc.settings.audioBoolean) {
-    var mediaTags = document.querySelectorAll("video,audio");
-  } else {
-    var mediaTags = document.querySelectorAll("video");
-  }
+  const mediaTagSelector = tc.settings.audioBoolean ? "video,audio" : "video";
+  mediaTags = Array.from(document.querySelectorAll(mediaTagSelector));
+
+  document.querySelectorAll("*").forEach((element) => {
+    if (element.shadowRoot) {
+      documentAndShadowRootObserver.observe(element.shadowRoot);
+      mediaTags.push(...element.shadowRoot.querySelectorAll(mediaTagSelector));
+    }
+  });
 
   mediaTags.forEach(function (video) {
     video.vsc = new tc.videoController(video);
