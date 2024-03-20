@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelector("#disable").classList.toggle("hide", !enabled);
 
     const suffix = `${enabled ? "" : "_disabled"}.png`;
+    if (chrome && chrome["browserAction"] && chrome.browserAction["setIcon"]) {
     chrome.browserAction.setIcon({
       path: {
         "19": "icons/icon19" + suffix,
@@ -47,6 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "48": "icons/icon48" + suffix
       }
     });
+  }
   }
 
   function settingsSavedReloadMessage(enabled) {

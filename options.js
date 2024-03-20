@@ -1,7 +1,18 @@
+/* Shared between inject.js and options.js */
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
+var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","forceLastSavedSpeed","audioBoolean","startHidden","lastSpeed",
+"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
+ ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
+var SettingFieldsBeforeSync = new Map();
+SettingFieldsBeforeSync.set("blacklist",(data) => data.replace(regStrip, ""));
+let syncFieldObj = {};
+for (let field of SettingFieldsSynced)
+  syncFieldObj[field] = true;
 
 var tcDefaults = {
-  speed: 1.0, // default:
+  version: "0.5.3",
+  lastSpeed: 1.0, // default:
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
@@ -9,6 +20,12 @@ var tcDefaults = {
   forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
+  logLevel: 3, // default: 3
+  defaultLogLevel: 4, //for any command that doesn't specify a log level
+  speeds: {}, // empty object to hold speed for each source
+  ifSpeedIsNormalDontSaveUnlessWeSetIt: false,
+  ytAutoEnableClosedCaptions: false,
+  ytAutoDisableAutoPlay: false,
   keyBindings: [
     { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
     { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
@@ -22,8 +39,11 @@ var tcDefaults = {
     twitter.com
     imgur.com
     teams.microsoft.com
-  `.replace(regStrip, "")
+  `.replace(regStrip, ""),
+  // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
+  mediaElements: []
 };
+/* End Shared between inject.js and options.js */
 
 var keyBindings = [];
 
@@ -184,7 +204,7 @@ function validate() {
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
-    
+
     if (match.startsWith("/")) {
       try {
         var parts = match.split("/");
@@ -207,6 +227,22 @@ function validate() {
   return valid;
 }
 
+function save_raw_options() {
+  //while we could just update the UI and save that way if they edited any settings that were not visible we couldn't really update those
+  var rawJ = JSON.parse( document.getElementById("rawJson").value);
+  restore_from_settingsObj(rawJ);
+  chrome.storage.sync.set(
+    rawJ,
+    function () {
+      // Update status to let user know options were saved.
+      var status = document.getElementById("status");
+      status.textContent = "Raw Options saved";
+      setTimeout(function () {
+        status.textContent = "";
+      }, 2000);
+    }
+  );
+}
 // Saves options to chrome.storage
 function save_options() {
   if (validate() === false) {
@@ -216,14 +252,30 @@ function save_options() {
   Array.from(document.querySelectorAll(".customs")).forEach((item) =>
     createKeyBindings(item)
   ); // Remove added shortcuts
-
-  var rememberSpeed = document.getElementById("rememberSpeed").checked;
-  var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
-  var audioBoolean = document.getElementById("audioBoolean").checked;
-  var enabled = document.getElementById("enabled").checked;
-  var startHidden = document.getElementById("startHidden").checked;
-  var controllerOpacity = document.getElementById("controllerOpacity").value;
-  var blacklist = document.getElementById("blacklist").value;
+    let saveObj = {};
+    for (let field of SettingFieldsSynced){
+      let domElm = document.getElementById(field);
+      if (! domElm)
+        continue;
+      let origType = typeof(tcDefaults[field]);
+      let val = undefined;
+      switch (origType){
+        case "string":
+          val = String(domElm.value);
+          break;
+        case "number":
+          val = Number(domElm.value);
+          break;
+        case "boolean":
+          val = Boolean(domElm.checked);
+          break;
+        default:
+          continue;
+      }
+      if (SettingFieldsBeforeSync.has(field))
+        val = SettingFieldsBeforeSync.get(field)(val);
+      saveObj[field]=val;
+    }
 
   chrome.storage.sync.remove([
     "resetSpeed",
@@ -238,17 +290,10 @@ function save_options() {
     "advanceKeyCode",
     "fastKeyCode"
   ]);
+
+  document.getElementById("rawJson").value = JSON.stringify(saveObj, null,'\t');
   chrome.storage.sync.set(
-    {
-      rememberSpeed: rememberSpeed,
-      forceLastSavedSpeed: forceLastSavedSpeed,
-      audioBoolean: audioBoolean,
-      enabled: enabled,
-      startHidden: startHidden,
-      controllerOpacity: controllerOpacity,
-      keyBindings: keyBindings,
-      blacklist: blacklist.replace(regStrip, "")
-    },
+    saveObj,
     function () {
       // Update status to let user know options were saved.
       var status = document.getElementById("status");
@@ -259,19 +304,32 @@ function save_options() {
     }
   );
 }
+function restore_options() {
+  chrome.storage.sync.get(tcDefaults, restore_from_settingsObj);
+}
 
 // Restores options from chrome.storage
-function restore_options() {
-  chrome.storage.sync.get(tcDefaults, function (storage) {
-    document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
-    document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
-    document.getElementById("audioBoolean").checked = storage.audioBoolean;
-    document.getElementById("enabled").checked = storage.enabled;
-    document.getElementById("startHidden").checked = storage.startHidden;
-    document.getElementById("controllerOpacity").value =
-      storage.controllerOpacity;
-    document.getElementById("blacklist").value = storage.blacklist;
+function restore_from_settingsObj(storage) {
+    for (let field of SettingFieldsSynced){
+      let domElm = document.getElementById(field);
+      if (! domElm)
+        continue;
+      let origType = typeof(tcDefaults[field]);
+      let val = storage[field];
+      switch (origType){
+          case "string":
+          case "number":
+            domElm.value = val;
+            break;
+          case "boolean":
+            domElm.checked = val;
+            break;
+          default:
+            continue;
+        }
+    }
 
+    document.getElementById("rawJson").value = JSON.stringify(storage, null,'\t');
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
     if (storage.keyBindings.filter((x) => x.action == "display").length == 0) {
       storage.keyBindings.push({
@@ -321,7 +379,6 @@ function restore_options() {
         dom.querySelector(".customForce").value = item["force"];
       }
     }
-  });
 }
 
 function restore_defaults() {
@@ -347,7 +404,12 @@ function show_experimental() {
 
 document.addEventListener("DOMContentLoaded", function () {
   restore_options();
+  codeInput.registerTemplate("syntax-highlighted", codeInput.templates.prism(Prism, [
+    new codeInput.plugins.Indent() //Automatically indent next line after hitting enter
 
+  ]));
+
+  document.getElementById("saveRaw").addEventListener("click", save_raw_options);
   document.getElementById("save").addEventListener("click", save_options);
   document.getElementById("add").addEventListener("click", add_shortcut);
   document
