@@ -237,7 +237,7 @@ function defineVideoController() {
       (this.handleSeek = mediaEventAction.bind(this))
     );
 
-    var observer = new MutationObserver((mutations) => {
+    var targetObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
           mutation.type === "attributes" &&
@@ -254,7 +254,7 @@ function defineVideoController() {
         }
       });
     });
-    observer.observe(target, {
+    targetObserver.observe(target, {
       attributeFilter: ["src", "currentSrc"]
     });
   };
@@ -620,9 +620,12 @@ function initializeNow(document) {
     );
   });
 
-  function checkForVideo(node, parent, added) {
+  function checkForVideoAndShadowRoot(node, parent, added) {
     // Only proceed with supposed removal if node is missing from DOM
     if (!added && document.body?.contains(node)) {
+      // This was written prior to the addition of shadowRoot processing.
+      // TODO: Determine if shadowRoot deleted nodes need this sort of 
+      // check as well.
       return;
     }
     if (
@@ -636,15 +639,22 @@ function initializeNow(document) {
           node.vsc.remove();
         }
       }
-    } else if (node.children != undefined) {
-      for (var i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        checkForVideo(child, child.parentNode || parent, added);
+    } else {
+      var children = [];
+      if (node.shadowRoot) {
+        documentAndShadowRootObserver.observe(node.shadowRoot, documentAndShadowRootObserverOptions);
+        children = Array.from(node.shadowRoot.children);
       }
+      if (node.children) {
+        children = [...children, ...node.children];
+      };
+      for (const child of children) {
+        checkForVideoAndShadowRoot(child, child.parentNode || parent, added)
+      };
     }
   }
 
-  var observer = new MutationObserver(function (mutations) {
+  var documentAndShadowRootObserver = new MutationObserver(function (mutations) {
     // Process the DOM nodes lazily
     requestIdleCallback(
       (_) => {
@@ -660,11 +670,11 @@ function initializeNow(document) {
                   initializeWhenReady(document);
                   return;
                 }
-                checkForVideo(node, node.parentNode || mutation.target, true);
+                checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
               });
               mutation.removedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
-                checkForVideo(node, node.parentNode || mutation.target, false);
+                checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, false);
               });
               break;
             case "attributes":
@@ -683,7 +693,7 @@ function initializeNow(document) {
                     continue;
                   if (node.vsc)
                     node.vsc.remove();
-                  checkForVideo(node, node.parentNode || mutation.target, true);
+                  checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
                 }
               }
               break;
@@ -693,17 +703,22 @@ function initializeNow(document) {
       { timeout: 1000 }
     );
   });
-  observer.observe(document, {
+  documentAndShadowRootObserverOptions = {
     attributeFilter: ["aria-hidden", "data-focus-method"],
     childList: true,
     subtree: true
-  });
-
-  if (tc.settings.audioBoolean) {
-    var mediaTags = document.querySelectorAll("video,audio");
-  } else {
-    var mediaTags = document.querySelectorAll("video");
   }
+  documentAndShadowRootObserver.observe(document, documentAndShadowRootObserverOptions);
+
+  const mediaTagSelector = tc.settings.audioBoolean ? "video,audio" : "video";
+  mediaTags = Array.from(document.querySelectorAll(mediaTagSelector));
+
+  document.querySelectorAll("*").forEach((element) => {
+    if (element.shadowRoot) {
+      documentAndShadowRootObserver.observe(element.shadowRoot, documentAndShadowRootObserverOptions);
+      mediaTags.push(...element.shadowRoot.querySelectorAll(mediaTagSelector));
+    };
+  });
 
   mediaTags.forEach(function (video) {
     video.vsc = new tc.videoController(video);
