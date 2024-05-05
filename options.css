@@ -1,10 +1,41 @@
+:root {
+  --main-bg-color: #fefefe;
+  --main-color: #111;
+  --bg-shade: #eee;
+  --color-shade: #ccc;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --main-bg-color: #111;
+    --main-color: #fefefe;
+    --bg-shade: #333;
+    --color-shade: #777;
+  }
+
+  a {
+    color: aqua;
+  }
+  a:visited {
+    color: lightblue;
+  }
+}
+
+html {
+  max-width: 640px;
+  padding: 0 1em;
+  margin: auto;
+  line-height: 1.75;
+  font-size: 1.2em;
+  background-color: var(--main-bg-color);
+  color: var(--main-color);
+}
+
 body {
   margin: 0;
   padding-left: 15px;
   padding-top: 53px;
   font-family: sans-serif;
-  font-size: 12px;
-  color: rgb(48, 57, 66);
 }
 
 h1,
@@ -22,7 +53,6 @@ h1 {
 h3 {
   font-size: 1.2em;
   margin-bottom: 0.8em;
-  color: black;
 }
 p {
   margin: 0.65em 0;
@@ -31,16 +61,13 @@ p {
 header {
   position: fixed;
   top: 0;
-  left: 15px;
+  left: 0;
   right: 0;
-  border-bottom: 1px solid #eee;
-  background: linear-gradient(white, white 40%, rgba(255, 255, 255, 0.92));
+  padding-left: 1em;
+  border-bottom: 1px solid var(--color-shade);
+  background: var(--main-bg-color);
 }
-header,
-section {
-  min-width: 600px;
-  max-width: 738px;
-}
+
 section {
   padding-left: 18px;
   margin-top: 8px;
@@ -52,43 +79,61 @@ section h3 {
 
 button {
   -webkit-appearance: none;
-  position: relative;
 
   margin: 0 1px 0 0;
   padding: 0 10px;
   min-width: 4em;
   min-height: 2em;
+  background-color: var(--bg-shade);
+  border: 1px solid var(--color-shade);
 
-  background-image: linear-gradient(#ededed, #ededed 38%, #dedede);
-  border: 1px solid rgba(0, 0, 0, 0.25);
   border-radius: 2px;
   outline: none;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08),
-    inset 0 1px 2px rgba(255, 255, 255, 0.75);
-  color: #444;
-  text-shadow: 0 1px 0 rgb(240, 240, 240);
+  color: var(--main-color);
   font: inherit;
 
   user-select: none;
 }
 
+button:hover {
+  background-color: var(--color-shade);
+  cursor: pointer;
+}
+
 input[type="text"] {
   width: 75px;
   text-align: center;
+  border: 1px solid var(--color-shade);
+  background-color: var(--bg-shade);
+  color: var(--main-color);
+}
+
+input::placeholder {
+  opacity: 0.8;
+  color: var(--main-color);
+}
+
+textarea {
+  border: 1px solid var(--color-shade);
+  background-color: var(--bg-shade);
+  color: var(--main-color);
 }
 
 .row {
   margin: 5px 0px;
 }
 
+.row label {
+  width: 300px;
+}
+
 label {
   display: inline-block;
-  width: 170px;
   vertical-align: top;
 }
 
 #status {
-  color: #9d9d9d;
+  color: var(--main-color);
   display: inline-block;
   margin-left: 50px;
 }
@@ -99,6 +144,9 @@ label {
 
 select {
   width: 170px;
+  border: 1px solid var(--color-shade);
+  background-color: var(--bg-shade);
+  color: var(--main-color);
 }
 
 .customForce {
