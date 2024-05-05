@@ -1,16 +1,16 @@
 :root {
   --main-bg-color: #fefefe;
-  --main-color: #111;
+  --main-color: #010101;
   --bg-shade: #eee;
-  --color-shade: #ccc;
+  --color-shade: #777;
 }
 
 @media screen and (prefers-color-scheme: dark) {
   :root {
-    --main-bg-color: #111;
+    --main-bg-color: #010101;
     --main-color: #fefefe;
     --bg-shade: #333;
-    --color-shade: #777;
+    --color-shade: #aaa;
   }
 
   a {
@@ -111,6 +111,11 @@ input[type="text"] {
 input::placeholder {
   opacity: 0.8;
   color: var(--main-color);
+}
+
+input:disabled {
+  cursor: not-allowed;
+  color: var(--color-shade);
 }
 
 textarea {
