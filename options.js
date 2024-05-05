@@ -138,6 +138,8 @@ function add_shortcut() {
     <option value="reset">Reset speed</option>
     <option value="fast">Preferred speed</option>
     <option value="muted">Mute</option>
+    <option value="softer">Decrease volume</option>
+    <option value="louder">Increase volume</option>
     <option value="pause">Pause</option>
     <option value="mark">Set marker</option>
     <option value="jump">Jump to marker</option>
