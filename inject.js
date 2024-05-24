@@ -925,18 +925,14 @@ function showController(controller) {
 }
 
 const speedMod = (multiplier) => {
-  const media = document.querySelectorAll('video, audio');
-  if (media != null && media.length != null && media.length >= 1 && media.forEach != null) {
-    media.forEach((m) => {
-      try {
-        if (m != null && m.playbackRate != null) {
-          m.playbackRate *= multiplier;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    });
-  }
+  document.querySelectorAll('video, audio').forEach((media) => {
+    try {
+      media.playbackRate *= multiplier;
+      log("Playback rate changed to " + media.playbackRate, 4);
+    } catch (e) {
+      log(e, 2);
+    }
+  });
 }
 
 chrome.runtime.onMessage.addListener((req, snd, rsp) => {
