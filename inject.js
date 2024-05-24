@@ -828,17 +828,13 @@ function runAction(action, value, e) {
 }
 
 function injectScriptForSite() {
-  let inject = true;
   const elt = document.createElement("script");
-
   switch (true) {
     case location.hostname == "www.netflix.com":
       elt.src= chrome.runtime.getURL('scriptforsite/netflix.js');
       break;
-    default:
-      inject = false;
   }
-  if (inject) {
+  if (elt.src) {
     document.head.appendChild(elt);
   }
 }
