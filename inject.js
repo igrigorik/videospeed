@@ -830,6 +830,10 @@ function runAction(action, value, e) {
         pause(v);
       } else if (action === "muted") {
         muted(v);
+      } else if (action === "louder") {
+        volumeUp(v, value);
+      } else if (action === "softer") {
+        volumeDown(v, value);
       } else if (action === "mark") {
         setMark(v);
       } else if (action === "jump") {
@@ -873,6 +877,14 @@ function resetSpeed(v, target) {
 
 function muted(v) {
   v.muted = v.muted !== true;
+}
+
+function volumeUp(v, value) {
+  v.volume = Math.min(1, (v.volume + value).toFixed(2));
+}
+
+function volumeDown(v, value) {
+  v.volume = Math.max(0, (v.volume - value).toFixed(2));
 }
 
 function setMark(v) {
