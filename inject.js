@@ -473,7 +473,13 @@ function setupListener() {
         log("Speed event propagation blocked", 4);
         event.stopImmediatePropagation();
       }
-      var video = event.target;
+      /**
+       * Normally we'd do 'event.target' here. But that doesn't work with shadow DOMs. For
+       * an event that bubbles up out of a shadow DOM, event.target is the root of the shadow
+       * DOM. For 'open' shadow DOMs, event.composedPath()[0] is the actual element that will
+       * first receive the event, and it's equivalent to event.target in non-shadow-DOM cases.
+       */
+      var video = event.composedPath()[0];
 
       /**
        * If the last speed is forced, only update the speed based on events created by
@@ -745,6 +751,9 @@ function setSpeed(video, speed) {
   if (tc.settings.forceLastSavedSpeed) {
     video.dispatchEvent(
       new CustomEvent("ratechange", {
+        // bubbles and composed are needed to allow event to 'escape' open shadow DOMs
+        bubbles: true,
+        composed: true,
         detail: { origin: "videoSpeed", speed: speedvalue }
       })
     );
