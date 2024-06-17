@@ -563,6 +563,8 @@ function initializeNow(document) {
   document.body.classList.add("vsc-initialized");
   log("initializeNow: vsc-initialized added to document body", 5);
 
+  injectScriptForSite();
+
   if (document === window.document) {
     defineVideoController();
   } else {
@@ -790,10 +792,10 @@ function runAction(action, value, e) {
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
         log("Rewind", 5);
-        v.currentTime -= value;
+        seek(v, -value);
       } else if (action === "advance") {
         log("Fast forward", 5);
-        v.currentTime += value;
+        seek(v, value);
       } else if (action === "faster") {
         log("Increase speed", 5);
         // Maximum playback speed in Chrome is set to 16:
@@ -853,6 +855,28 @@ function runAction(action, value, e) {
     }
   });
   log("runAction End", 5);
+}
+
+function injectScriptForSite() {
+  const elt = document.createElement("script");
+  switch (true) {
+    case location.hostname == "www.netflix.com":
+      elt.src= chrome.runtime.getURL('scriptforsite/netflix.js');
+      break;
+  }
+  if (elt.src) {
+    document.head.appendChild(elt);
+  }
+}
+
+function seek(mediaTag, seekSeconds) {
+  switch (true) {
+    case location.hostname == "www.netflix.com":
+      window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
+      break;
+    default:
+      mediaTag.currentTime += seekSeconds;
+  }
 }
 
 function pause(v) {
