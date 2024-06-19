@@ -105,6 +105,20 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); // default: G
+    tc.settings.keyBindings.push({
+      action: "advancesubtitle",
+      key: Number(storage.advanceSubtitleKeyCode) || 69,
+      value: 1,
+      force: false,
+      predefined: true
+    }); // default: D
+    tc.settings.keyBindings.push({
+      action: "rewindsubtitle",
+      key: Number(storage.rewindSubtitleKeyCode) || 81,
+      value: 1,
+      force: false,
+      predefined: true
+    }); // default: Q
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -851,6 +865,31 @@ function runAction(action, value, e) {
         setMark(v);
       } else if (action === "jump") {
         jumpToMark(v);
+      } else if (action === "advancesubtitle") {
+        log("Advancing to next subtitle", 5);
+
+        for (let cue of v.textTracks[0].cues)
+        {
+          // this assumes they're in order
+          if (cue.startTime > v.currentTime)
+          {
+            v.currentTime = cue.endTime + 0.01
+            break;
+          }
+        }
+      } else if (action === "rewindsubtitle") {
+        log("Rewinding subtitle", 5);
+        let lastStartTime = 0
+        for (let cue of v.textTracks[0].cues)
+        {
+          // this assumes they're in order
+          if (cue.endTime > v.currentTime)
+          {
+            v.currentTime = lastStartTime - 0.01
+            break;
+          }
+          lastStartTime = cue.startTime
+        }
       }
     }
   });
