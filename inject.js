@@ -347,15 +347,16 @@ function defineVideoController() {
       case location.hostname == "www.reddit.com":
       case /hbogo\./.test(location.hostname):
         // insert before parent to bypass overlay
-        this.parent.parentElement.insertBefore(fragment, this.parent);
+        if (this.parent?.parentElement)
+          this.parent.parentElement.insertBefore(fragment, this.parent);
         break;
       case location.hostname == "www.facebook.com":
         // this is a monstrosity but new FB design does not have *any*
         // semantic handles for us to traverse the tree, and deep nesting
         // that we need to bubble up from to get controller to stack correctly
-        let p = this.parent.parentElement.parentElement.parentElement
-          .parentElement.parentElement.parentElement.parentElement;
-        p.insertBefore(fragment, p.firstChild);
+        let p = this.parent?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement;
+        if (p)
+          p.insertBefore(fragment, p.firstChild);
         break;
       case location.hostname == "tv.apple.com":
         // insert before parent to bypass overlay
