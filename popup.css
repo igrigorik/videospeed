@@ -11,19 +11,19 @@ body {
 
 .container {
   background: #ffffff;
-  padding: 20px;
+  padding: 0.5em;
   border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 7px rgba(0, 0, 0, 0.2);
   text-align: center;
-  width: 320px;
+  width: 150px;
 }
 
 .btn {
   display: block;
   width: 100%;
-  padding: 15px;
-  margin: 12px 0;
-  font-size: 16px;
+  padding: 0.5em;
+  margin: 0.7em 0;
+  font-size: 0.9em;
   font-weight: bold;
   border: none;
   border-radius: 8px;
@@ -34,24 +34,24 @@ body {
 .btn.primary {
   background-color: #007bff;
   color: white;
-  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.5);
+  box-shadow: 0 4px 5px rgba(0, 123, 255, 0.5);
 }
 
 .btn.primary:hover {
   background-color: #0056b3;
-  box-shadow: 0 6px 15px rgba(0, 123, 255, 0.7);
+  box-shadow: 0 6px 7px rgba(0, 123, 255, 0.7);
   transform: translateY(-2px);
 }
 
 .btn.secondary {
   background-color: #3399ff;
   color: white;
-  box-shadow: 0 4px 10px rgba(51, 153, 255, 0.5);
+  box-shadow: 0 4px 5px rgba(51, 153, 255, 0.5);
 }
 
 .btn.secondary:hover {
   background-color: #2a8cd9;
-  box-shadow: 0 6px 15px rgba(51, 153, 255, 0.7);
+  box-shadow: 0 6px 7px rgba(51, 153, 255, 0.7);
   transform: translateY(-2px);
 }
 
@@ -69,7 +69,7 @@ body {
 hr {
   border: 0;
   border-top: 1px solid #ddd;
-  margin: 20px 0;
+  margin: 0.5em 0;
 }
 
 .hide {
