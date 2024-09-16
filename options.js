@@ -306,8 +306,16 @@ function save_options() {
     }
   );
 }
-function restore_options() {
-  chrome.storage.sync.get(tcDefaults, restore_from_settingsObj);
+function GetStorage(keys) {
+  if (window.browser?.storage?.sync?.get)
+      return browser.storage.sync.get(keys);
+  
+  return new Promise(resolve => chrome.storage.sync.get(keys, resolve));
+}
+
+async function restore_options() {
+  const store = await GetStorage(tcDefaults);
+  restore_from_settingsObj(store);
 }
 
 // Restores options from chrome.storage
@@ -422,7 +430,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .addEventListener("click", show_experimental);
 
   function eventCaller(event, className, funcName) {
-    if (!event.target.classList.contains(className)) {
+    if (! event?.target?.classList || !event.target.classList.contains(className)) {
       return;
     }
     funcName(event);

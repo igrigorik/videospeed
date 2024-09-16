@@ -87,7 +87,15 @@ function log(message, level) {
   }
 }
 
-chrome.storage.sync.get(tc.settings, function (storage) {
+function GetStorage(keys) {
+  if (window.browser?.storage?.sync?.get)
+      return browser.storage.sync.get(keys);
+  
+  return new Promise(resolve => chrome.storage.sync.get(keys, resolve));
+}
+async function Start(){
+  log("Starting Up",5);
+  const storage = await GetStorage(tc.settings);
   tc.settings.keyBindings = storage.keyBindings; // Array
   if (storage.keyBindings.length == 0) {
     storage.keyBindings = [ ...tcDefaults.keyBindings];
@@ -133,7 +141,8 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   }
 
   initializeWhenReady(document);
-});
+}
+Start();
 
 function getKeyBindings(action, what = "value") {
   try {

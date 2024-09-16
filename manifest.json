@@ -41,5 +41,11 @@
   "web_accessible_resources": [{
     "resources": ["inject.css", "shadow.css", "scriptforsite/*.js"],
     "matches": ["http://*/*", "https://*/*", "file:///*"]
-  }]
+  }],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "videospeed@mitchcapper",
+      "strict_min_version": "42.0"
+    }
+  }
 }
