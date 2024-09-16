@@ -1,7 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-  document.querySelector("#config").addEventListener("click", function () {
-    window.open(chrome.runtime.getURL("options.html"));
-  });
+  document.querySelector("#config").addEventListener("click", () => (chrome ?? browser).runtime.openOptionsPage() );
 
   document.querySelector("#about").addEventListener("click", function () {
     window.open("https://github.com/igrigorik/videospeed");
@@ -40,7 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelector("#disable").classList.toggle("hide", !enabled);
 
     const suffix = `${enabled ? "" : "_disabled"}.png`;
-    const setIconFunc = chrome?.browserAction?.setIcon ?? chrome?.action?.setIcon;
+    const setIconFunc = window.chrome?.browserAction?.setIcon ?? chrome?.action?.setIcon;
     if (setIconFunc) {
       setIconFunc({
       path: {
