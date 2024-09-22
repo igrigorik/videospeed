@@ -23,6 +23,13 @@
   top: 10px;
 }
 
+/* x.com */
+/* moves vsc out from underneath the back button on x.com mobile browser */
+[data-testid="videoComponent"] .vsc-controller {
+  position: relative;
+  top: 50px;
+}
+
 .ytp-autohide .vsc-controller {
   visibility: hidden;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
