@@ -153,14 +153,18 @@
         <label for="rememberSpeed">Remember playback speed</label>
         <input id="rememberSpeed" type="checkbox" />
       </div>
-      <div class="row">
-        <label for="forceLastSavedSpeed">Force last saved speed<br />
-        <em>Useful for video players that override the speeds set by VideoSpeed</em></label>
-        <input id="forceLastSavedSpeed" type="checkbox" />
+      <div class="row"></div>
+        <label for="ignoreSpeedEventsForNoVideoSize">Speed Events Action<br />
+        <em>We can update our current speed based on the player changing speed (ie you hit 1.5x in the player itself). The old 'force last saved' is the same as setting this to ignore all.</em></label>
+        <select id="videoSpeedEventAction">
+          <option value="AlwaysUpdate">Always Update Us</option>
+          <option value="IgnoreWhenVideoZeroSized">Ignore when source video element size is 0 (good for yt which has a shadow video player that generates bad events)</option>
+          <option value="IgnoreAll">Ignore All (video speed is only controlled by us, through our UI or keybinds)</option>
+        </select>
       </div>
       <div class="row">
-        <label for="ifSpeedIsNormalDontSaveUnlessWeSetIt">Don't allow normal (1.0) speed to be saved to DB unless we set it ourselves<br />
-        <em>Useful for making sure sites don't screw last used value</em></label>
+        <label for="ifSpeedIsNormalDontSaveUnlessWeSetIt">Don't update the remembered speed from Speed Events when it is normal (1.0 speed)<br />
+        <em>Some sites force playback speed to 1.0 if we listened to that speed event our remembered speed would then be 1 as well.  If you manually set the speed through us to 1.0 though we will remember that.</em></label>
         <input id="ifSpeedIsNormalDontSaveUnlessWeSetIt" type="checkbox" />
       </div>
 

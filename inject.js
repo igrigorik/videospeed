@@ -1,7 +1,7 @@
 /* Shared between inject.js and options.js */
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
-var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","forceLastSavedSpeed","audioBoolean","startHidden","lastSpeed",
+var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","videoSpeedEventAction","audioBoolean","startHidden","lastSpeed",
 "enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
  ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
 var SettingFieldsBeforeSync = new Map();
@@ -11,13 +11,13 @@ for (let field of SettingFieldsSynced)
   syncFieldObj[field] = true;
 
 var tcDefaults = {
-  version: "0.5.3",
+  version: "0.5.5",
   lastSpeed: 1.0, // default:
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
   startHidden: false, // default: false
-  forceLastSavedSpeed: false, //default: false
+  videoSpeedEventAction: "AlwaysUpdate", // AlwaysUpdate, IgnoreWhenVideoZeroSized, IgnoreAll (same as old forceLastSavedSpeed)
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
   logLevel: 3, // default: 3
@@ -100,6 +100,10 @@ function GetStorage(keys) {
 async function Start(){
   log("Starting Up",5);
   const storage = await GetStorage(tc.settings);
+  if (tc.settings.forceLastSavedSpeed) {
+    tc.settings.videoSpeedEventAction = "IgnoreAll";
+    tc.settings.forceLastSavedSpeed = undefined;
+  }
   tc.settings.keyBindings = storage.keyBindings; // Array
   if (storage.keyBindings.length == 0) {
     storage.keyBindings = [ ...tcDefaults.keyBindings];
@@ -513,12 +517,12 @@ function setupListener() {
        * If the last speed is forced, only update the speed based on events created by
        * video speed instead of all video speed change events.
        */
-      if (tc.settings.forceLastSavedSpeed) {
+      if (tc.settings.videoSpeedEventAction === "IgnoreAll" || (tc.settings.videoSpeedEventAction == "IgnoreWhenVideoZeroSized" && (video.offsetWidth == 0 && video.tagName != "AUDIO") ) ) {
         if (event.detail && event.detail.origin === "videoSpeed") {
           video.playbackRate = event.detail.speed;
           updateSpeedFromEvent(video, event);
         } else {
-          log(`Speed ratechange event of speed ${event.detail?.speed ?? video.playbackRate} ignored and setting back to our last speed due to videoSpeedEventAction setting source video: ${getVideoIdent(video)}`, 5, video.INST_ID);
+          log(`Speed ratechange event of speed ${event.detail?.speed ?? video.playbackRate} ignored and setting back to our last speed due to videoSpeedEventAction setting source video: ${getVideoIdent(video)}`, 5, video.vsc.INST_ID);
           video.playbackRate = tc.settings.lastSpeed;
         }
         event.stopImmediatePropagation();
@@ -795,7 +799,7 @@ function YTComAfterLoaded(){
 function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
-  if (tc.settings.forceLastSavedSpeed) {
+  if (tc.settings.videoSpeedEventAction === "IgnoreAll") {
     video.dispatchEvent(
       new CustomEvent("ratechange", {
         // bubbles and composed are needed to allow event to 'escape' open shadow DOMs
@@ -832,7 +836,7 @@ function runAction(action, value, e) {
       return;
     }
 
-    showController(controller);
+    showController(v.vsc);
 
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
@@ -1025,8 +1029,9 @@ function handleDrag(video, e) {
 }
 
 var timer = null;
-function showController(controller) {
-  log("Showing controller", 4);
+function showController(vsc) {
+  const controller = vsc.div;
+  log("Showing controller", 4, vsc.INST_ID);
   controller.classList.add("vcs-show");
 
   if (timer) clearTimeout(timer);
@@ -1034,6 +1039,6 @@ function showController(controller) {
   timer = setTimeout(function () {
     controller.classList.remove("vcs-show");
     timer = false;
-    log("Hiding controller", 5);
+    log("Hiding controller", 5, vsc.INST_ID);
   }, 2000);
 }

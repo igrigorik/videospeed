@@ -1,7 +1,7 @@
 /* Shared between inject.js and options.js */
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
-var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","forceLastSavedSpeed","audioBoolean","startHidden","lastSpeed",
+var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","videoSpeedEventAction","audioBoolean","startHidden","lastSpeed",
 "enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
  ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
 var SettingFieldsBeforeSync = new Map();
@@ -11,13 +11,13 @@ for (let field of SettingFieldsSynced)
   syncFieldObj[field] = true;
 
 var tcDefaults = {
-  version: "0.5.3",
+  version: "0.5.5",
   lastSpeed: 1.0, // default:
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
   startHidden: false, // default: false
-  forceLastSavedSpeed: false, //default: false
+  videoSpeedEventAction: "AlwaysUpdate", // AlwaysUpdate, IgnoreWhenVideoZeroSized, IgnoreAll (same as old forceLastSavedSpeed)
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
   logLevel: 3, // default: 3
@@ -289,6 +289,7 @@ function save_options() {
     "slowerKeyCode",
     "fasterKeyCode",
     "rewindKeyCode",
+    "forceLastSavedSpeed",
     "advanceKeyCode",
     "fastKeyCode"
   ]);
@@ -315,6 +316,10 @@ function GetStorage(keys) {
 
 async function restore_options() {
   const store = await GetStorage(tcDefaults);
+  if (store.forceLastSavedSpeed) {
+    store.videoSpeedEventAction = "IgnoreAll";
+    store.forceLastSavedSpeed = undefined;
+  }
   restore_from_settingsObj(store);
 }
 
