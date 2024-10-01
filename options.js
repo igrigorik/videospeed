@@ -254,7 +254,7 @@ function save_options() {
   Array.from(document.querySelectorAll(".customs")).forEach((item) =>
     createKeyBindings(item)
   ); // Remove added shortcuts
-    let saveObj = {};
+    let saveObj = {keyBindings:keyBindings};
     for (let field of SettingFieldsSynced){
       let domElm = document.getElementById(field);
       if (! domElm)
