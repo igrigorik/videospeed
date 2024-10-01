@@ -1,3 +1,4 @@
+- Firefox support
 - Added common block of code to inject.js and options.js, could be moved to a share.js file potentially but might decrease load time. Can be directly copied from one to the other with changes.  We also store a copy (`tcDefaults`) of the plugins default settings.  This allows us to easily reference any default if desired, but more importantly allows us to auto-detect the field type for each setting field rather than having to hard code it.
 
 - Rather than hardcode each setting where we need it (and what to sync), the name of the synced settings is stored in an array we can use instead.  This allows for less boilerplate code.  Made new options easier to add and in fewer locations.  This should help prevent errors where a setting may not be synced or get overwritten if one file is updated without updating the other properly.  
@@ -14,6 +15,8 @@
 
 - Made button presses on options page a bit more obvious by animating them and adding hover styling.
 
-- Improved logging adding the caller information (where available) and more details when a video event happens incase there may be multiple video players to determine which one.
+- Improved logging adding the caller information (where available) and more details when a video event happens incase there may be multiple video players to determine which one along with controller instance ids.
 
 - Added the ability to automatically enable subtitles and auto disable autoplay for youtube.com.
+
+- Adjusted speed event handling option to fix YT speed adjustment errors due to multiple video tags firing (forceLastSavedSpeed is now an enum videoSpeedEventAction and migrated accordingly)
