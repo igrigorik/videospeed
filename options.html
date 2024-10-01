@@ -2,6 +2,12 @@
 <html>
   <head>
     <title>Video Speed Controller: Options</title>
+    <script src="json_editor/prism.js"></script>
+    <link href="json_editor/prism.css" rel="stylesheet" />
+    <script src="json_editor/code-input.js"></script>
+    <script src="json_editor/indent.js"></script>
+
+    <link href="json_editor/code-input.css" rel="stylesheet" />
     <link rel="stylesheet" href="options.css" />
     <script src="options.js"></script>
   </head>
@@ -147,14 +153,42 @@
         <label for="rememberSpeed">Remember playback speed</label>
         <input id="rememberSpeed" type="checkbox" />
       </div>
-      <div class="row">
-        <label for="forceLastSavedSpeed">Force last saved speed<br />
-        <em>Useful for video players that override the speeds set by VideoSpeed</em></label>
-        <input id="forceLastSavedSpeed" type="checkbox" />
+      <div class="row"></div>
+        <label for="ignoreSpeedEventsForNoVideoSize">Speed Events Action<br />
+        <em>We can update our current speed based on the player changing speed (ie you hit 1.5x in the player itself). The old 'force last saved' is the same as setting this to ignore all.</em></label>
+        <select id="videoSpeedEventAction">
+          <option value="AlwaysUpdate">Always Update Us</option>
+          <option value="IgnoreWhenVideoZeroSized">Ignore when source video element size is 0 (good for yt which has a shadow video player that generates bad events)</option>
+          <option value="IgnoreAll">Ignore All (video speed is only controlled by us, through our UI or keybinds)</option>
+        </select>
       </div>
+      <div class="row">
+        <label for="ifSpeedIsNormalDontSaveUnlessWeSetIt">Don't update the remembered speed from Speed Events when it is normal (1.0 speed)<br />
+        <em>Some sites force playback speed to 1.0 if we listened to that speed event our remembered speed would then be 1 as well.  If you manually set the speed through us to 1.0 though we will remember that.</em></label>
+        <input id="ifSpeedIsNormalDontSaveUnlessWeSetIt" type="checkbox" />
+      </div>
+
       <div class="row">
         <label for="audioBoolean">Work on audio</label>
         <input id="audioBoolean" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="ytAutoEnableClosedCaptions">For Youtube.com auto enable closed captions</label>
+        <input id="ytAutoEnableClosedCaptions" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="ytAutoDisableAutoPlay">For Youtube.com auto disable autoplay</label>
+        <input id="ytAutoDisableAutoPlay" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="logLevel">Console Log Level</label>
+        <select id="logLevel">
+          <option value="2">Error</option>
+          <option value="3">Warning</option>
+          <option value="4">Info</option>
+          <option value="5">Debug</option>
+          <option value="6">Verbose</option>
+        </select>
       </div>
       <div class="row">
         <label for="controllerOpacity">Controller opacity</label>
@@ -178,8 +212,22 @@
     <button id="save">Save</button>
     <button id="restore">Restore Defaults</button>
     <button id="experimental">Show Experimental Features</button>
-
     <div id="status"></div>
+    <br /><br /><br />
+    <div class="customForce">
+
+   <!-- <fieldset>
+      <legend>Javascript to execute on youtube.com domains</legend>
+    <code-input lang="javascript" id="ytJS" style="resize: vertical; overflow: auto; height: 200px; width: 700px;" class="language-js-extras"></code-input>
+  </fieldset>
+    <br /> -->
+   <fieldset>
+      <legend>Raw JSON Settings Edit</legend>
+    <code-input lang="JSON" id="rawJson" style="resize: vertical; overflow: auto; height: 400px; width: 700px;"></code-input>
+        <br />
+        <button id="saveRaw">Save From RawJson</button>
+   </fieldset>
+</div>
 
     <div id="faq">
       <hr />
