@@ -162,6 +162,14 @@ function setKeyBindings(action, value) {
   ] = value;
 }
 var VSC_INST_ID=124;
+function EnableClosedCaptionsIfPrefSet(){
+  if (tc.settings.ytAutoEnableClosedCaptions) {
+    let subButton = domItemByClass("ytp-subtitles-button ytp-button");
+    log(`Currently think closed captions is: ${subButton?.getAttribute("aria-pressed")} will click if false`, 5);
+    if (subButton && subButton.getAttribute("aria-pressed") == 'false')
+      subButton.click();
+  }
+}
 
 function defineVideoController() {
   // Data structures
@@ -256,6 +264,9 @@ function defineVideoController() {
             controller.classList.add("vsc-nosource");
           } else {
             controller.classList.remove("vsc-nosource");
+            //yt will mutate twice once for currentSrc and once for src, we can just wait for src
+            if ( mutation.attributeName === "src" && window.location.hostname.endsWith("youtube.com") ) //youtube doesn't always navigate you to a new page on video change but instead update the src, it is happy to auto disable closed captions when changed though:)
+            setTimeout(EnableClosedCaptionsIfPrefSet,500);
           }
         }
       });
@@ -774,11 +785,7 @@ function domItemByClass(classname){
   return subButton.length < 1 ? null : subButton[0];
 }
 function YTComAfterLoaded(){
-  if (tc.settings.ytAutoEnableClosedCaptions) {
-    let subButton = domItemByClass("ytp-subtitles-button ytp-button");
-    if (subButton && subButton.getAttribute("aria-pressed") == 'false')
-      subButton.click();
-  }
+  EnableClosedCaptionsIfPrefSet();
   if (tc.settings.ytAutoDisableAutoPlay){
     let subButton = domItemByClass("ytp-autonav-toggle-button");
     if (subButton && subButton.getAttribute("aria-checked") == 'true')
