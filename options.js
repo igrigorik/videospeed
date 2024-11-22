@@ -1,6 +1,6 @@
-var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 
-var tcDefaults = {
+const tcDefaults = {
   speed: 1.0, // default:
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
@@ -25,9 +25,7 @@ var tcDefaults = {
   `.replace(regStrip, "")
 };
 
-var keyBindings = [];
-
-var keyCodeAliases = {
+const keyCodeAliases = {
   0: "null",
   null: "null",
   undefined: "null",
@@ -99,7 +97,7 @@ function recordKeyPress(e) {
 }
 
 function inputFilterNumbersOnly(e) {
-  var char = String.fromCharCode(e.keyCode);
+  const char = String.fromCharCode(e.keyCode);
   if (!/[\d\.]$/.test(char) || !/^\d+(\.\d*)?$/.test(e.target.value + char)) {
     e.preventDefault();
     e.stopPropagation();
@@ -127,10 +125,10 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
 }
 
 // List of custom actions for which customValue should be disabled
-var customActionsNoValues = ["pause", "muted", "mark", "jump", "display"];
+const customActionsNoValues = ["pause", "muted", "mark", "jump", "display"];
 
 function add_shortcut() {
-  var html = `<select class="customDo">
+  const html = `<select class="customDo">
     <option value="slower">Decrease speed</option>
     <option value="faster">Increase speed</option>
     <option value="rewind">Rewind</option>
@@ -152,10 +150,10 @@ function add_shortcut() {
     <option value="true">Disable website key bindings</option>
     </select>
     <button class="removeParent">X</button>`;
-  var div = document.createElement("div");
+  const div = document.createElement("div");
   div.setAttribute("class", "row customs");
   div.innerHTML = html;
-  var customs_element = document.getElementById("customs");
+  const customs_element = document.getElementById("customs");
   customs_element.insertBefore(
     div,
     customs_element.children[customs_element.childElementCount - 1]
@@ -169,65 +167,75 @@ function createKeyBindings(item) {
   const force = item.querySelector(".customForce").value;
   const predefined = !!item.id; //item.id ? true : false;
 
-  keyBindings.push({
+  return {
     action: action,
     key: key,
     value: value,
     force: force,
     predefined: predefined
-  });
+  }
 }
 
 // Validates settings before saving
 function validate() {
-  var valid = true;
-  var status = document.getElementById("status");
-  var blacklist = document.getElementById("blacklist");
+  const status = document.getElementById("status");
+  const blacklist = document.getElementById("blacklist");
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
-    
+
     if (match.startsWith("/")) {
       try {
-        var parts = match.split("/");
+        const parts = match.split("/");
 
         if (parts.length < 3)
           throw "invalid regex";
 
-        var flags = parts.pop();
-        var regex = parts.slice(1).join("/");
+        const flags = parts.pop();
+        const regex = parts.slice(1).join("/");
 
-        var regexp = new RegExp(regex, flags);
+        const regexp = new RegExp(regex, flags);
       } catch (err) {
         status.textContent =
           "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
-        valid = false;
-        return;
+        return false;
       }
     }
   });
-  return valid;
+  return true;
+}
+
+const showStatusMessage = (message, time) => {
+  // Update status to let user know options were saved.
+  const status = document.getElementById("status");
+  status.textContent = message;
+  setTimeout(function () {
+    status.textContent = "";
+  }, time ? time : 1000);
 }
 
 // Saves options to chrome.storage
 function save_options() {
-  if (validate() === false) {
-    return;
-  }
-  keyBindings = [];
+  if (!validate()) return;
+
+  const keyBindings = []
+
   Array.from(document.querySelectorAll(".customs")).forEach((item) =>
-    createKeyBindings(item)
-  ); // Remove added shortcuts
+    keyBindings.push(createKeyBindings(item))
+  );
 
-  var rememberSpeed = document.getElementById("rememberSpeed").checked;
-  var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
-  var audioBoolean = document.getElementById("audioBoolean").checked;
-  var enabled = document.getElementById("enabled").checked;
-  var startHidden = document.getElementById("startHidden").checked;
-  var controllerOpacity = document.getElementById("controllerOpacity").value;
-  var blacklist = document.getElementById("blacklist").value;
+  const options = {
+    rememberSpeed: document.getElementById("rememberSpeed").checked,
+    forceLastSavedSpeed: document.getElementById("forceLastSavedSpeed").checked,
+    audioBoolean: document.getElementById("audioBoolean").checked,
+    enabled: document.getElementById("enabled").checked,
+    startHidden: document.getElementById("startHidden").checked,
+    controllerOpacity: document.getElementById("controllerOpacity").value,
+    keyBindings: keyBindings,
+    blacklist: document.getElementById("blacklist").value.replace(regStrip, "")
+  }
 
-  chrome.storage.sync.remove([
+  const removeKeys = chrome.storage.sync.remove([
     "resetSpeed",
     "speedStep",
     "fastSpeed",
@@ -240,31 +248,27 @@ function save_options() {
     "advanceKeyCode",
     "fastKeyCode"
   ]);
-  chrome.storage.sync.set(
-    {
-      rememberSpeed: rememberSpeed,
-      forceLastSavedSpeed: forceLastSavedSpeed,
-      audioBoolean: audioBoolean,
-      enabled: enabled,
-      startHidden: startHidden,
-      controllerOpacity: controllerOpacity,
-      keyBindings: keyBindings,
-      blacklist: blacklist.replace(regStrip, "")
-    },
-    function () {
-      // Update status to let user know options were saved.
-      var status = document.getElementById("status");
-      status.textContent = "Options saved";
-      setTimeout(function () {
-        status.textContent = "";
-      }, 1000);
-    }
-  );
+
+  const saveOptionsOnChromeStorage = chrome.storage.sync.set(options);
+
+  const successFunction = () => showStatusMessage("Options saved")
+  const failureFunction = (reason) => {
+    showStatusMessage("An error occurred while trying to save")
+    console.log("An error occurred while trying to save,", reason);
+  }
+
+  Promise.all([removeKeys, saveOptionsOnChromeStorage])
+    .then(successFunction, failureFunction)
+
 }
 
 // Restores options from chrome.storage
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function (storage) {
+    document
+      .querySelectorAll(".removeParent")
+      .forEach((button) => button.click()); // Remove added shortcuts
+
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
@@ -275,7 +279,7 @@ function restore_options() {
     document.getElementById("blacklist").value = storage.blacklist;
 
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
-    if (storage.keyBindings.filter((x) => x.action == "display").length == 0) {
+    if (storage.keyBindings.filter((x) => x.action === "display").length === 0) {
       storage.keyBindings.push({
         action: "display",
         value: 0,
@@ -285,11 +289,11 @@ function restore_options() {
     }
 
     for (let i in storage.keyBindings) {
-      var item = storage.keyBindings[i];
+      const item = storage.keyBindings[i];
       if (item.predefined) {
         //do predefined ones because their value needed for overlay
         // document.querySelector("#" + item["action"] + " .customDo").value = item["action"];
-        if (item["action"] == "display" && typeof item["key"] === "undefined") {
+        if (item["action"] === "display" && typeof item["key"] === "undefined") {
           item["key"] = storage.displayKeyCode || tcDefaults.displayKeyCode; // V
         }
 
@@ -329,15 +333,8 @@ function restore_options() {
 function restore_defaults() {
   chrome.storage.sync.set(tcDefaults, function () {
     restore_options();
-    document
-      .querySelectorAll(".removeParent")
-      .forEach((button) => button.click()); // Remove added shortcuts
     // Update status to let user know options were saved.
-    var status = document.getElementById("status");
-    status.textContent = "Default options restored";
-    setTimeout(function () {
-      status.textContent = "";
-    }, 1000);
+    showStatusMessage("Default options restored")
   });
 }
 
@@ -346,6 +343,55 @@ function show_experimental() {
     .querySelectorAll(".customForce")
     .forEach((item) => (item.style.display = "inline-block"));
 }
+
+const importOptions = () => {
+  const input = document.createElement("input");
+  input.type = "file"
+
+  const onchange = (event) => {
+    const files = event.target.files;
+
+    if (files.length > 0) {
+      const file = files[0];
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const options = JSON.parse(e.target.result);
+
+        chrome.storage.sync.set(options)
+          .then(restore_options)
+          .then(() => showStatusMessage("Options imported", 3000))
+      };
+
+      reader.readAsText(file);
+    }
+  }
+
+  input.addEventListener("change", onchange);
+  input.click()
+  input.remove()
+
+}
+
+const exportOptions = async () => {
+  const options = await chrome.storage.sync.get(tcDefaults)
+  jsonToFileAndDownload(options, "video-speed-controller-options")
+}
+
+const jsonToFileAndDownload = (obj, filename) => {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {
+    type: 'application/json',
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.json`;
+  a.click();
+
+  a.remove()
+  URL.revokeObjectURL(url);
+};
 
 document.addEventListener("DOMContentLoaded", function () {
   restore_options();
@@ -358,6 +404,9 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("experimental")
     .addEventListener("click", show_experimental);
+
+  document.getElementById("import").addEventListener("click", importOptions);
+  document.getElementById("export").addEventListener("click", exportOptions);
 
   function eventCaller(event, className, funcName) {
     if (!event.target.classList.contains(className)) {
