@@ -224,7 +224,7 @@ function save_options() {
     keyBindings.push(createKeyBindings(item))
   );
 
-  const settings = {
+  const options = {
     rememberSpeed: document.getElementById("rememberSpeed").checked,
     forceLastSavedSpeed: document.getElementById("forceLastSavedSpeed").checked,
     audioBoolean: document.getElementById("audioBoolean").checked,
@@ -249,7 +249,7 @@ function save_options() {
     "fastKeyCode"
   ]);
 
-  const saveOptionsOnChromeStorage = chrome.storage.sync.set(settings);
+  const saveOptionsOnChromeStorage = chrome.storage.sync.set(options);
 
   const successFunction = () => showStatusMessage("Options saved")
   const failureFunction = (reason) => {
@@ -347,6 +347,30 @@ function show_experimental() {
     .forEach((item) => (item.style.display = "inline-block"));
 }
 
+const importOptions = () => {
+
+}
+
+const exportOptions = async () => {
+  const options = await chrome.storage.sync.get(tcDefaults)
+  jsonToFileAndDownload(options, "video-speed-controller-options")
+}
+
+const jsonToFileAndDownload = (obj, filename) => {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {
+    type: 'application/json',
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.json`;
+  a.click();
+
+  a.remove()
+  URL.revokeObjectURL(url);
+};
+
 document.addEventListener("DOMContentLoaded", function () {
   restore_options();
 
@@ -358,6 +382,9 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("experimental")
     .addEventListener("click", show_experimental);
+
+  document.getElementById("import").addEventListener("click", importOptions);
+  document.getElementById("export").addEventListener("click", exportOptions);
 
   function eventCaller(event, className, funcName) {
     if (!event.target.classList.contains(className)) {
