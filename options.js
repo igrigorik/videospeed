@@ -205,13 +205,13 @@ function validate() {
   return true;
 }
 
-const showStatusMessage = (message) => {
+const showStatusMessage = (message, time) => {
   // Update status to let user know options were saved.
   const status = document.getElementById("status");
   status.textContent = message;
   setTimeout(function () {
     status.textContent = "";
-  }, 1000);
+  }, time ? time : 1000);
 }
 
 // Saves options to chrome.storage
@@ -265,6 +265,10 @@ function save_options() {
 // Restores options from chrome.storage
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function (storage) {
+    document
+      .querySelectorAll(".removeParent")
+      .forEach((button) => button.click()); // Remove added shortcuts
+
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
@@ -329,15 +333,8 @@ function restore_options() {
 function restore_defaults() {
   chrome.storage.sync.set(tcDefaults, function () {
     restore_options();
-    document
-      .querySelectorAll(".removeParent")
-      .forEach((button) => button.click()); // Remove added shortcuts
     // Update status to let user know options were saved.
-    const status = document.getElementById("status");
-    status.textContent = "Default options restored";
-    setTimeout(function () {
-      status.textContent = "";
-    }, 1000);
+    showStatusMessage("Default options restored")
   });
 }
 
@@ -348,6 +345,31 @@ function show_experimental() {
 }
 
 const importOptions = () => {
+  const input = document.createElement("input");
+  input.type = "file"
+
+  const onchange = (event) => {
+    const files = event.target.files;
+
+    if (files.length > 0) {
+      const file = files[0];
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const options = JSON.parse(e.target.result);
+
+        chrome.storage.sync.set(options)
+          .then(restore_options)
+          .then(() => showStatusMessage("Options imported", 3000))
+      };
+
+      reader.readAsText(file);
+    }
+  }
+
+  input.addEventListener("change", onchange);
+  input.click()
+  input.remove()
 
 }
 
