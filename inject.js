@@ -367,6 +367,12 @@ function defineVideoController() {
           .parentElement.parentElement.parentElement.parentElement;
         p.insertBefore(fragment, p.firstChild);
         break;
+      case location.hostname == "www.youtube.com":
+        // sometimes, the controller gets buried under the video
+        // by inserting it at the parent level, we ensure that it's on top
+        let parent = this.parent.parentElement;
+        parent.insertBefore(fragment, parent.firstChild);
+        break;
       case location.hostname == "tv.apple.com":
         // insert before parent to bypass overlay
         this.parent.parentNode.insertBefore(fragment, this.parent.parentNode.firstChild);
