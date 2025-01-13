@@ -10,13 +10,13 @@ var tcDefaults = {
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
-    { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
-    { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
-    { action: "faster", key: 68, value: 0.1, force: false, predefined: true }, // D
-    { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
-    { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
-    { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "display", key: 86, value: 0, force: false, predefined: true, shift: false }, // V
+    { action: "slower", key: 83, value: 0.1, force: false, predefined: true, shift: false }, // S
+    { action: "faster", key: 68, value: 0.1, force: false, predefined: true, shift: false }, // D
+    { action: "rewind", key: 90, value: 10, force: false, predefined: true, shift: false }, // Z
+    { action: "advance", key: 88, value: 10, force: false, predefined: true, shift: false }, // X
+    { action: "reset", key: 82, value: 1, force: false, predefined: true, shift: false }, // R
+    { action: "fast", key: 71, value: 1.8, force: false, predefined: true, shift: false } // G
   ],
   blacklist: `www.instagram.com
     twitter.com
@@ -82,8 +82,10 @@ function recordKeyPress(e) {
     (e.keyCode >= 65 && e.keyCode <= 90) || // Letters A-Z
     keyCodeAliases[e.keyCode] // Other character keys
   ) {
+    e.target.shiftKey = e.shiftKey;
     e.target.value =
-      keyCodeAliases[e.keyCode] || String.fromCharCode(e.keyCode);
+      (e.shiftKey ? "Shift+" : "") + keyCodeAliases[e.keyCode] ||
+      String.fromCharCode(e.keyCode);
     e.target.keyCode = e.keyCode;
 
     e.preventDefault();
@@ -121,8 +123,11 @@ function updateShortcutInputText(inputId, keyCode) {
   document.getElementById(inputId).keyCode = keyCode;
 }
 
-function updateCustomShortcutInputText(inputItem, keyCode) {
+function updateCustomShortcutInputText(inputItem, keyCode, shiftKey) {
   inputItem.value = keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
+  if (shiftKey) {
+    inputItem.value = "Shift+" + inputItem.value;
+  }
   inputItem.keyCode = keyCode;
 }
 
@@ -168,13 +173,15 @@ function createKeyBindings(item) {
   const value = Number(item.querySelector(".customValue").value);
   const force = item.querySelector(".customForce").value;
   const predefined = !!item.id; //item.id ? true : false;
+  const shift = item.querySelector(".customKey").value.slice(0, -1) === "Shift+";
 
   keyBindings.push({
     action: action,
     key: key,
     value: value,
     force: force,
-    predefined: predefined
+    predefined: predefined,
+    shift: shift
   });
 }
 
@@ -186,7 +193,7 @@ function validate() {
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
-    
+
     if (match.startsWith("/")) {
       try {
         var parts = match.split("/");
@@ -280,7 +287,8 @@ function restore_options() {
         action: "display",
         value: 0,
         force: false,
-        predefined: true
+        predefined: true,
+        shift: false
       });
     }
 
@@ -300,7 +308,8 @@ function restore_options() {
 
         updateCustomShortcutInputText(
           document.querySelector("#" + item["action"] + " .customKey"),
-          item["key"]
+          item["key"],
+          item["shift"]
         );
         document.querySelector("#" + item["action"] + " .customValue").value =
           item["value"];
@@ -317,7 +326,8 @@ function restore_options() {
 
         updateCustomShortcutInputText(
           dom.querySelector(".customKey"),
-          item["key"]
+          item["key"],
+          item["shift"]
         );
         dom.querySelector(".customValue").value = item["value"];
         dom.querySelector(".customForce").value = item["force"];

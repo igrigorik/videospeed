@@ -584,6 +584,7 @@ function initializeNow(document) {
       "keydown",
       function (event) {
         var keyCode = event.keyCode;
+        var shift = event.shiftKey;
         log("Processing keydown event: " + keyCode, 6);
 
         // Ignore if following modifier is active.
@@ -615,6 +616,8 @@ function initializeNow(document) {
         }
 
         var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
+        var item = tc.settings.keyBindings.find(
+          (item) => item.shift === shift && item.key === keyCode);
         if (item) {
           runAction(item.action, item.value);
           if (item.force === "true") {
