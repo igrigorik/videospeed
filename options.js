@@ -20,7 +20,7 @@ var tcDefaults = {
     { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
     { action: "fast", key: 71, value: 1.8, force: false, predefined: true }, // G
-    { action: "activateGradual", key: 49, value: 0.002, force: false, predefined: true } // I
+    { action: "activateGradual", key: 73, value: 0.002, force: false, predefined: true } // I
   ],
   blacklist: `www.instagram.com
     twitter.com

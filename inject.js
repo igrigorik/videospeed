@@ -112,7 +112,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
     }); // default: G
     tc.settings.keyBindings.push({
       action: "activateGradual",
-      key: Number(storage.gradualKeyCode) || 49,
+      key: Number(storage.gradualKeyCode) || 73,
       value: 0,
       force: false,
       predefined: true
@@ -278,7 +278,7 @@ function defineVideoController() {
       attributeFilter: ["src", "currentSrc"]
     });
 
-    if (ts.settings.gradualSpeedChange) {
+    if (tc.settings.gradualSpeedChange) {
       const speedUp = setInterval(() => {
         // Check if the video is not paused
         if (target.paused) {
@@ -286,20 +286,20 @@ function defineVideoController() {
         }
 
         // Gradually Increment the speed
-        log(`Graddually Increase speed by ${ts.settings.gradualSpeedChangeAmount}`, 5);
+        log(`Graddually Increase speed by ${tc.settings.gradualSpeedChangeAmount}`, 5);
 
         // Increment the speed by the desired amount
         var s = Math.min(
-          target.playbackRate + ts.settings.gradualSpeedChangeAmount,
-          ts.settings.maxSpeed
+          target.playbackRate + tc.settings.gradualSpeedChangeAmount,
+          tc.settings.maxSpeed
         );
         setSpeed(target, s);
 
         // Check if the desired speed is reached
-        if (s >= ts.settings.maxSpeed) {
+        if (s >= tc.settings.maxSpeed) {
           clearInterval(speedUp);
         }
-      }, ts.settings.gradualSpeedChangeDelay);
+      }, tc.settings.gradualSpeedChangeDelay);
     }
   };
 
@@ -897,8 +897,8 @@ function runAction(action, value, e) {
         jumpToMark(v);
       } else if (action === "activateGradual") {
         log("Gradual speed change activated", 4);
-        ts.settings.gradualSpeedChange = !ts.settings.gradualSpeedChange;
-        chrome.storage.sync.set({ gradualSpeedChange: ts.settings.gradualSpeedChange });
+        tc.settings.gradualSpeedChange = !tc.settings.gradualSpeedChange;
+        chrome.storage.sync.set({ gradualSpeedChange: tc.settings.gradualSpeedChange });
       }
     }
   });
