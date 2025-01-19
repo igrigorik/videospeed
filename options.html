@@ -129,7 +129,27 @@
           <option value="true">Disable website key bindings</option>
         </select>
       </div>
-
+      <div class="row customs" id="activateGradual">
+        <select class="customDo">
+          <option value="activateGradual">Toggle Gradual Speed Increase</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value="I"
+          placeholder="press a key"
+        />
+        <input
+          class="customValue"
+          type="text"
+          placeholder=""
+          disabled
+        />
+        <select class="customForce">
+          <option value="false">Do not disable website key bindings</option>
+          <option value="true">Disable website key bindings</option>
+        </select>
+      </div>
       <button id="add">Add New</button>
     </section>
 
@@ -172,6 +192,18 @@
           </em>
         </label>
         <textarea id="blacklist" rows="10" cols="50"></textarea>
+      </div>
+      <div class="row">
+        <label for="gradualSpeedChange">Enable Gradual Speed Increase</label>
+        <input id="gradualSpeedChange" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="gradualSpeedChangeDelay">Gradual Speed Change Delay (ms)</label>
+        <input id="gradualSpeedChangeDelay" type="number" min="0" step="1000" value="10000" />
+      </div>
+      <div class="row">
+        <label for="gradualSpeedChangeAmount">Gradual Speed Change Amount</label>
+        <input id="gradualSpeedChangeAmount" type="number" min="-1" max="1" step="0.001" value="0.002" />
       </div>
     </section>
 

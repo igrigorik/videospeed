@@ -13,6 +13,11 @@ var tc = {
     audioBoolean: false, // default: false
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
+    gradualSpeedChange: false, // default: false
+    gradualSpeedChangeDelay: 10000, // default: 10000
+    gradualSpeedChangeAmount: 0.002, // default: 0.002
+    maxSpeed: 16, // default: 16 Maximum playback speed in Chrome is set to 16:
+    // https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/html/media/html_media_element.h;l=117;drc=70155ab40e50115ac8cff6e8f4b7703a7784d854
     keyBindings: [],
     blacklist: `\
       www.instagram.com
@@ -22,7 +27,7 @@ var tc = {
       teams.microsoft.com
     `.replace(regStrip, ""),
     defaultLogLevel: 4,
-    logLevel: 3
+    logLevel: 5
   },
 
   // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
@@ -61,7 +66,7 @@ function log(message, level) {
 chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.keyBindings = storage.keyBindings; // Array
   if (storage.keyBindings.length == 0) {
-    // if first initialization of 0.5.3
+    // if first initialization of 0.5.4
     // UPDATE
     tc.settings.keyBindings.push({
       action: "slower",
@@ -105,7 +110,14 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); // default: G
-    tc.settings.version = "0.5.3";
+    tc.settings.keyBindings.push({
+      action: "activateGradual",
+      key: Number(storage.gradualKeyCode) || 49,
+      value: 0,
+      force: false,
+      predefined: true
+    }); // default: I
+    tc.settings.version = "0.5.4";
 
     chrome.storage.sync.set({
       keyBindings: tc.settings.keyBindings,
@@ -117,6 +129,10 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
+      gradualKeyCode: tc.settings.gradualKeyCode,
+      gradualSpeedChange: tc.settings.gradualSpeedChange,
+      gradualSpeedChangeDelay: tc.settings.gradualSpeedChangeDelay,
+      gradualSpeedChangeAmount: tc.settings.gradualSpeedChangeAmount,
       blacklist: tc.settings.blacklist.replace(regStrip, "")
     });
   }
@@ -128,6 +144,10 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
+  tc.settings.gradualKeyCode = Number(storage.gradualKeyCode);
+  tc.settings.gradualSpeedChange = Boolean(storage.gradualSpeedChange);
+  tc.settings.gradualSpeedChangeDelay = Number(storage.gradualSpeedChangeDelay);
+  tc.settings.gradualSpeedChangeAmount = Number(storage.gradualSpeedChangeAmount);
   tc.settings.blacklist = String(storage.blacklist);
 
   // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
@@ -257,6 +277,30 @@ function defineVideoController() {
     targetObserver.observe(target, {
       attributeFilter: ["src", "currentSrc"]
     });
+
+    if (ts.settings.gradualSpeedChange) {
+      const speedUp = setInterval(() => {
+        // Check if the video is not paused
+        if (target.paused) {
+          return;
+        }
+
+        // Gradually Increment the speed
+        log(`Graddually Increase speed by ${ts.settings.gradualSpeedChangeAmount}`, 5);
+
+        // Increment the speed by the desired amount
+        var s = Math.min(
+          target.playbackRate + ts.settings.gradualSpeedChangeAmount,
+          ts.settings.maxSpeed
+        );
+        setSpeed(target, s);
+
+        // Check if the desired speed is reached
+        if (s >= ts.settings.maxSpeed) {
+          clearInterval(speedUp);
+        }
+      }, ts.settings.gradualSpeedChangeDelay);
+    }
   };
 
   tc.videoController.prototype.remove = function () {
@@ -749,7 +793,7 @@ function initializeNow(document) {
 
 function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
-  var speedvalue = speed.toFixed(2);
+  var speedvalue = speed.toFixed(3);
   if (tc.settings.forceLastSavedSpeed) {
     video.dispatchEvent(
       new CustomEvent("ratechange", {
@@ -851,6 +895,10 @@ function runAction(action, value, e) {
         setMark(v);
       } else if (action === "jump") {
         jumpToMark(v);
+      } else if (action === "activateGradual") {
+        log("Gradual speed change activated", 4);
+        ts.settings.gradualSpeedChange = !ts.settings.gradualSpeedChange;
+        chrome.storage.sync.set({ gradualSpeedChange: ts.settings.gradualSpeedChange });
       }
     }
   });

@@ -9,6 +9,9 @@ var tcDefaults = {
   forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled
   controllerOpacity: 0.3, // default: 0.3
+  gradualSpeedChange: false, // default: false
+  gradualSpeedChangeDelay: 10000, // default: 10000
+  gradualSpeedChangeAmount: 0.002, // default: 0.002
   keyBindings: [
     { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
     { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
@@ -16,7 +19,8 @@ var tcDefaults = {
     { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
     { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "fast", key: 71, value: 1.8, force: false, predefined: true }, // G
+    { action: "activateGradual", key: 49, value: 0.002, force: false, predefined: true } // I
   ],
   blacklist: `www.instagram.com
     twitter.com
@@ -226,6 +230,9 @@ function save_options() {
   var startHidden = document.getElementById("startHidden").checked;
   var controllerOpacity = document.getElementById("controllerOpacity").value;
   var blacklist = document.getElementById("blacklist").value;
+  var gradualSpeedChange = document.getElementById("gradualSpeedChange").checked;
+  var gradualSpeedChangeDelay = document.getElementById("gradualSpeedChangeDelay").value;
+  var gradualSpeedChangeAmount = document.getElementById("gradualSpeedChangeAmount").value;
 
   chrome.storage.sync.remove([
     "resetSpeed",
@@ -234,6 +241,7 @@ function save_options() {
     "rewindTime",
     "advanceTime",
     "resetKeyCode",
+    "gradualKeyCode",
     "slowerKeyCode",
     "fasterKeyCode",
     "rewindKeyCode",
@@ -248,6 +256,9 @@ function save_options() {
       enabled: enabled,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
+      gradualSpeedChange: gradualSpeedChange,
+      gradualSpeedChangeDelay: gradualSpeedChangeDelay,
+      gradualSpeedChangeAmount: gradualSpeedChangeAmount,
       keyBindings: keyBindings,
       blacklist: blacklist.replace(regStrip, "")
     },
@@ -273,6 +284,9 @@ function restore_options() {
     document.getElementById("controllerOpacity").value =
       storage.controllerOpacity;
     document.getElementById("blacklist").value = storage.blacklist;
+    document.getElementById("gradualSpeedChange").checked = storage.gradualSpeedChange;
+    document.getElementById("gradualSpeedChangeDelay").value = storage.gradualSpeedChangeDelay;
+    document.getElementById("gradualSpeedChangeAmount").value = storage.gradualSpeedChangeAmount;
 
     // ensure that there is a "display" binding for upgrades from versions that had it as a separate binding
     if (storage.keyBindings.filter((x) => x.action == "display").length == 0) {
