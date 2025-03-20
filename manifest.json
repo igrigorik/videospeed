@@ -1,5 +1,5 @@
 {
-  "name": "Video Speed Controller",
+  "name": "My Speed Controller",
   "short_name": "videospeed",
   "version": "0.7.3",
   "manifest_version": 3,
@@ -24,6 +24,10 @@
     },
     "default_popup": "popup.html"
   },
+  "background": {
+    "persistent": true,
+    "scripts": ["background.js"]
+  },
   "content_scripts": [
     {
       "all_frames": true,
@@ -38,8 +42,10 @@
       "js": ["inject.js"]
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["inject.css", "shadow.css", "scriptforsite/*.js"],
-    "matches": ["http://*/*", "https://*/*", "file:///*"]
-  }]
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.css", "shadow.css"],
+      "matches": ["http://*/*", "https://*/*", "file:///*"]
+    }
+  ]
 }

@@ -1,0 +1,14 @@
+
+testing website: 
+  https://twitter.com/Jousefm2/status/1612589549087064094?cxt=HHwWvIC8ndXpiOEsAAAA
+  https://videoshub.com/videos/25317467
+
+
+inject.js
+
+
+
+
+ctrl + q  ==>  Video time manual set
+ctrl + b  ==>  Video Seek Second manual set
+ctrl + 0  ==>   toggle 16 and 1, playbackspeed

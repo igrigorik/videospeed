@@ -11,18 +11,15 @@ var tcDefaults = {
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
     { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
-    { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
-    { action: "faster", key: 68, value: 0.1, force: false, predefined: true }, // D
-    { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
-    { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
-    { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "slower", key: 109, value: 0.5, force: false, predefined: true }, // Num -
+    { action: "faster", key: 107, value: 0.5, force: false, predefined: true }, // Num +
+    { action: "rewind", key: 37, value: 5, force: false, predefined: true }, // Left
+    { action: "advance", key: 39, value: 5, force: false, predefined: true }, // Right
+    { action: "reset", key: 106, value: 1, force: false, predefined: true }, // Num *
+    { action: "fast", key: 110, value: 1, force: false, predefined: true } // Num .
   ],
-  blacklist: `www.instagram.com
-    twitter.com
-    imgur.com
-    teams.microsoft.com
-  `.replace(regStrip, "")
+  // blacklist: `www.youtube.com`.replace(regStrip, "")
+  blacklist: ``.replace(regStrip, "")
 };
 
 var keyBindings = [];
@@ -136,17 +133,15 @@ function add_shortcut() {
     <option value="rewind">Rewind</option>
     <option value="advance">Advance</option>
     <option value="reset">Reset speed</option>
-    <option value="fast">Preferred speed</option>
+    <option value="fast">Toggle speed</option>
     <option value="muted">Mute</option>
-    <option value="softer">Decrease volume</option>
-    <option value="louder">Increase volume</option>
     <option value="pause">Pause</option>
     <option value="mark">Set marker</option>
     <option value="jump">Jump to marker</option>
     <option value="display">Show/hide controller</option>
     </select>
     <input class="customKey" type="text" placeholder="press a key"/>
-    <input class="customValue" type="text" placeholder="value (0.10)"/>
+    <input class="customValue" type="text" placeholder="value (0.5)"/>
     <select class="customForce">
     <option value="false">Do not disable website key bindings</option>
     <option value="true">Disable website key bindings</option>
@@ -186,13 +181,12 @@ function validate() {
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
-    
+
     if (match.startsWith("/")) {
       try {
         var parts = match.split("/");
 
-        if (parts.length < 3)
-          throw "invalid regex";
+        if (parts.length < 3) throw "invalid regex";
 
         var flags = parts.pop();
         var regex = parts.slice(1).join("/");
@@ -200,7 +194,9 @@ function validate() {
         var regexp = new RegExp(regex, flags);
       } catch (err) {
         status.textContent =
-          "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
+          'Error: Invalid blacklist regex: "' +
+          match +
+          '". Unable to save. Try wrapping it in foward slashes.';
         valid = false;
         return;
       }
@@ -220,7 +216,9 @@ function save_options() {
   ); // Remove added shortcuts
 
   var rememberSpeed = document.getElementById("rememberSpeed").checked;
-  var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
+  var forceLastSavedSpeed = document.getElementById(
+    "forceLastSavedSpeed"
+  ).checked;
   var audioBoolean = document.getElementById("audioBoolean").checked;
   var enabled = document.getElementById("enabled").checked;
   var startHidden = document.getElementById("startHidden").checked;
@@ -266,7 +264,8 @@ function save_options() {
 function restore_options() {
   chrome.storage.sync.get(tcDefaults, function (storage) {
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
-    document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
+    document.getElementById("forceLastSavedSpeed").checked =
+      storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("enabled").checked = storage.enabled;
     document.getElementById("startHidden").checked = storage.startHidden;

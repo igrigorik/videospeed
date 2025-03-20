@@ -1,3 +1,5 @@
+# NOTE: This is the same code from https://github.com/igrigorik/videospeed, but I've dissabled the toggling of reset button multiple times. Please Read this https://github.com/igrigorik/videospeed/issues/1004. This issue was not addressed by the developer. So I fixed it. Also I've dissabled the rewind and advance for Netflix as it causes some problem in Netflix. And changed the default key bindings. Hope you guys like it.
+
 # The science of accelerated playback
 
 **TL;DR: faster playback translates to better engagement and retention.**
@@ -22,14 +24,14 @@ if they are forced to return to normal rate of presentation.
 
 HTML5 video provides a native API to accelerate playback of any video. The
 problem is many players either hide or limit this functionality. For the best
-results, playback speed adjustments should be easy and frequent to match the pace
-and content being covered: we don't read at a fixed speed, and similarly, we
-need an easy way to accelerate the video, slow it down, and quickly rewind the
-last point to listen to it a few more times.
+results, playback speed adjustments should be easy and frequent to match the
+pace and content being covered: we don't read at a fixed speed, and similarly,
+we need an easy way to accelerate the video, slow it down, and quickly rewind
+the last point to listen to it a few more times.
 
 ![Player](https://cloud.githubusercontent.com/assets/2400185/24076745/5723e6ae-0c41-11e7-820c-1d8e814a2888.png)
 
-### _[Install Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk)_
+### _[Download Chrome Extension](https://github.com/HariKumarhks/My-Speed-Controller)_
 
 \*\* Once the extension is installed simply navigate to any page that offers
 HTML5 video ([example](http://www.youtube.com/watch?v=E9FxNzv1Tr8)), and you'll
@@ -37,27 +39,27 @@ see a speed indicator in top left corner. Hover over the indicator to reveal the
 controls to accelerate, slowdown, and quickly rewind or advance the video. Or,
 even better, simply use your keyboard:
 
-- **S** - decrease playback speed.
-- **D** - increase playback speed.
-- **R** - reset playback speed to 1.0x.
-- **Z** - rewind video by 10 seconds.
-- **X** - advance video by 10 seconds.
-- **G** - toggle between current and user configurable preferred speed.
+- **Num -** - decrease playback speed.
+- **Num +** - increase playback speed.
+- **Num 'star'** - reset playback speed to 1.0x.
+- **Left** - rewind video by 10 seconds.
+- **Right** - advance video by 10 seconds.
+- **Num .** - toggle between current and user configurable Toggle speed.
 - **V** - show/hide the controller.
 
 You can customize and reassign the default shortcut keys in the extensions
-settings page as well as add additional shortcut keys to match your
-preferences. As an example, you can assign multiple "preferred speed" shortcuts with different values, allowing you to quickly toggle between your most frequently used speeds. To add a new shortcut, open extension settings
-and click "Add New".
-After making changes or adding new settings, remember to refresh the video viewing page for them to take effect.
+settings page as well as add additional shortcut keys to match your preferences.
+As an example, you can assign multiple "Toggle speed" shortcuts with different
+values, allowing you to quickly toggle between your most frequently used speeds.
+To add a new shortcut, open extension settings and click "Add New".
 
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
 
-Unfortunately, some sites may assign other functionality to one of the shortcut keys - this is inevitable. As a workaround, the extension
-listens both for lower and upper case values (i.e. you can use
-`Shift-<shortcut>`) if there is other functionality assigned to the lowercase
-key. This is not a perfect solution since some sites may listen to both, but it works
-most of the time.
+Unfortunately, some sites may assign other functionality to one of the shortcut
+keys - this is inevitable. As a workaround, the extension listens both for lower
+and upper case values (i.e. you can use `Shift-<shortcut>`) if there is other
+functionality assigned to the lowercase key. This is not a perfect solution
+since some sites may listen to both, but it works most of the time.
 
 ### FAQ
 

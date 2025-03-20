@@ -4,11 +4,12 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   document.querySelector("#about").addEventListener("click", function () {
-    window.open("https://github.com/igrigorik/videospeed");
+    window.open("https://github.com/HariKumarhks/My-Speed-Controller");
+    // window.open("https://github.com/igrigorik/videospeed");
   });
 
   document.querySelector("#feedback").addEventListener("click", function () {
-    window.open("https://github.com/igrigorik/videospeed/issues");
+    // window.open("https://github.com/igrigorik/videospeed/issues");
   });
 
   document.querySelector("#enable").addEventListener("click", function () {
@@ -40,11 +41,11 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelector("#disable").classList.toggle("hide", !enabled);
 
     const suffix = `${enabled ? "" : "_disabled"}.png`;
-    chrome.action.setIcon({
+    chrome.browserAction.setIcon({
       path: {
-        "19": "icons/icon19" + suffix,
-        "38": "icons/icon38" + suffix,
-        "48": "icons/icon48" + suffix
+        19: "icons/icon19" + suffix,
+        38: "icons/icon38" + suffix,
+        48: "icons/icon48" + suffix
       }
     });
   }

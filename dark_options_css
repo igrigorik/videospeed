@@ -1,0 +1,226 @@
+body {
+  background-color: black;
+  margin: 0;
+  padding-left: 15px;
+  padding-top: 53px;
+  font-family: sans-serif;
+  font-size: 12px;
+  color: rgb(206, 223, 240);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: normal;
+  line-height: 1;
+  user-select: none;
+  cursor: default;
+}
+h1 {
+  font-size: 1.5em;
+  margin: 21px 0 13px;
+}
+h3 {
+  font-size: 1.2em;
+  margin-bottom: 0.8em;
+  color: black;
+}
+p {
+  margin: 0.65em 0;
+}
+
+header {
+  position: fixed;
+  top: 0;
+  left: 15px;
+  right: 0;
+  border-bottom: 1px solid #eee;
+  /* background: linear-gradient(white, white 40%, rgba(255, 255, 255, 0.92)); */
+  background-color: grey;
+}
+header,
+section {
+  min-width: 600px;
+  max-width: 738px;
+}
+section {
+  padding-left: 18px;
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+section h3 {
+  margin-left: -18px;
+}
+
+/* button {
+  -webkit-appearance: none;
+  position: relative;
+
+  margin: 0 1px 0 0;
+  padding: 0 10px;
+  min-width: 4em;
+  min-height: 2em;
+
+  background-image: linear-gradient(#ededed, #ededed 38%, #dedede);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+  outline: none;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.75);
+  color: #444;
+  text-shadow: 0 1px 0 rgb(240, 240, 240);
+  font: inherit;
+
+  user-select: none;
+} */
+
+input[type="text"] {
+  width: 75px;
+  text-align: center;
+}
+
+.row {
+  margin: 5px 0px;
+}
+
+label {
+  display: inline-block;
+  width: 170px;
+  vertical-align: top;
+}
+
+#status {
+  color: #9d9d9d;
+  display: inline-block;
+  margin-left: 50px;
+}
+
+#faq {
+  margin-top: 2em;
+}
+
+select {
+  width: 170px;
+}
+
+.customForce {
+  display: none;
+  width: 250px;
+}
+
+.customKey {
+  color: transparent;
+  text-shadow: 0 0 0 #000000;
+}
+
+/* glitch BUTTON start */
+/* <!-- HTML !--> */
+/* <button class="button-glitch" role="button">Button 49</button> */
+
+/* CSS */
+.button-glitch,
+.button-glitch:after {
+  width: 150px;
+  height: 76px;
+  line-height: 78px;
+  font-size: 20px;
+  font-family: "Bebas Neue", sans-serif;
+  background: linear-gradient(45deg, transparent 5%, #ff013c 5%);
+  border: 0;
+  color: #fff;
+  letter-spacing: 3px;
+  box-shadow: 6px 0px 0px #00e6f6;
+  outline: transparent;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.button-glitch:after {
+  --slice-0: inset(50% 50% 50% 50%);
+  --slice-1: inset(80% -6px 0 0);
+  --slice-2: inset(50% -6px 30% 0);
+  --slice-3: inset(10% -6px 85% 0);
+  --slice-4: inset(40% -6px 43% 0);
+  --slice-5: inset(80% -6px 5% 0);
+
+  content: "ALTERNATE TEXT";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 3%,
+    #00e6f6 3%,
+    #00e6f6 5%,
+    #ff013c 5%
+  );
+  text-shadow: -3px -3px 0px #f8f005, 3px 3px 0px #00e6f6;
+  clip-path: var(--slice-0);
+}
+
+.button-glitch:hover:after {
+  animation: 1s glitch;
+  animation-timing-function: steps(2, end);
+}
+
+@keyframes glitch {
+  0% {
+    clip-path: var(--slice-1);
+    transform: translate(-20px, -10px);
+  }
+  10% {
+    clip-path: var(--slice-3);
+    transform: translate(10px, 10px);
+  }
+  20% {
+    clip-path: var(--slice-1);
+    transform: translate(-10px, 10px);
+  }
+  30% {
+    clip-path: var(--slice-3);
+    transform: translate(0px, 5px);
+  }
+  40% {
+    clip-path: var(--slice-2);
+    transform: translate(-5px, 0px);
+  }
+  50% {
+    clip-path: var(--slice-3);
+    transform: translate(5px, 0px);
+  }
+  60% {
+    clip-path: var(--slice-4);
+    transform: translate(5px, 10px);
+  }
+  70% {
+    clip-path: var(--slice-2);
+    transform: translate(-10px, 10px);
+  }
+  80% {
+    clip-path: var(--slice-5);
+    transform: translate(20px, -10px);
+  }
+  90% {
+    clip-path: var(--slice-1);
+    transform: translate(-10px, 0px);
+  }
+  100% {
+    clip-path: var(--slice-1);
+    transform: translate(0);
+  }
+}
+
+@media (min-width: 768px) {
+  .button-glitch,
+  .button-glitch:after {
+    width: 200px;
+    height: 86px;
+    line-height: 88px;
+  }
+}
+/* glitch BUTTON end */

@@ -1,33 +1,6 @@
-// changed here
-// EXTENSION 1: No Tab
-var allowNewTab = 0;
-
-// chrome.browserAction.setIcon({ path: "green32.png" });
-
-chrome?.tabs?.onCreated?.addListener(function (tab) {
-  // if (allowNewTab == 1) {
-  //   chrome.tabs.remove(tab.id);
-  // }
-
-  allowNewTab & chrome.tabs.remove(tab.id);
-});
-
-// chrome.browserAction.onClicked.addListener(toggleNewtab);
-
-function toggleNewtab() {
-  allowNewTab ^= 1;
-  // chrome.browserAction.setIcon({
-  //   path: ["red32.png", "green32.png"][allowNewTab]
-  // });
-}
-
-// -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-
-// EXTENSION 2: My Speed Controller
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
-// changed here
 const WEBSITES_NAME = location.hostname.split(".")[1];
 
 var tc = {
@@ -58,8 +31,6 @@ var tc = {
   // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
   mediaElements: []
 };
-
-// console.log(tc);
 
 /* Log levels (depends on caller specifying the correct level)
   1 - none
@@ -93,8 +64,6 @@ function log(message, level) {
 chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.keyBindings = storage.keyBindings; // Array
   if (storage.keyBindings.length == 0) {
-    console.log("WEBSITES_NAME");
-    console.log(WEBSITES_NAME);
     // if first initialization of 0.5.3
     // UPDATE
     tc.settings.keyBindings.push({
@@ -121,7 +90,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
     tc.settings.keyBindings.push({
       action: "advance",
       key: Number(storage.advanceKeyCode) || 39,
-      value: Number(storage.rewindTime) || 5,
+      value: Number(storage.advanceTime) || 5,
       force: false,
       predefined: true
     }); // default: Right
@@ -138,8 +107,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       value: Number(storage.fastSpeed) || 1,
       force: false,
       predefined: true
-    }); // default: Num .  // Default ends here
-
+    }); // default: Num .
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -502,7 +470,8 @@ function setupListener() {
     chrome.storage.sync.set({ lastSpeed: speed }, function () {
       log("Speed setting saved: " + speed, 5);
     });
-    // show/display the controller for 1000ms if it's hidden.
+    // show the controller for 1000ms if it's hidden.
+
     runAction("blink", null, null);
   }
 
@@ -611,63 +580,6 @@ function initializeNow(document) {
     if (inIframe()) docs.push(window.top.document);
   } catch (e) {}
 
-  document.addEventListener("keydown", function (event) {
-    // changed here // keypress detection
-    if (!tc.mediaElements.length) {
-      return false;
-    }
-    if (event.ctrlKey && event.key === "q") {
-      let percentage = prompt("Video Percentage:", "");
-      if (
-        isNaN(percentage) ||
-        percentage === null ||
-        percentage < 0 ||
-        percentage > 10
-      ) {
-        return;
-      }
-      percentage = Number(percentage);
-      // percentage.toPrecision(3);
-      runAction_numbers(96 + percentage, null);
-    } else if (event.ctrlKey && event.key === "b") {
-      let seek_value = prompt(
-        `Video Seek Seconds: \n CURRENT: ${tc.settings.keyBindings[2].value}`,
-        ""
-      );
-      if (seek_value === null || isNaN(seek_value)) {
-        return;
-      }
-      seek_value = Number(seek_value);
-      // seek_value.toPrecision(3);
-      tc.settings.keyBindings[2].value = seek_value;
-      tc.settings.keyBindings[3].value = seek_value;
-    } else if (event.altKey && event.key === "b") {
-      let seek_value = prompt(
-        `Video Plyback Speed Δ: \n CURRENT: ${tc.settings.keyBindings[0].value}`,
-        ""
-      );
-      if (seek_value === null || isNaN(seek_value)) {
-        return;
-      }
-      seek_value = Number(seek_value);
-      // seek_value.toPrecision(3);
-      tc.settings.keyBindings[0].value = seek_value;
-      tc.settings.keyBindings[1].value = seek_value;
-    } else if (event.ctrlKey && event.key === "0") {
-      tc.mediaElements[0].playbackRate == 1
-        ? runAction("faster", 16)
-        : runAction("reset");
-    } else if (event.ctrlKey && event.shiftKey && event.key === "q") {
-      alert("0");
-      allowNewTab = 0;
-      // toggleNewtab();
-    } else if (event.ctrlKey && event.shiftKey && event.key === "a") {
-      alert("1");
-      allowNewTab = 1;
-      toggleNewtab();
-    }
-  });
-
   docs.forEach(function (doc) {
     doc.addEventListener(
       "keydown",
@@ -702,10 +614,8 @@ function initializeNow(document) {
         if (!tc.mediaElements.length) {
           return false;
         }
-
-        // Here detecting press...
-        // changed here
-        var item = tc.settings.keyBindings.find((x) => x.key === keyCode);
+        // console.log("\n\nBINDRESSS::: ", tc.settings.keyBindings); // check
+        var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
         if (item) {
           runAction(item.action, item.value);
           if (item.force === "true") {
@@ -713,10 +623,6 @@ function initializeNow(document) {
             event.preventDefault();
             event.stopPropagation();
           }
-        } else if (96 <= keyCode && keyCode <= 105) {
-          runAction_numbers(keyCode);
-        } else if (keyCode == 70) {
-          runAction_fullscreen(keyCode, null, doc);
         }
 
         return false;
@@ -846,87 +752,9 @@ function setSpeed(video, speed) {
   log("setSpeed finished: " + speed, 5);
 }
 
-function runAction_fullscreen(action, e, doc) {
-  // changed here
-
-  // TODO complete this function
-  log("runAction_fullscreen Begin", 5);
-  var mediaTags = tc.mediaElements;
-
-  if (e) {
-    var targetController = e.target.getRootNode().host;
-  }
-  console.log(WEBSITES_NAME);
-  mediaTags.forEach(function (the_video, e) {
-    var controller = the_video.vsc.div;
-
-    // Don't change video time if the video has a different controller
-    if (e && !(targetController == controller)) {
-      return;
-    }
-    showController(controller);
-    const skip_websites = ["netflix", "youtube"];
-
-    // if (!the_video.classList.contains("vsc-cancelled")) {
-    if (action == 70) {
-      if (skip_websites.includes(WEBSITES_NAME)) {
-        // console.log("Forbidden site to skip, so don't want to mess with it");
-        // Forbidden site to skip, shows error/double skip when using this feature
-        return;
-      }
-      console.log(the_video);
-      console.log(doc);
-      console.log(typeof doc);
-      let keyevent = new KeyboardEvent("keypress", { key: "w", ctrlKey: true });
-      doc.body.dispatchEvent(keyevent);
-      log("Full Screen toggle", 5);
-    }
-    // }
-  });
-  log("runAction_fullscreen End", 5);
-}
-
-function runAction_numbers(action, e) {
-  // changed here
-
-  // divide video into 10 parts
-  log("runAction_numbers Begin", 5);
-  let skip_websites = ["netflix"];
-  var mediaTags = tc.mediaElements;
-
-  if (e) {
-    var targetController = e.target.getRootNode().host;
-  }
-
-  mediaTags.forEach(function (the_video, e) {
-    var controller = the_video.vsc.div;
-
-    // Don't change video time if the video has a different controller
-    if (e && !(targetController == controller)) {
-      return;
-    }
-    showController(controller);
-
-    // if (!the_video.classList.contains("vsc-cancelled")) {
-    if (96 <= action && action <= 106) {
-      if (skip_websites.includes(WEBSITES_NAME)) {
-        // console.log("Forbidden site to skip, so don't want to mess with it");
-        // Forbidden site to skip, shows error/double skip when using this feature
-        return;
-      }
-      log(`Number ${action}`, 5);
-      tmp = (action - 96) * (the_video.duration / 10);
-      the_video.currentTime = tmp;
-    }
-    // }
-  });
-
-  log("runAction_numbers End", 5);
-}
-
 function runAction(action, value, e) {
   log("runAction Begin", 5);
-  // changed here
+
   var mediaTags = tc.mediaElements;
 
   // Get the controller that was used if called from a button press event e
@@ -934,9 +762,8 @@ function runAction(action, value, e) {
     var targetController = e.target.getRootNode().host;
   }
 
-  mediaTags.forEach(function (the_video) {
-    // Here v is initalized
-    var controller = the_video.vsc.div;
+  mediaTags.forEach(function (v) {
+    var controller = v.vsc.div;
 
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
@@ -945,63 +772,44 @@ function runAction(action, value, e) {
 
     showController(controller);
 
-    // Changed Here ...
-    const skip_websites = ["netflix"];
-    const already_includes_websites = ["youtube"];
+    const WEBSITES_TO_SKIP = ["netflix", "youtube"];
 
-    if (!the_video.classList.contains("vsc-cancelled")) {
+    if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
-        if (skip_websites.includes(WEBSITES_NAME)) {
+        if (WEBSITES_TO_SKIP.includes(WEBSITES_NAME)) {
           // console.log("Forbidden site to skip, so don't want to mess with it");
           // Forbidden site to skip, shows error/double skip when using this feature
           return;
         }
-        if (already_includes_websites.includes(WEBSITES_NAME)) {
-          // console.log("Forbidden site to skip, so don't want to mess with it");
-          // Forbidden site to skip, shows error/double skip when using this feature
-          value -= 5;
-        }
-
         log("Rewind", 5);
-        // Changed Here ...
-        setTimeout(() => {
-          the_video.currentTime -= value;
-        }, 0);
+        v.currentTime -= value;
       } else if (action === "advance") {
-        if (skip_websites.includes(WEBSITES_NAME)) {
+        if (WEBSITES_TO_SKIP.includes(WEBSITES_NAME)) {
           log("Forbidden site to skip, so don't want to mess with it", 5);
           // console.log("Forbidden site to skip, so don't want to mess with it");
           // Forbidden site to skip, shows error/double skip when using this feature
           return;
         }
-        if (already_includes_websites.includes(WEBSITES_NAME)) {
-          // console.log("Forbidden site to skip, so don't want to mess with it");
-          // Forbidden site to skip, shows error/double skip when using this feature
-          value -= 5;
-        }
         log("Fast forward", 5);
-        // Changed Here ...
-        setTimeout(() => {
-          the_video.currentTime += value;
-        }, 0);
+        v.currentTime += value;
       } else if (action === "faster") {
         log("Increase speed", 5);
         // Maximum playback speed in Chrome is set to 16:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
         var s = Math.min(
-          (the_video.playbackRate < 0.1 ? 0.0 : the_video.playbackRate) + value,
+          (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value,
           16
         );
-        setSpeed(the_video, s);
+        setSpeed(v, s);
       } else if (action === "slower") {
         log("Decrease speed", 5);
         // Video min rate is 0.0625:
         // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
-        var s = Math.max(the_video.playbackRate - value, 0.0);
-        setSpeed(the_video, s);
+        var s = Math.max(v.playbackRate - value, 0.07);
+        setSpeed(v, s);
       } else if (action === "reset") {
         log("Reset speed", 5);
-        resetSpeed(the_video, 1.0, action);
+        resetSpeed(v, 1.0, action);
       } else if (action === "display") {
         log("Showing controller", 5);
         controller.classList.add("vsc-manual");
@@ -1024,9 +832,9 @@ function runAction(action, value, e) {
           );
         }
       } else if (action === "drag") {
-        handleDrag(the_video, e);
+        handleDrag(v, e);
       } else if (action === "fast") {
-        resetSpeed(the_video, value, action);
+        resetSpeed(v, value, action);
       } else if (action === "pause") {
         pause(v);
       } else if (action === "muted") {
@@ -1042,58 +850,58 @@ function runAction(action, value, e) {
 }
 
 function pause(v) {
-  if (the_video.paused) {
+  if (v.paused) {
     log("Resuming video", 5);
-    the_video.play();
+    v.play();
   } else {
     log("Pausing video", 5);
-    the_video.pause();
+    v.pause();
   }
 }
 
-function resetSpeed(the_video, target, button) {
+function resetSpeed(v, target, button) {
   // changed from toggle to reset
   if (button === "reset") {
-    if (the_video.playbackRate === 1.0) {
+    if (v.playbackRate === 1.0) {
       return;
     }
-    setKeyBindings("fast", the_video.playbackRate);
-    setSpeed(the_video, 1.0);
+    setKeyBindings("fast", v.playbackRate);
+    setSpeed(v, 1.0);
     return;
   }
-  if (the_video.playbackRate === target) {
-    if (the_video.playbackRate === getKeyBindings("reset")) {
+  if (v.playbackRate === target) {
+    if (v.playbackRate === getKeyBindings("reset")) {
       if (target !== 1.0) {
         log("Resetting playback speed to 1.0", 4);
-        setSpeed(the_video, 1.0);
+        setSpeed(v, 1.0);
       } else {
         log('Toggling playback speed to "fast" speed', 4);
-        setSpeed(the_video, getKeyBindings("fast"));
+        setSpeed(v, getKeyBindings("fast"));
       }
     } else {
       log('Toggling playback speed to "reset" speed', 4);
-      setSpeed(the_video, getKeyBindings("reset"));
+      setSpeed(v, getKeyBindings("reset"));
     }
   } else {
     log('Toggling playback speed to "reset" speed', 4);
-    setKeyBindings("reset", the_video.playbackRate);
-    setSpeed(the_video, target);
+    setKeyBindings("reset", v.playbackRate);
+    setSpeed(v, target);
   }
 }
 
 function muted(v) {
-  the_video.muted = the_video.muted !== true;
+  v.muted = v.muted !== true;
 }
 
 function setMark(v) {
   log("Adding marker", 5);
-  the_video.vsc.mark = the_video.currentTime;
+  v.vsc.mark = v.currentTime;
 }
 
 function jumpToMark(v) {
   log("Recalling marker", 5);
-  if (the_video.vsc.mark && typeof the_video.vsc.mark === "number") {
-    the_video.currentTime = the_video.vsc.mark;
+  if (v.vsc.mark && typeof v.vsc.mark === "number") {
+    v.currentTime = v.vsc.mark;
   }
 }
 
