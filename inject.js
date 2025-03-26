@@ -95,6 +95,8 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   if (storage.keyBindings.length == 0) {
     console.log("WEBSITES_NAME");
     console.log(WEBSITES_NAME);
+    // Refer Keyboard Codes Here:
+    //      https://asawicki.info/nosense/doc/devices/keyboard/key_codes.html
     // if first initialization of 0.5.3
     // UPDATE
     tc.settings.keyBindings.push({
@@ -111,6 +113,13 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); // default: Num +
+    tc.settings.keyBindings.push({
+      action: "faster",
+      key: 220,
+      value: Number(storage.speedStep) || 0.5,
+      force: false,
+      predefined: true
+    }); // default: \   // This is for keypad without numberpad.
     tc.settings.keyBindings.push({
       action: "rewind",
       key: Number(storage.rewindKeyCode) || 37,
@@ -133,12 +142,20 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       predefined: true
     }); // default: Num *
     tc.settings.keyBindings.push({
+      action: "reset",
+      key: 187,
+      value: 1.0,
+      force: false,
+      predefined: true
+    }); // default: =   // This is for keypad without numberpad.
+    tc.settings.keyBindings.push({
       action: "fast",
       key: Number(storage.fastKeyCode) || 110,
       value: Number(storage.fastSpeed) || 1,
       force: false,
       predefined: true
-    }); // default: Num .  // Default ends here
+    }); // default: Num .
+    // Default ends here
 
     tc.settings.version = "0.5.3";
 
