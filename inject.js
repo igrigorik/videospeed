@@ -347,7 +347,7 @@ function defineVideoController() {
       .addEventListener("mousedown", (e) => e.stopPropagation(), false);
 
     this.speedIndicator = shadow.querySelector("span");
-    //scroll speed control code
+    //scroll speed control
     shadow.querySelector("#controller").addEventListener("wheel", (event) => {
       event.preventDefault();
       const delta = Math.sign(event.deltaY);
