@@ -36,6 +36,11 @@
       ],
       "css": ["inject.css"],
       "js": ["inject.js"]
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["inject_youtube.js"],
+      "world": "MAIN"
     }
   ],
   "web_accessible_resources": [{
