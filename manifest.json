@@ -49,6 +49,15 @@
       "js": [
         "content.js"
       ]
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "injector-youtube.js"
+      ],
+      "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
