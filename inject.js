@@ -321,6 +321,7 @@ function defineVideoController() {
       (e) => {
         runAction(e.target.dataset["action"], false, e);
         e.stopPropagation();
+        e.preventDefault();
       },
       true
     );
