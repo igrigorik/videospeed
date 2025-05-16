@@ -13,6 +13,7 @@ var tc = {
     audioBoolean: false, // default: false
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
+    controllerButtonSize: 14,
     keyBindings: [],
     blacklist: `\
       www.instagram.com
@@ -117,6 +118,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
+      controllerButtonSize: tc.settings.controllerButtonSize,
       blacklist: tc.settings.blacklist.replace(regStrip, "")
     });
   }
@@ -128,6 +130,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
+  tc.settings.controllerButtonSize = Number(storage.controllerButtonSize);
   tc.settings.blacklist = String(storage.blacklist);
 
   // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
@@ -301,11 +304,9 @@ function defineVideoController() {
           @import "${chrome.runtime.getURL("shadow.css")}";
         </style>
 
-        <div id="controller" style="top:${top}; left:${left}; opacity:${
-      tc.settings.controllerOpacity
-    }">
-          <span data-action="drag" class="draggable">${speed}</span>
-          <span id="controls">
+        <div id="controller" style="top:${top}; left:${left}; opacity:${tc.settings.controllerOpacity};">
+          <span data-action="drag" class="draggable" style="font-size: ${tc.settings.controllerButtonSize}px; line-height: ${tc.settings.controllerButtonSize}px;">${speed}</span>
+          <span id="controls" style="font-size: ${tc.settings.controllerButtonSize}px; line-height: ${tc.settings.controllerButtonSize}px;">
             <button data-action="rewind" class="rw">«</button>
             <button data-action="slower">&minus;</button>
             <button data-action="faster">&plus;</button>
@@ -333,6 +334,13 @@ function defineVideoController() {
             getKeyBindings(e.target.dataset["action"]),
             e
           );
+          e.stopPropagation();
+        },
+        true
+      );
+      button.addEventListener(
+        "touchstart",
+        (e) => {
           e.stopPropagation();
         },
         true

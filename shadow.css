@@ -61,8 +61,8 @@ button {
   font-weight: normal;
   border-radius: 5px;
   padding: 1px 5px 3px 5px;
-  font-size: 14px;
-  line-height: 14px;
+  font-size: inherit;
+  line-height: inherit;
   border: 0px solid white;
   font-family: "Lucida Console", Monaco, monospace;
   margin: 0px 2px 2px 2px;
