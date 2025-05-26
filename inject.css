@@ -14,9 +14,9 @@
   white-space: normal;
   /* Disables text selection when the user is dragging the controller around */
   user-select: none;
-  /* Some video services can accidentally replace the css of this element. As such the following lines will make the div reset to the default
-  As explained at https://stackoverflow.com/a/20727147/4769837
-  The element is still a div as making it a iframe will create errors and the css in this file won't work anymore.
+  /* Some video services can accidentally replace the CSS of this element. As such, the following lines will reset the div to its default values.
+    As explained at https://stackoverflow.com/a/20727147/4769837
+    The element is still a div because making it an iframe would cause errors, and the CSS in this file won't work on iframes.
   */
   animation: none;
   animation-delay: 0;
