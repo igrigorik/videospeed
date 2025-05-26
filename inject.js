@@ -155,9 +155,8 @@ function getKeyBindings(action, what = "value") {
 }
 
 function setKeyBindings(action, value) {
-  tc.settings.keyBindings.find((item) => item.action === action)[
-    "value"
-  ] = value;
+  tc.settings.keyBindings.find((item) => item.action === action)["value"] =
+    value;
 }
 
 function defineVideoController() {
@@ -283,8 +282,8 @@ function defineVideoController() {
     const left = Math.max(rect.left - (offsetRect?.left || 0), 0) + "px";
 
     log("Speed variable set to: " + speed, 5);
-
-    var wrapper = document.createElement("div");
+    //Wrapper is now a iframe instead of a div so that different video services won't accidentally add css to the element. As explained in https://stackoverflow.com/a/20727147/4769837
+    var wrapper = document.createElement("iframe");
     wrapper.classList.add("vsc-controller");
 
     if (!this.video.currentSrc) {
@@ -353,7 +352,8 @@ function defineVideoController() {
     switch (true) {
       // Only special-case Prime Video, not product-page videos (which use
       // "vjs-tech"), otherwise the overlay disappears in fullscreen mode
-      case location.hostname == "www.amazon.com" && !this.video.classList.contains("vjs-tech"):
+      case location.hostname == "www.amazon.com" &&
+        !this.video.classList.contains("vjs-tech"):
       case location.hostname == "www.reddit.com":
       case /hbogo\./.test(location.hostname):
         // insert before parent to bypass overlay
@@ -363,13 +363,17 @@ function defineVideoController() {
         // this is a monstrosity but new FB design does not have *any*
         // semantic handles for us to traverse the tree, and deep nesting
         // that we need to bubble up from to get controller to stack correctly
-        let p = this.parent.parentElement.parentElement.parentElement
-          .parentElement.parentElement.parentElement.parentElement;
+        let p =
+          this.parent.parentElement.parentElement.parentElement.parentElement
+            .parentElement.parentElement.parentElement;
         p.insertBefore(fragment, p.firstChild);
         break;
       case location.hostname == "tv.apple.com":
         // insert before parent to bypass overlay
-        this.parent.parentNode.insertBefore(fragment, this.parent.parentNode.firstChild);
+        this.parent.parentNode.insertBefore(
+          fragment,
+          this.parent.parentNode.firstChild
+        );
         break;
       default:
         // Note: when triggered via a MutationRecord, it's possible that the
@@ -445,8 +449,7 @@ function setupListener() {
   function updateSpeedFromEvent(video) {
     // It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
     // a video controller attached to it.  If we do, ignore it.
-    if (!video.vsc)
-      return;
+    if (!video.vsc) return;
     var speedIndicator = video.vsc.speedIndicator;
     var src = video.currentSrc;
     var speed = Number(video.playbackRate.toFixed(2));
@@ -634,7 +637,7 @@ function initializeNow(document) {
     // Only proceed with supposed removal if node is missing from DOM
     if (!added && document.body?.contains(node)) {
       // This was written prior to the addition of shadowRoot processing.
-      // TODO: Determine if shadowRoot deleted nodes need this sort of 
+      // TODO: Determine if shadowRoot deleted nodes need this sort of
       // check as well.
       return;
     }
@@ -652,19 +655,24 @@ function initializeNow(document) {
     } else {
       var children = [];
       if (node.shadowRoot) {
-        documentAndShadowRootObserver.observe(node.shadowRoot, documentAndShadowRootObserverOptions);
+        documentAndShadowRootObserver.observe(
+          node.shadowRoot,
+          documentAndShadowRootObserverOptions
+        );
         children = Array.from(node.shadowRoot.children);
       }
       if (node.children) {
         children = [...children, ...node.children];
-      };
+      }
       for (const child of children) {
-        checkForVideoAndShadowRoot(child, child.parentNode || parent, added)
-      };
+        checkForVideoAndShadowRoot(child, child.parentNode || parent, added);
+      }
     }
   }
 
-  var documentAndShadowRootObserver = new MutationObserver(function (mutations) {
+  var documentAndShadowRootObserver = new MutationObserver(function (
+    mutations
+  ) {
     // Process the DOM nodes lazily
     requestIdleCallback(
       (_) => {
@@ -680,30 +688,42 @@ function initializeNow(document) {
                   initializeWhenReady(document);
                   return;
                 }
-                checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
+                checkForVideoAndShadowRoot(
+                  node,
+                  node.parentNode || mutation.target,
+                  true
+                );
               });
               mutation.removedNodes.forEach(function (node) {
                 if (typeof node === "function") return;
-                checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, false);
+                checkForVideoAndShadowRoot(
+                  node,
+                  node.parentNode || mutation.target,
+                  false
+                );
               });
               break;
             case "attributes":
               if (
                 (mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false")
-                || mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER'
+                  mutation.target.attributes["aria-hidden"].value == "false") ||
+                mutation.target.nodeName === "APPLE-TV-PLUS-PLAYER"
               ) {
                 var flattenedNodes = getShadow(document.body);
-                var nodes = flattenedNodes.filter(
-                  (x) => x.tagName == "VIDEO"
-                );
+                var nodes = flattenedNodes.filter((x) => x.tagName == "VIDEO");
                 for (let node of nodes) {
                   // only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
-                  if (node.vsc && mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER')
+                  if (
+                    node.vsc &&
+                    mutation.target.nodeName === "APPLE-TV-PLUS-PLAYER"
+                  )
                     continue;
-                  if (node.vsc)
-                    node.vsc.remove();
-                  checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
+                  if (node.vsc) node.vsc.remove();
+                  checkForVideoAndShadowRoot(
+                    node,
+                    node.parentNode || mutation.target,
+                    true
+                  );
                 }
               }
               break;
@@ -717,17 +737,23 @@ function initializeNow(document) {
     attributeFilter: ["aria-hidden", "data-focus-method"],
     childList: true,
     subtree: true
-  }
-  documentAndShadowRootObserver.observe(document, documentAndShadowRootObserverOptions);
+  };
+  documentAndShadowRootObserver.observe(
+    document,
+    documentAndShadowRootObserverOptions
+  );
 
   const mediaTagSelector = tc.settings.audioBoolean ? "video,audio" : "video";
   mediaTags = Array.from(document.querySelectorAll(mediaTagSelector));
 
   document.querySelectorAll("*").forEach((element) => {
     if (element.shadowRoot) {
-      documentAndShadowRootObserver.observe(element.shadowRoot, documentAndShadowRootObserverOptions);
+      documentAndShadowRootObserver.observe(
+        element.shadowRoot,
+        documentAndShadowRootObserverOptions
+      );
       mediaTags.push(...element.shadowRoot.querySelectorAll(mediaTagSelector));
-    };
+    }
   });
 
   mediaTags.forEach(function (video) {
@@ -861,7 +887,7 @@ function injectScriptForSite() {
   const elt = document.createElement("script");
   switch (true) {
     case location.hostname == "www.netflix.com":
-      elt.src= chrome.runtime.getURL('scriptforsite/netflix.js');
+      elt.src = chrome.runtime.getURL("scriptforsite/netflix.js");
       break;
   }
   if (elt.src) {
@@ -872,7 +898,10 @@ function injectScriptForSite() {
 function seek(mediaTag, seekSeconds) {
   switch (true) {
     case location.hostname == "www.netflix.com":
-      window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
+      window.postMessage(
+        { action: "videospeed-seek", seekMs: seekSeconds * 1000 },
+        "https://www.netflix.com"
+      );
       break;
     default:
       mediaTag.currentTime += seekSeconds;
