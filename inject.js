@@ -347,6 +347,19 @@ function defineVideoController() {
       .addEventListener("mousedown", (e) => e.stopPropagation(), false);
 
     this.speedIndicator = shadow.querySelector("span");
+    //scroll speed control
+    shadow.querySelector("#controller").addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const delta = Math.sign(event.deltaY);
+      const step = 0.1;
+
+      let newSpeed = this.video.playbackRate + (delta < 0 ? step : -step);
+      newSpeed = Math.min(Math.max(newSpeed, 0.1), 16); // Clamp between 0.1x and 16x
+      this.video.playbackRate = newSpeed;
+
+      // Update visual speed display
+      this.speedIndicator.textContent = newSpeed.toFixed(2);
+    }, { passive: false });
     var fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
 
