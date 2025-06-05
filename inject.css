@@ -96,3 +96,8 @@ div.legacy-video-player.has_played.vertically_center:before {
 .Shared-Video-player > .vsc-controller {
   height: 0;
 }
+
+/* Fix black overlay on Amazon Prime Video */
+.dv-player-fullscreen .vsc-controller {
+  height: 0;
+}
