@@ -11,7 +11,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "contextMenus"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
@@ -24,10 +24,13 @@
     },
     "default_popup": "popup.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "all_frames": true,
-      "matches": ["http://*/*", "https://*/*", "file:///*"],
+      "matches": ["*://*/*", "<all_urls>", "file:///*"],
       "match_about_blank": true,
       "exclude_matches": [
         "https://plus.google.com/hangouts/*",
