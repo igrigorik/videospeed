@@ -356,6 +356,19 @@ function defineVideoController() {
       .addEventListener("mousedown", (e) => e.stopPropagation(), false);
 
     this.speedIndicator = shadow.querySelector("span");
+    //scroll speed control
+    shadow.querySelector("#controller").addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const delta = Math.sign(event.deltaY);
+      const step = 0.1;
+
+      let newSpeed = this.video.playbackRate + (delta < 0 ? step : -step);
+      newSpeed = Math.min(Math.max(newSpeed, 0.1), 16); // Clamp between 0.1x and 16x
+      this.video.playbackRate = newSpeed;
+
+      // Update visual speed display
+      this.speedIndicator.textContent = newSpeed.toFixed(2);
+    }, { passive: false });
     var fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
 
@@ -1001,3 +1014,40 @@ function showController(controller) {
     log("Hiding controller", 5);
   }, 2000);
 }
+
+const speedMod = (multiplier) => {
+  document.querySelectorAll('video, audio').forEach((media) => {
+    try {
+      media.playbackRate *= multiplier;
+      log("Playback rate changed to " + media.playbackRate, 4);
+    } catch (e) {
+      log(e, 2);
+    }
+  });
+}
+
+chrome.runtime.onMessage.addListener((req, snd, rsp) => {
+  if (req === 'slow-down-01') {
+    speedMod(0.1);
+  } else if (req === 'slow-down-02') {
+    speedMod(0.2);
+  } else if (req === 'slow-down-04') {
+    speedMod(0.4);
+  } else if (req === 'slow-down-06') {
+    speedMod(0.6);
+  } else if (req === 'slow-down-08') {
+    speedMod(0.8);
+  } else if (req === 'speed-up-12') {
+    speedMod(1.2);
+  } else if (req === 'speed-up-14') {
+    speedMod(1.4);
+  } else if (req === 'speed-up-16') {
+    speedMod(1.6);
+  } else if (req === 'speed-up-18') {
+    speedMod(1.8);
+  } else if (req === 'speed-up-20') {
+    speedMod(2.0);
+  }
+
+  rsp();
+});
