@@ -28,7 +28,7 @@
   opacity: 0.7;
 }
 
-#controller:hover > .draggable {
+#controller:hover>.draggable {
   margin-right: 0.8em;
 }
 

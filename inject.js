@@ -605,7 +605,7 @@ function initializeNow(document) {
   var docs = Array(document);
   try {
     if (inIframe()) docs.push(window.top.document);
-  } catch (e) {}
+  } catch (e) { }
 
   docs.forEach(function (doc) {
     doc.addEventListener(
@@ -718,7 +718,7 @@ function initializeNow(document) {
             case "attributes":
               if (
                 (mutation.target.attributes["aria-hidden"] &&
-                mutation.target.attributes["aria-hidden"].value == "false")
+                  mutation.target.attributes["aria-hidden"].value == "false")
                 || mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER'
               ) {
                 var flattenedNodes = getShadow(document.body);
@@ -889,7 +889,7 @@ function injectScriptForSite() {
   const elt = document.createElement("script");
   switch (true) {
     case location.hostname == "www.netflix.com":
-      elt.src= chrome.runtime.getURL('scriptforsite/netflix.js');
+      elt.src = chrome.runtime.getURL('scriptforsite/netflix.js');
       break;
   }
   if (elt.src) {
@@ -900,7 +900,7 @@ function injectScriptForSite() {
 function seek(mediaTag, seekSeconds) {
   switch (true) {
     case location.hostname == "www.netflix.com":
-      window.postMessage({action: "videospeed-seek", seekMs: seekSeconds * 1000}, "https://www.netflix.com");
+      window.postMessage({ action: "videospeed-seek", seekMs: seekSeconds * 1000 }, "https://www.netflix.com");
       break;
     default:
       mediaTag.currentTime += seekSeconds;

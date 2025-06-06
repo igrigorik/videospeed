@@ -1,9 +1,11 @@
 .vsc-nosource {
   display: none !important;
 }
+
 .vsc-hidden {
   display: none !important;
 }
+
 .vsc-manual {
   visibility: visible !important;
   opacity: 1 !important;
@@ -53,6 +55,7 @@ a[aria-label^="Video"] .vsc-controller {
   position: relative;
   top: 35px;
 }
+
 /* Google Photos full-screen view */
 #player .house-brand .vsc-controller {
   position: relative;
@@ -82,7 +85,7 @@ a[aria-label^="Video"] .vsc-controller {
 }
 
 /* disable Vimeo video overlay */
-div.video-wrapper + div.target {
+div.video-wrapper+div.target {
   height: 0;
 }
 
@@ -93,11 +96,21 @@ div.legacy-video-player.has_played.vertically_center:before {
 }
 
 /* Fix black overlay on openai.com */
-.Shared-Video-player > .vsc-controller {
+.Shared-Video-player>.vsc-controller {
   height: 0;
 }
 
 /* Fix black overlay on Amazon Prime Video */
 .dv-player-fullscreen .vsc-controller {
   height: 0;
+}
+
+/* Fix for Google Drive overlay: https://github.com/igrigorik/videospeed/issues/1156 */
+#player .html5-video-container .vsc-controller {
+  position: relative;
+  top: 10px;
+}
+
+section[role="tabpanel"][aria-label="Video Player"] {
+  top: 80px;
 }
