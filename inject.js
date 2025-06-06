@@ -587,6 +587,35 @@ function initializeNow(document) {
           return false;
         }
 
+        // Loom-specific override: always intercept for Loom video
+        var loomVideo = document.querySelector('video#LoomShakaVideoPlayer');
+        var isLoom = !!loomVideo;
+        // Handle 's', 'd', and 'y' keys on Loom
+        if (isLoom && (keyCode === 83 || keyCode === 68 || keyCode === 89)) {
+          // 's' = slower, 'd' = faster, 'y' = rewind 10s
+          if (keyCode === 83) {
+            // Decrease speed by 0.1, min 0.1
+            loomVideo.playbackRate = Math.max(0.1, (loomVideo.playbackRate - 0.1));
+          } else if (keyCode === 68) {
+            // Increase speed by 0.1, max 16
+            loomVideo.playbackRate = Math.min(16, (loomVideo.playbackRate + 0.1));
+          } else if (keyCode === 89) {
+            // Seek back 10s
+            loomVideo.currentTime = Math.max(0, loomVideo.currentTime - 10);
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
+        }
+
+        // Add 'y' as a global shortcut for rewind 10s (for non-Loom)
+        if (keyCode === 89) {
+          runAction("rewind", 10);
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
+        }
+
         var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
         if (item) {
           runAction(item.action, item.value);
