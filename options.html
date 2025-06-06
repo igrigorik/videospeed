@@ -165,12 +165,21 @@
         <label for="controllerOpacity">Controller opacity</label>
         <input id="controllerOpacity" type="text" value="" />
       </div>
-      <label for="blacklist"
-        >Sites on which extension is disabled (one per line).
-        <em>
-          <a href="https://www.regexpal.com/">Regex</a> is supported. Be sure to
-          use the literal notation. ie: /(.+)youtube\.com(\/*)$/gi
-        </em>
+      <div class="row">
+        <label for="controllerButtonSize">Controller Button Size</label>
+        <input id="controllerButtonSize" type="text" value="" />
+      </div>
+      <div class="row">
+        <label for="blacklist"
+          >Sites on which extension is disabled<br />
+          (one per line)<br />
+          <br />
+          <em>
+            <a href="https://www.regexpal.com/">Regex</a> is supported.<br />
+            Be sure to use the literal notation.<br />
+            ie: /(.+)youtube\.com(\/*)$/gi
+          </em>
+        </label>
         <textarea id="blacklist" rows="10" cols="50"></textarea>
       </label>
     </section>
