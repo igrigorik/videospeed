@@ -1,18 +1,64 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Video Speed Controller: Popup</title>
-    <link rel="stylesheet" href="popup.css" />
-    <script src="popup.js"></script>
-  </head>
-  <body>
-    <button id="enable" class="hide">Enable</button>
-    <button id="disable">Disable</button>
-    <span id="status" class="hide"></span>
-    <hr />
-    <button id="config">Settings</button>
-    <hr />
-    <button id="feedback" class="secondary">Send feedback</button>
-    <button id="about" class="secondary">About</button>
-  </body>
+
+<head>
+  <title>Video Speed Controller</title>
+  <link rel="stylesheet" href="popup.css" />
+  <script src="popup.js"></script>
+</head>
+
+<body>
+  <div class="popup-container">
+    <!-- Speed Control Section (now at top) -->
+    <div class="speed-section">
+      <!-- Fine Controls -->
+      <div class="speed-controls">
+        <button id="speed-decrease" class="control-btn" data-delta="-0.1">
+          <span>-0.1</span>
+        </button>
+        <button id="speed-reset" class="control-btn reset-btn">1.0</button>
+        <button id="speed-increase" class="control-btn" data-delta="0.1">
+          <span>+0.1</span>
+        </button>
+      </div>
+
+      <!-- Speed Presets -->
+      <div class="speed-presets">
+        <div class="preset-grid">
+          <button class="preset-btn" data-speed="0.5">0.5</button>
+          <button class="preset-btn" data-speed="0.75">0.75</button>
+          <button class="preset-btn" data-speed="1.0">1</button>
+          <button class="preset-btn" data-speed="1.25">1.25</button>
+          <button class="preset-btn" data-speed="1.5">1.5</button>
+          <button class="preset-btn" data-speed="1.75">1.75</button>
+          <button class="preset-btn" data-speed="2.0">2</button>
+          <button class="preset-btn" data-speed="2.5">2.5</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer with controls and status -->
+    <div class="footer">
+      <div class="footer-content">
+        <div id="status" class="status hide"></div>
+        <div class="footer-controls">
+          <button id="disable" class="icon-btn power-btn" title="Toggle Extension">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="currentColor" d="M12 2a2 2 0 0 1 2 2v8a2 2 0 0 1-4 0V4a2 2 0 0 1 2-2zm0 3v7" />
+              <path fill="currentColor"
+                d="M12 22c-5.522 0-10-4.477-10-10 0-4.418 2.865-8.166 7-9.542v2.084C5.132 5.91 3 8.735 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-3.265-2.132-6.09-6-7.458V2.458C19.135 3.834 22 7.582 22 12c0 5.523-4.478 10-10 10z" />
+            </svg>
+          </button>
+          <button id="config" class="icon-btn settings-btn" title="Settings">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="currentColor"
+                d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
 </html>

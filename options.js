@@ -187,7 +187,7 @@ function validate() {
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(regStrip, "");
-    
+
     if (match.startsWith("/")) {
       try {
         var parts = match.split("/");
@@ -361,6 +361,15 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("experimental")
     .addEventListener("click", show_experimental);
+
+  // About and feedback button event listeners
+  document.getElementById("about").addEventListener("click", function () {
+    window.open("https://github.com/igrigorik/videospeed");
+  });
+
+  document.getElementById("feedback").addEventListener("click", function () {
+    window.open("https://github.com/igrigorik/videospeed/issues");
+  });
 
   function eventCaller(event, className, funcName) {
     if (!event.target.classList.contains(className)) {

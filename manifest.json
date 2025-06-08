@@ -11,7 +11,11 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "contextMenus"],
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab"
+  ],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
@@ -30,18 +34,36 @@
   "content_scripts": [
     {
       "all_frames": true,
-      "matches": ["*://*/*", "<all_urls>", "file:///*"],
+      "matches": [
+        "*://*/*",
+        "<all_urls>",
+        "file:///*"
+      ],
       "match_about_blank": true,
       "exclude_matches": [
         "https://hangouts.google.com/*",
         "https://meet.google.com/*"
       ],
-      "css": ["inject.css"],
-      "js": ["inject.js"]
+      "css": [
+        "inject.css"
+      ],
+      "js": [
+        "inject.js"
+      ]
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["inject.css", "shadow.css", "scriptforsite/*.js"],
-    "matches": ["http://*/*", "https://*/*", "file:///*"]
-  }]
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "inject.css",
+        "shadow.css",
+        "scriptforsite/*.js"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*",
+        "file:///*"
+      ]
+    }
+  ]
 }

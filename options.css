@@ -16,6 +16,7 @@
   a {
     color: aqua;
   }
+
   a:visited {
     color: lightblue;
   }
@@ -46,14 +47,17 @@ h3 {
   user-select: none;
   cursor: default;
 }
+
 h1 {
   font-size: 1.5em;
   margin: 21px 0 13px;
 }
+
 h3 {
   font-size: 1.2em;
   margin-bottom: 0.8em;
 }
+
 p {
   margin: 0.65em 0;
 }
@@ -73,6 +77,7 @@ section {
   margin-top: 8px;
   margin-bottom: 24px;
 }
+
 section h3 {
   margin-left: -18px;
 }
@@ -162,4 +167,17 @@ select {
 .customKey {
   color: transparent;
   text-shadow: 0 0 0 #000000;
+}
+
+/* Secondary buttons */
+.secondary {
+  margin: 5px 10px 5px 0;
+  font-size: 0.9em;
+  background-color: transparent;
+  border: 1px solid var(--color-shade);
+  color: var(--main-color);
+}
+
+.secondary:hover {
+  background-color: var(--bg-shade);
 }
