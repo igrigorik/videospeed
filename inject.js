@@ -68,42 +68,42 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       action: "slower",
       key: Number(storage.slowerKeyCode) || 83,
       value: Number(storage.speedStep) || 0.1,
-      force: false,
+      force: true,
       predefined: true
     }); // default S
     tc.settings.keyBindings.push({
       action: "faster",
       key: Number(storage.fasterKeyCode) || 68,
       value: Number(storage.speedStep) || 0.1,
-      force: false,
+      force: true,
       predefined: true
     }); // default: D
     tc.settings.keyBindings.push({
       action: "rewind",
       key: Number(storage.rewindKeyCode) || 90,
       value: Number(storage.rewindTime) || 10,
-      force: false,
+      force: true,
       predefined: true
     }); // default: Z
     tc.settings.keyBindings.push({
       action: "advance",
       key: Number(storage.advanceKeyCode) || 88,
       value: Number(storage.advanceTime) || 10,
-      force: false,
+      force: true,
       predefined: true
     }); // default: X
     tc.settings.keyBindings.push({
       action: "reset",
       key: Number(storage.resetKeyCode) || 82,
       value: 1.0,
-      force: false,
+      force: true,
       predefined: true
     }); // default: R
     tc.settings.keyBindings.push({
       action: "fast",
       key: Number(storage.fastKeyCode) || 71,
       value: Number(storage.fastSpeed) || 1.8,
-      force: false,
+      force: true,
       predefined: true
     }); // default: G
     tc.settings.version = "0.5.3";
@@ -141,7 +141,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       action: "display",
       key: Number(storage.displayKeyCode) || 86,
       value: 0,
-      force: false,
+      force: true,
       predefined: true
     }); // default V
   }
@@ -645,7 +645,7 @@ function initializeNow(document) {
         var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
         if (item) {
           runAction(item.action, item.value);
-          if (item.force === "true") {
+          if (item.force) {
             // disable websites key bindings
             event.preventDefault();
             event.stopPropagation();

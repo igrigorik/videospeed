@@ -11,13 +11,13 @@ var tcDefaults = {
   controllerOpacity: 0.3, // default: 0.3
   controllerButtonSize: 14, // default: 14
   keyBindings: [
-    { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
-    { action: "slower", key: 83, value: 0.1, force: false, predefined: true }, // S
-    { action: "faster", key: 68, value: 0.1, force: false, predefined: true }, // D
-    { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
-    { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
-    { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "display", key: 86, value: 0, force: true, predefined: true }, // V
+    { action: "slower", key: 83, value: 0.1, force: true, predefined: true }, // S
+    { action: "faster", key: 68, value: 0.1, force: true, predefined: true }, // D
+    { action: "rewind", key: 90, value: 10, force: true, predefined: true }, // Z
+    { action: "advance", key: 88, value: 10, force: true, predefined: true }, // X
+    { action: "reset", key: 82, value: 1, force: true, predefined: true }, // R
+    { action: "fast", key: 71, value: 1.8, force: true, predefined: true } // G
   ],
   blacklist: `www.instagram.com
     twitter.com
@@ -76,6 +76,12 @@ var keyCodeAliases = {
   221: "]",
   222: "'"
 };
+
+
+function parseToBool(stringBool){
+  if (stringBool == "true") return true;
+  return false;
+}
 
 function recordKeyPress(e) {
   if (
@@ -149,8 +155,8 @@ function add_shortcut() {
     <input class="customKey" type="text" placeholder="press a key"/>
     <input class="customValue" type="text" placeholder="value (0.10)"/>
     <select class="customForce">
-    <option value="false">Do not disable website key bindings</option>
-    <option value="true">Disable website key bindings</option>
+    <option value="true">Override site shortcut</option>
+    <option value="false">Combine with site shortcut</option>
     </select>
     <button class="removeParent">X</button>`;
   var div = document.createElement("div");
@@ -167,7 +173,7 @@ function createKeyBindings(item) {
   const action = item.querySelector(".customDo").value;
   const key = item.querySelector(".customKey").keyCode;
   const value = Number(item.querySelector(".customValue").value);
-  const force = item.querySelector(".customForce").value;
+  const force = parseToBool(item.querySelector(".customForce").value);
   const predefined = !!item.id; //item.id ? true : false;
 
   keyBindings.push({
@@ -282,7 +288,7 @@ function restore_options() {
       storage.keyBindings.push({
         action: "display",
         value: 0,
-        force: false,
+        force: true,
         predefined: true
       });
     }
