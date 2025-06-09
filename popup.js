@@ -7,8 +7,8 @@ const MessageTypes = {
 };
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Initialize speed controls
-  initializeSpeedControls();
+  // Load settings and initialize speed controls
+  loadSettingsAndInitialize();
 
   // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
@@ -68,8 +68,62 @@ document.addEventListener("DOMContentLoaded", function () {
     status_element.innerText = str;
   }
 
+  // Load settings and initialize UI
+  function loadSettingsAndInitialize() {
+    chrome.storage.sync.get(null, function (storage) {
+      // Find the step values from keyBindings
+      let slowerStep = 0.1;
+      let fasterStep = 0.1;
+      let resetSpeed = 1.0;
+
+      if (storage.keyBindings && Array.isArray(storage.keyBindings)) {
+        const slowerBinding = storage.keyBindings.find(kb => kb.action === "slower");
+        const fasterBinding = storage.keyBindings.find(kb => kb.action === "faster");
+        const fastBinding = storage.keyBindings.find(kb => kb.action === "fast");
+
+        if (slowerBinding && typeof slowerBinding.value === 'number') {
+          slowerStep = slowerBinding.value;
+        }
+        if (fasterBinding && typeof fasterBinding.value === 'number') {
+          fasterStep = fasterBinding.value;
+        }
+        if (fastBinding && typeof fastBinding.value === 'number') {
+          resetSpeed = fastBinding.value;
+        }
+      }
+
+      // Update the UI with dynamic values
+      updateSpeedControlsUI(slowerStep, fasterStep, resetSpeed);
+
+      // Initialize event listeners
+      initializeSpeedControls(slowerStep, fasterStep);
+    });
+  }
+
+  function updateSpeedControlsUI(slowerStep, fasterStep, resetSpeed) {
+    // Update decrease button
+    const decreaseBtn = document.querySelector("#speed-decrease");
+    if (decreaseBtn) {
+      decreaseBtn.dataset.delta = -slowerStep;
+      decreaseBtn.querySelector("span").textContent = `-${slowerStep}`;
+    }
+
+    // Update increase button  
+    const increaseBtn = document.querySelector("#speed-increase");
+    if (increaseBtn) {
+      increaseBtn.dataset.delta = fasterStep;
+      increaseBtn.querySelector("span").textContent = `+${fasterStep}`;
+    }
+
+    // Update reset button
+    const resetBtn = document.querySelector("#speed-reset");
+    if (resetBtn) {
+      resetBtn.textContent = resetSpeed.toString();
+    }
+  }
+
   // Speed Control Functions
-  function initializeSpeedControls() {
+  function initializeSpeedControls(slowerStep, fasterStep) {
     // Set up speed control button listeners
     document.querySelector("#speed-decrease").addEventListener("click", function () {
       const delta = parseFloat(this.dataset.delta);
