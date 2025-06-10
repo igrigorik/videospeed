@@ -5,6 +5,7 @@ var tcDefaults = {
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
   audioBoolean: false, // default: false
+  contextMenuBoolean: true, // default: true
   startHidden: false, // default: false
   forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled
@@ -223,6 +224,7 @@ function save_options() {
   var rememberSpeed = document.getElementById("rememberSpeed").checked;
   var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
   var audioBoolean = document.getElementById("audioBoolean").checked;
+  var contextMenuBoolean = document.getElementById("contextMenuBoolean").checked;
   var enabled = document.getElementById("enabled").checked;
   var startHidden = document.getElementById("startHidden").checked;
   var controllerOpacity = document.getElementById("controllerOpacity").value;
@@ -248,6 +250,7 @@ function save_options() {
       forceLastSavedSpeed: forceLastSavedSpeed,
       audioBoolean: audioBoolean,
       enabled: enabled,
+      contextMenuBoolean: contextMenuBoolean,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
@@ -271,6 +274,7 @@ function restore_options() {
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
+    document.getElementById("contextMenuBoolean").checked = storage.contextMenuBoolean;
     document.getElementById("enabled").checked = storage.enabled;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;

@@ -11,6 +11,7 @@ var tc = {
     rememberSpeed: false, // default: false
     forceLastSavedSpeed: false, //default: false
     audioBoolean: false, // default: false
+    contextMenuBoolean: true, // default: true
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
     controllerButtonSize: 14,
@@ -115,6 +116,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       rememberSpeed: tc.settings.rememberSpeed,
       forceLastSavedSpeed: tc.settings.forceLastSavedSpeed,
       audioBoolean: tc.settings.audioBoolean,
+      contextMenuBoolean: tc.settings.contextMenuBoolean,
       startHidden: tc.settings.startHidden,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
@@ -127,6 +129,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.rememberSpeed = Boolean(storage.rememberSpeed);
   tc.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
   tc.settings.audioBoolean = Boolean(storage.audioBoolean);
+  tc.settings.contextMenuBoolean = Boolean(storage.contextMenuBoolean);
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);

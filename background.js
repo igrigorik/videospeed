@@ -1,4 +1,26 @@
 chrome.runtime.onInstalled.addListener(() => {
+  createContextMenu();
+});
+
+chrome.storage.sync.onChanged.addListener(function (changes) {
+  if (changes.contextMenuBoolean) {
+    if (changes.contextMenuBoolean.newValue) {
+      createContextMenu();
+    }
+    else {
+      chrome.contextMenus.removeAll();
+    }
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info, tabs) => {
+  chrome.tabs.sendMessage(
+    tabs.id,
+    info.menuItemId
+  );
+});  
+
+function createContextMenu() {
   chrome.contextMenus.create({
     id: 'slow-down-01',
     title: 'Slow down (x0.1)',
@@ -50,11 +72,4 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Speed up (x2.0)',
     contexts: ['all']
   });
-});
-
-chrome.contextMenus.onClicked.addListener((info, tabs) => {
-  chrome.tabs.sendMessage(
-    tabs.id,
-    info.menuItemId
-  );
-});
+}
