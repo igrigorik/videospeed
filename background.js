@@ -1,5 +1,7 @@
-chrome.runtime.onInstalled.addListener(() => {
-  createContextMenu();
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    createContextMenu();
+  }
 });
 
 chrome.storage.sync.onChanged.addListener(function (changes) {
