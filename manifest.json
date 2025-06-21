@@ -13,7 +13,6 @@
   },
   "permissions": [
     "storage",
-    "contextMenus",
     "activeTab"
   ],
   "options_ui": {
@@ -28,17 +27,10 @@
     },
     "default_popup": "popup.html"
   },
-  "background": {
-    "service_worker": "background.js"
-  },
   "content_scripts": [
     {
       "all_frames": true,
-      "matches": [
-        "*://*/*",
-        "<all_urls>",
-        "file:///*"
-      ],
+      "matches": ["http://*/*", "https://*/*", "file:///*"],
       "match_about_blank": true,
       "exclude_matches": [
         "https://hangouts.google.com/*",

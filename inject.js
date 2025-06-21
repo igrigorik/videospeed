@@ -1021,17 +1021,6 @@ function showController(controller) {
   }, 2000);
 }
 
-const speedMod = (multiplier) => {
-  document.querySelectorAll('video, audio').forEach((media) => {
-    try {
-      media.playbackRate *= multiplier;
-      log("Playback rate changed to " + media.playbackRate, 4);
-    } catch (e) {
-      log(e, 2);
-    }
-  });
-}
-
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -1088,26 +1077,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
 
-  // Handle legacy speed multiplier messages
-  if (message === 'slow-down-01') {
-    speedMod(0.1);
-  } else if (message === 'slow-down-02') {
-    speedMod(0.2);
-  } else if (message === 'slow-down-04') {
-    speedMod(0.4);
-  } else if (message === 'slow-down-06') {
-    speedMod(0.6);
-  } else if (message === 'slow-down-08') {
-    speedMod(0.8);
-  } else if (message === 'speed-up-12') {
-    speedMod(1.2);
-  } else if (message === 'speed-up-14') {
-    speedMod(1.4);
-  } else if (message === 'speed-up-16') {
-    speedMod(1.6);
-  } else if (message === 'speed-up-18') {
-    speedMod(1.8);
-  } else if (message === 'speed-up-20') {
-    speedMod(2.0);
-  }
 });
