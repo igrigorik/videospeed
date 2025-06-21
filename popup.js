@@ -136,7 +136,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.querySelector("#speed-reset").addEventListener("click", function () {
-      resetSpeed();
+      // Set directly to preferred speed instead of toggling
+      const preferredSpeed = parseFloat(this.textContent);
+      setSpeed(preferredSpeed);
     });
 
     // Set up preset button listeners
