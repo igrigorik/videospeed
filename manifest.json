@@ -1,7 +1,7 @@
 {
   "name": "Video Speed Controller",
   "short_name": "videospeed",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "manifest_version": 3,
   "minimum_chrome_version": "89",
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
@@ -30,7 +30,11 @@
   "content_scripts": [
     {
       "all_frames": true,
-      "matches": ["http://*/*", "https://*/*", "file:///*"],
+      "matches": [
+        "http://*/*",
+        "https://*/*",
+        "file:///*"
+      ],
       "match_about_blank": true,
       "exclude_matches": [
         "https://hangouts.google.com/*",
@@ -40,7 +44,7 @@
         "inject.css"
       ],
       "js": [
-        "inject.js"
+        "src/content/injector.js"
       ]
     }
   ],
@@ -49,7 +53,14 @@
       "resources": [
         "inject.css",
         "shadow.css",
-        "scriptforsite/*.js"
+        "scriptforsite/*.js",
+        "src/module-loader.js",
+        "src/core/*.js",
+        "src/utils/*.js",
+        "src/ui/*.js",
+        "src/observers/*.js",
+        "src/site-handlers/*.js",
+        "src/content/*.js"
       ],
       "matches": [
         "http://*/*",

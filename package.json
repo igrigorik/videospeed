@@ -1,5 +1,76 @@
 {
+  "name": "video-speed-controller",
+  "version": "0.8.0",
+  "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "test:unit": "node tests/run-tests.js unit",
+    "test:integration": "node tests/run-tests.js integration",
+    "test:e2e": "node tests/e2e/run-e2e.js",
+    "test:browser": "echo 'Open tests/fixtures/test-page.html in browser'",
+    "serve": "python3 -m http.server 8000",
+    "lint": "eslint src/**/*.js tests/**/*.js",
+    "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
+    "format": "prettier --write src/**/*.js tests/**/*.js",
+    "check": "npm run lint && npm run test"
+  },
   "devDependencies": {
-    "cws-publish": "^2.1.1"
+    "@eslint/js": "^8.57.0",
+    "cws-publish": "^2.1.1",
+    "eslint": "^8.57.0",
+    "globals": "^13.24.0",
+    "jsdom": "^23.0.0",
+    "prettier": "^3.1.0",
+    "puppeteer": "^21.11.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2022": true,
+      "node": true,
+      "webextensions": true
+    },
+    "extends": [
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module"
+    },
+    "globals": {
+      "chrome": "readonly"
+    },
+    "rules": {
+      "no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
+      "no-console": "off",
+      "prefer-const": "error",
+      "no-var": "error",
+      "eqeqeq": "error",
+      "curly": "error",
+      "semi": [
+        "error",
+        "always"
+      ],
+      "quotes": [
+        "error",
+        "single",
+        {
+          "avoidEscape": true
+        }
+      ]
+    }
+  },
+  "prettier": {
+    "singleQuote": true,
+    "semi": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "printWidth": 100
   }
 }

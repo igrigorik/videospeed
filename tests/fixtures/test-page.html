@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Speed Controller Tests</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    .test-results {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    
+    .video-container {
+      margin: 20px 0;
+    }
+    
+    video {
+      width: 100%;
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Video Speed Controller Tests</h1>
+  
+  <div class="test-section">
+    <h2>Unit Tests</h2>
+    <button onclick="runUnitTests()">Run Unit Tests</button>
+    <div id="unit-test-results" class="test-results"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>DOM Utils Tests</h2>
+    <button onclick="runDomUtilsTests()">Run DOM Utils Tests</button>
+    <div id="dom-utils-results" class="test-results"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Integration Tests</h2>
+    <button onclick="runIntegrationTests()">Run Integration Tests</button>
+    <div id="integration-results" class="test-results"></div>
+  </div>
+  
+  <div class="test-section video-container">
+    <h2>Test Video</h2>
+    <p>This video element can be used for manual testing:</p>
+    <video controls>
+      <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+  
+  <script type="module">
+    // Global test runner functions
+    window.runUnitTests = async function() {
+      const resultsDiv = document.getElementById('unit-test-results');
+      resultsDiv.textContent = 'Running unit tests...\n';
+      
+      try {
+        // Settings tests
+        const { settingsTestRunner } = await import('../unit/core/settings.test.js');
+        const settingsResults = await settingsTestRunner.run();
+        resultsDiv.textContent += `\nSettings Tests: ${settingsResults.passed} passed, ${settingsResults.failed} failed\n`;
+        
+        // VideoController tests
+        const { videoControllerTestRunner } = await import('../unit/core/video-controller.test.js');
+        const controllerResults = await videoControllerTestRunner.run();
+        resultsDiv.textContent += `VideoController Tests: ${controllerResults.passed} passed, ${controllerResults.failed} failed\n`;
+        
+        // ActionHandler tests
+        const { actionHandlerTestRunner } = await import('../unit/core/action-handler.test.js');
+        const actionResults = await actionHandlerTestRunner.run();
+        resultsDiv.textContent += `ActionHandler Tests: ${actionResults.passed} passed, ${actionResults.failed} failed\n`;
+        
+        const totalPassed = settingsResults.passed + controllerResults.passed + actionResults.passed;
+        const totalFailed = settingsResults.failed + controllerResults.failed + actionResults.failed;
+        resultsDiv.textContent += `\nTotal Unit Tests: ${totalPassed} passed, ${totalFailed} failed`;
+      } catch (error) {
+        resultsDiv.textContent += `\nError running unit tests: ${error.message}`;
+      }
+    };
+    
+    window.runDomUtilsTests = async function() {
+      const resultsDiv = document.getElementById('dom-utils-results');
+      resultsDiv.textContent = 'Running DOM utils tests...\n';
+      
+      try {
+        // Import DOM utils and test them
+        const { isBlacklisted, inIframe, findMediaElements } = await import('../../src/utils/dom-utils.js');
+        
+        // Test blacklist functionality
+        const blacklisted = isBlacklisted('www.instagram.com\ntwitter.com');
+        resultsDiv.textContent += `Blacklist test (should be false): ${!blacklisted ? 'PASS' : 'FAIL'}\n`;
+        
+        // Test iframe detection
+        const iframe = inIframe();
+        resultsDiv.textContent += `Iframe test (should be false): ${!iframe ? 'PASS' : 'FAIL'}\n`;
+        
+        // Test media element finding
+        const video = document.querySelector('video');
+        const foundElements = findMediaElements(document.body, false);
+        resultsDiv.textContent += `Media element test (should find 1): ${foundElements.length === 1 ? 'PASS' : 'FAIL'}\n`;
+        
+        resultsDiv.textContent += '\nDOM Utils Tests Completed';
+      } catch (error) {
+        resultsDiv.textContent += `\nError running DOM utils tests: ${error.message}`;
+      }
+    };
+    
+    window.runIntegrationTests = async function() {
+      const resultsDiv = document.getElementById('integration-results');
+      resultsDiv.textContent = 'Running integration tests...\n';
+      
+      try {
+        // Module integration tests
+        const { moduleIntegrationTestRunner } = await import('../integration/module-integration.test.js');
+        const integrationResults = await moduleIntegrationTestRunner.run();
+        resultsDiv.textContent += `Module Integration Tests: ${integrationResults.passed} passed, ${integrationResults.failed} failed\n`;
+        
+        // Test settings + storage integration
+        const { VideoSpeedConfig } = await import('../../src/core/settings.js');
+        const { installChromeMock, cleanupChromeMock } = await import('../helpers/chrome-mock.js');
+        
+        installChromeMock();
+        
+        const config = new VideoSpeedConfig();
+        const settings = await config.load();
+        
+        resultsDiv.textContent += `Settings loaded: ${settings ? 'PASS' : 'FAIL'}\n`;
+        resultsDiv.textContent += `Settings enabled: ${settings.enabled ? 'PASS' : 'FAIL'}\n`;
+        
+        cleanupChromeMock();
+        resultsDiv.textContent += '\nAll Integration Tests Completed';
+      } catch (error) {
+        resultsDiv.textContent += `\nError running integration tests: ${error.message}`;
+      }
+    };
+    
+    // Auto-run a simple test on page load
+    window.addEventListener('load', () => {
+      console.log('Test page loaded - ready for testing');
+    });
+  </script>
+</body>
+</html>
