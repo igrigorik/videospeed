@@ -101,9 +101,8 @@ class VideoSpeedExtension {
       // Set up event listeners
       this.eventManager.setupEventListeners(document);
 
-      // Inject site-specific scripts
-      this.injectSiteScript();
-
+      // Site-specific script injection is now handled by content script (injector.js)
+      
       // Set up CSS for non-main documents
       if (document !== window.document) {
         this.setupDocumentCSS(document);
@@ -116,6 +115,7 @@ class VideoSpeedExtension {
 
       // Scan for existing media elements
       this.scanExistingMedia(document);
+
 
       this.logger.debug('Document initialization completed');
 
@@ -219,18 +219,6 @@ class VideoSpeedExtension {
     }
   }
 
-  /**
-   * Inject site-specific script if needed
-   */
-  injectSiteScript() {
-    const scriptUrl = this.siteHandlerManager.getInjectionScript();
-    if (scriptUrl) {
-      const script = document.createElement('script');
-      script.src = scriptUrl;
-      document.head.appendChild(script);
-      this.logger.debug(`Site-specific script injected: ${scriptUrl}`);
-    }
-  }
 
   /**
    * Set up CSS for iframe documents
@@ -238,7 +226,7 @@ class VideoSpeedExtension {
    */
   setupDocumentCSS(document) {
     const link = document.createElement('link');
-    link.href = typeof chrome !== 'undefined' && chrome.runtime ? chrome.runtime.getURL('inject.css') : '/inject.css';
+    link.href = typeof chrome !== 'undefined' && chrome.runtime ? chrome.runtime.getURL('src/styles/inject.css') : '/src/styles/inject.css';
     link.type = 'text/css';
     link.rel = 'stylesheet';
     document.head.appendChild(link);

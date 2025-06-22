@@ -11,7 +11,10 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
    * @returns {boolean} True if on Amazon
    */
   static matches() {
-    return location.hostname === 'www.amazon.com';
+    return location.hostname === 'www.amazon.com' || 
+           location.hostname === 'www.primevideo.com' ||
+           location.hostname.includes('amazon.') ||
+           location.hostname.includes('primevideo.');
   }
 
   /**
@@ -34,6 +37,7 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
     // Default positioning for product videos
     return super.getControllerPosition(parent, video);
   }
+
 
   /**
    * Check if video should be ignored on Amazon

@@ -24,7 +24,7 @@ class BaseSiteHandler {
    * @param {HTMLElement} video - Video element
    * @returns {Object} Positioning information
    */
-  getControllerPosition(parent, video) {
+  getControllerPosition(parent, _video) {
     return {
       insertionPoint: parent,
       insertionMethod: 'firstChild', // 'firstChild', 'beforeParent', 'afterParent'
@@ -39,24 +39,23 @@ class BaseSiteHandler {
    * @returns {boolean} True if handled, false for default behavior
    */
   handleSeek(video, seekSeconds) {
-    // Default implementation - use standard seeking
-    video.currentTime += seekSeconds;
+    // Default implementation - use standard seeking with bounds checking (original logic)
+    if (video.currentTime !== undefined && video.duration) {
+      const newTime = Math.max(0, Math.min(video.duration, video.currentTime + seekSeconds));
+      video.currentTime = newTime;
+    } else {
+      // Fallback for videos without duration
+      video.currentTime += seekSeconds;
+    }
     return true;
   }
 
-  /**
-   * Get site-specific script to inject
-   * @returns {string|null} Script URL or null if none needed
-   */
-  getInjectionScript() {
-    return null;
-  }
 
   /**
    * Handle site-specific initialization
    * @param {Document} document - Document object
    */
-  initialize(document) {
+  initialize(_document) {
     window.VSC.logger.debug(`Initializing ${this.constructor.name} for ${this.hostname}`);
   }
 
@@ -72,7 +71,7 @@ class BaseSiteHandler {
    * @param {HTMLMediaElement} video - Video element
    * @returns {boolean} True if video should be ignored
    */
-  shouldIgnoreVideo(video) {
+  shouldIgnoreVideo(_video) {
     return false;
   }
 
@@ -89,7 +88,7 @@ class BaseSiteHandler {
    * @param {Document} document - Document object
    * @returns {Array<HTMLMediaElement>} Additional videos found
    */
-  detectSpecialVideos(document) {
+  detectSpecialVideos(_document) {
     return [];
   }
 }

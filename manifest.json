@@ -7,25 +7,25 @@
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "homepage_url": "https://github.com/igrigorik/videospeed",
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "src/assets/icons/icon16.png",
+    "48": "src/assets/icons/icon48.png",
+    "128": "src/assets/icons/icon128.png"
   },
   "permissions": [
     "storage",
     "activeTab"
   ],
   "options_ui": {
-    "page": "options.html",
+    "page": "src/ui/options/options.html",
     "open_in_tab": true
   },
   "action": {
     "default_icon": {
-      "19": "icons/icon19.png",
-      "38": "icons/icon38.png",
-      "48": "icons/icon48.png"
+      "19": "src/assets/icons/icon19.png",
+      "38": "src/assets/icons/icon38.png",
+      "48": "src/assets/icons/icon48.png"
     },
-    "default_popup": "popup.html"
+    "default_popup": "src/ui/popup/popup.html"
   },
   "content_scripts": [
     {
@@ -41,7 +41,7 @@
         "https://meet.google.com/*"
       ],
       "css": [
-        "inject.css"
+        "src/styles/inject.css"
       ],
       "js": [
         "src/content/injector.js"
@@ -51,9 +51,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "inject.css",
-        "shadow.css",
-        "scriptforsite/*.js",
+        "src/styles/inject.css",
+        "src/styles/shadow.css",
         "src/module-loader.js",
         "src/core/*.js",
         "src/utils/*.js",

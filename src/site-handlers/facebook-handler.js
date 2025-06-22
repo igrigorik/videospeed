@@ -20,19 +20,19 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    * @param {HTMLElement} video - Video element
    * @returns {Object} Positioning information
    */
-  getControllerPosition(parent, video) {
+  getControllerPosition(parent, _video) {
     // Facebook requires deep DOM traversal due to complex nesting
     // This is a monstrosity but new FB design does not have semantic handles
     let targetParent = parent;
-    
+
     try {
       targetParent = parent.parentElement.parentElement.parentElement
         .parentElement.parentElement.parentElement.parentElement;
     } catch (e) {
-      logger.warn('Facebook DOM structure changed, using fallback positioning');
+      window.VSC.logger.warn('Facebook DOM structure changed, using fallback positioning');
       targetParent = parent.parentElement;
     }
-    
+
     return {
       insertionPoint: targetParent,
       insertionMethod: 'firstChild',
@@ -46,7 +46,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    */
   initialize(document) {
     super.initialize(document);
-    
+
     // Facebook's dynamic content requires special handling
     this.setupFacebookObserver(document);
   }
@@ -65,7 +65,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const videos = node.querySelectorAll && node.querySelectorAll('video');
               if (videos && videos.length > 0) {
-                logger.debug(`Facebook: Found ${videos.length} new videos`);
+                window.VSC.logger.debug(`Facebook: Found ${videos.length} new videos`);
                 // Signal that new videos were found
                 this.onNewVideosDetected(Array.from(videos));
               }
@@ -81,7 +81,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
     });
 
     this.facebookObserver = observer;
-    logger.debug('Facebook dynamic content observer set up');
+    window.VSC.logger.debug('Facebook dynamic content observer set up');
   }
 
   /**
@@ -92,7 +92,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
   onNewVideosDetected(videos) {
     // This could be used to automatically attach controllers to new videos
     // For now, just log the detection
-    logger.debug(`Facebook: ${videos.length} new videos detected`);
+    window.VSC.logger.debug(`Facebook: ${videos.length} new videos detected`);
   }
 
   /**
@@ -103,8 +103,8 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
   shouldIgnoreVideo(video) {
     // Ignore story videos and other non-main content
     return video.closest('[data-story-id]') !== null ||
-           video.closest('.story-bucket-container') !== null ||
-           video.getAttribute('data-video-width') === '0';
+      video.closest('.story-bucket-container') !== null ||
+      video.getAttribute('data-video-width') === '0';
   }
 
   /**
@@ -125,7 +125,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    */
   cleanup() {
     super.cleanup();
-    
+
     if (this.facebookObserver) {
       this.facebookObserver.disconnect();
       this.facebookObserver = null;

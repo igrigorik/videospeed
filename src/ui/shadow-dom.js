@@ -22,7 +22,7 @@ class ShadowDOMManager {
     } = options;
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
-    
+
     // Create style element with embedded CSS
     const style = document.createElement('style');
     style.textContent = `
@@ -120,12 +120,12 @@ class ShadowDOMManager {
       }
     `;
     shadow.appendChild(style);
-    
+
     // Create controller div
     const controller = document.createElement('div');
     controller.id = 'controller';
     controller.style.cssText = `top:${top}; left:${left}; opacity:${opacity};`;
-    
+
     // Create draggable speed indicator
     const draggable = document.createElement('span');
     draggable.setAttribute('data-action', 'drag');
@@ -133,12 +133,12 @@ class ShadowDOMManager {
     draggable.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
     draggable.textContent = speed;
     controller.appendChild(draggable);
-    
+
     // Create controls span
     const controls = document.createElement('span');
     controls.id = 'controls';
     controls.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
-    
+
     // Create buttons
     const buttons = [
       { action: 'rewind', text: '«', class: 'rw' },
@@ -147,18 +147,20 @@ class ShadowDOMManager {
       { action: 'advance', text: '»', class: 'rw' },
       { action: 'display', text: '×', class: 'hideButton' }
     ];
-    
+
     buttons.forEach(btnConfig => {
       const button = document.createElement('button');
       button.setAttribute('data-action', btnConfig.action);
-      if (btnConfig.class) button.className = btnConfig.class;
+      if (btnConfig.class) {
+        button.className = btnConfig.class;
+      }
       button.textContent = btnConfig.text;
       controls.appendChild(button);
     });
-    
+
     controller.appendChild(controls);
     shadow.appendChild(controller);
-    
+
     window.VSC.logger.debug('Shadow DOM created for video controller');
     return shadow;
   }
@@ -218,13 +220,13 @@ class ShadowDOMManager {
    */
   static calculatePosition(video) {
     const rect = video.getBoundingClientRect();
-    
+
     // getBoundingClientRect is relative to the viewport; style coordinates
     // are relative to offsetParent, so we adjust for that here. offsetParent
     // can be null if the video has `display: none` or is not yet in the DOM.
     const offsetRect = video.offsetParent?.getBoundingClientRect();
-    const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)  }px`;
-    const left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)  }px`;
+    const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
+    const left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
 
     return { top, left };
   }

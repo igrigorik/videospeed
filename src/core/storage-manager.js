@@ -95,9 +95,18 @@ class StorageManager {
         });
       });
     } else {
-      // Fallback for injected page context - no storage available
-      console.log('🔒 Chrome storage not available, cannot save settings');
-      window.VSC.logger.debug('Chrome storage not available, cannot save settings');
+      // Fallback for injected page context - send save request to content script
+      console.log('📤 Sending save request to content script:', data);
+      window.VSC.logger.debug('Sending settings save request to content script');
+      
+      // Send data to content script via custom event
+      window.dispatchEvent(new CustomEvent('VSC_SAVE_SETTINGS', {
+        detail: data
+      }));
+      
+      // Update injected settings cache
+      this._injectedSettings = { ...this._injectedSettings, ...data };
+      
       return Promise.resolve();
     }
   }

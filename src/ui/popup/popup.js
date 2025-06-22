@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
-    window.open(chrome.runtime.getURL("options.html"));
+    window.open(chrome.runtime.getURL("src/ui/options/options.html"));
   });
 
   // Power button toggle event listener
@@ -46,12 +46,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // Update tooltip
     disableBtn.title = enabled ? "Disable Extension" : "Enable Extension";
 
-    const suffix = `${enabled ? "" : "_disabled"}.png`;
+    const suffix = enabled ? "" : "_disabled";
     chrome.action.setIcon({
       path: {
-        "19": "icons/icon19" + suffix,
-        "38": "icons/icon38" + suffix,
-        "48": "icons/icon48" + suffix
+        "19": `src/assets/icons/icon19${suffix}.png`,
+        "38": `src/assets/icons/icon38${suffix}.png`,
+        "48": `src/assets/icons/icon48${suffix}.png`
       }
     });
   }

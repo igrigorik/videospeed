@@ -20,7 +20,7 @@ class AppleHandler extends window.VSC.BaseSiteHandler {
    * @param {HTMLElement} video - Video element
    * @returns {Object} Positioning information
    */
-  getControllerPosition(parent, video) {
+  getControllerPosition(parent, _video) {
     // Insert before parent to bypass overlay
     return {
       insertionPoint: parent.parentNode,

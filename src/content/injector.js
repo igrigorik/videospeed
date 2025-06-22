@@ -27,7 +27,7 @@ function injectCSS() {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.type = 'text/css';
-  link.href = chrome.runtime.getURL('inject.css');
+  link.href = chrome.runtime.getURL('src/styles/inject.css');
   document.head.appendChild(link);
   console.log('✅ CSS injected');
 }
@@ -71,11 +71,38 @@ async function injectModules() {
     
     console.log('✅ All modules injected successfully');
     
+    // Inject site-specific scripts if needed
+    await injectSiteSpecificScripts();
+    
     // Set up message bridge between popup and injected scripts
     setupMessageBridge();
     
   } catch (error) {
     console.error('💥 Module injection failed:', error);
+  }
+}
+
+// Inject site-specific scripts based on current domain
+async function injectSiteSpecificScripts() {
+  try {
+    console.log('🎯 Checking for site-specific scripts...');
+    
+    // Check current domain and inject appropriate scripts
+    const hostname = location.hostname;
+    
+    if (hostname === 'www.netflix.com') {
+      console.log('🎬 Netflix detected, injecting Netflix script...');
+      await injectScript('src/site-handlers/scripts/netflix.js');
+      console.log('✅ Netflix script injected successfully');
+    }
+    
+    // Add other site-specific scripts here as needed
+    // if (hostname === 'www.youtube.com') {
+    //   await injectScript('src/site-handlers/scripts/youtube.js');
+    // }
+    
+  } catch (error) {
+    console.error('❌ Failed to inject site-specific scripts:', error);
   }
 }
 
@@ -99,6 +126,28 @@ function setupMessageBridge() {
       
       sendResponse({ success: true });
       return true;
+    }
+  });
+  
+  // Listen for save settings requests from injected page context
+  window.addEventListener('VSC_SAVE_SETTINGS', async (event) => {
+    console.log('💾 Received save settings request from page context:', event.detail);
+    
+    try {
+      // Save to Chrome storage (available in content script context)
+      await new Promise((resolve, reject) => {
+        chrome.storage.sync.set(event.detail, () => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      console.log('✅ Settings saved to Chrome storage successfully');
+    } catch (error) {
+      console.error('❌ Failed to save settings to Chrome storage:', error);
     }
   });
   

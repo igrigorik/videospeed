@@ -345,9 +345,18 @@ function restore_defaults() {
 }
 
 function show_experimental() {
-  document
-    .querySelectorAll(".customForce")
-    .forEach((item) => (item.style.display = "inline-block"));
+  const forceElements = document.querySelectorAll(".customForce");
+  const button = document.getElementById("experimental");
+
+  if (forceElements.length > 0) {
+    forceElements.forEach((item) => {
+      item.style.display = "inline-block";
+    });
+
+    // Update button text to indicate the feature is now enabled
+    button.textContent = "Experimental features enabled";
+    button.disabled = true;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {

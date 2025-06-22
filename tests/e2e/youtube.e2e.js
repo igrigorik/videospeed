@@ -147,18 +147,31 @@ export default async function runYouTubeE2ETests() {
     });
     
     await runTest('Multiple speed changes should work correctly', async () => {
-      // Reset to baseline using keyboard
-      await testKeyboardShortcut(page, 'KeyR');
-      await page.waitForTimeout(500);
+      // Ensure we start from 1.0 baseline by setting it directly
+      await page.evaluate(() => {
+        const video = document.querySelector('video.html5-main-video');
+        if (video) {video.playbackRate = 1.0;}
+      });
+      await page.waitForTimeout(200);
+      
+      const baseSpeed = await getVideoSpeed(page, 'video.html5-main-video');
+      console.log(`   🔍 Speed after baseline reset: ${baseSpeed}`);
       
       // Make multiple speed changes
       await controlVideo(page, 'faster'); // Should be ~1.1
-      await controlVideo(page, 'faster'); // Should be ~1.2
-      await controlVideo(page, 'faster'); // Should be ~1.3
+      const speed1 = await getVideoSpeed(page, 'video.html5-main-video');
+      console.log(`   🔍 Speed after 1st faster: ${speed1}`);
       
+      await controlVideo(page, 'faster'); // Should be ~1.2
+      const speed2 = await getVideoSpeed(page, 'video.html5-main-video');
+      console.log(`   🔍 Speed after 2nd faster: ${speed2}`);
+      
+      await controlVideo(page, 'faster'); // Should be ~1.3
       const finalSpeed = await getVideoSpeed(page, 'video.html5-main-video');
-      assert.true(finalSpeed > 1.25, 'Multiple speed increases should accumulate');
-      assert.true(finalSpeed < 1.35, 'Speed should not increase too much');
+      console.log(`   🔍 Final speed after 3rd faster: ${finalSpeed}`);
+      
+      assert.true(finalSpeed > 1.25, `Multiple speed increases should accumulate (expected > 1.25, got ${finalSpeed})`);
+      assert.true(finalSpeed < 1.35, `Speed should not increase too much (expected < 1.35, got ${finalSpeed})`);
       
       console.log(`   🔄 Final speed after multiple changes: ${finalSpeed}`);
     });

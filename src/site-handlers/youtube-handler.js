@@ -20,10 +20,10 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    * @param {HTMLElement} video - Video element
    * @returns {Object} Positioning information
    */
-  getControllerPosition(parent, video) {
+  getControllerPosition(parent, _video) {
     // YouTube requires special positioning to ensure controller is on top
     const targetParent = parent.parentElement;
-    
+
     return {
       insertionPoint: targetParent,
       insertionMethod: 'firstChild',
@@ -37,7 +37,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    */
   initialize(document) {
     super.initialize(document);
-    
+
     // Set up YouTube-specific CSS handling
     this.setupYouTubeCSS();
   }
@@ -60,7 +60,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
   shouldIgnoreVideo(video) {
     // Ignore thumbnail videos and ads
     return video.classList.contains('video-thumbnail') ||
-           video.parentElement?.classList.contains('ytp-ad-player-overlay');
+      video.parentElement?.classList.contains('ytp-ad-player-overlay');
   }
 
   /**
@@ -82,7 +82,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    */
   detectSpecialVideos(document) {
     const videos = [];
-    
+
     // Look for videos in iframes (embedded players)
     try {
       const iframes = document.querySelectorAll('iframe[src*="youtube.com"]');
@@ -98,9 +98,9 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
         }
       });
     } catch (e) {
-      window.VSC.logger.debug(`Could not access YouTube iframe videos: ${  e.message}`);
+      window.VSC.logger.debug(`Could not access YouTube iframe videos: ${e.message}`);
     }
-    
+
     return videos;
   }
 
@@ -108,7 +108,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    * Handle YouTube-specific player state changes
    * @param {HTMLMediaElement} video - Video element
    */
-  onPlayerStateChange(video) {
+  onPlayerStateChange(_video) {
     // YouTube fires custom events we could listen to
     // This could be used for better integration with YouTube's player
     window.VSC.logger.debug('YouTube player state changed');

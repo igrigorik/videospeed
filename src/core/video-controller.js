@@ -44,22 +44,45 @@ class VideoController {
    * @private
    */
   initializeSpeed() {
-    let storedSpeed = this.config.settings.speeds[this.video.currentSrc];
+    let targetSpeed = 1.0; // Default speed
     
-    if (!this.config.settings.rememberSpeed) {
-      if (!storedSpeed) {
-        window.VSC.logger.debug('Overwriting stored speed to 1.0 due to rememberSpeed being disabled');
-        storedSpeed = 1.0;
+    // Check if we should use per-video stored speeds
+    const videoSrc = this.video.currentSrc || this.video.src;
+    const storedVideoSpeed = this.config.settings.speeds[videoSrc];
+    
+    if (this.config.settings.rememberSpeed) {
+      if (storedVideoSpeed) {
+        window.VSC.logger.debug(`Using stored speed for video: ${storedVideoSpeed}`);
+        targetSpeed = storedVideoSpeed;
+      } else if (this.config.settings.lastSpeed) {
+        window.VSC.logger.debug(`Using lastSpeed: ${this.config.settings.lastSpeed}`);
+        targetSpeed = this.config.settings.lastSpeed;
       }
-      // Reset speed isn't really a reset, it's a toggle
-      this.config.setKeyBinding('reset', this.config.getKeyBinding('fast'));
+      
+      // Reset speed isn't really a reset, it's a toggle to stored speed
+      this.config.setKeyBinding('reset', targetSpeed);
     } else {
-      window.VSC.logger.debug('Recalling stored speed due to rememberSpeed being enabled');
-      storedSpeed = this.config.settings.lastSpeed;
+      window.VSC.logger.debug('rememberSpeed disabled - using 1.0x speed');
+      targetSpeed = 1.0;
+      // Reset speed toggles to fast speed when rememberSpeed is disabled
+      this.config.setKeyBinding('reset', this.config.getKeyBinding('fast'));
     }
 
-    window.VSC.logger.debug(`Explicitly setting playbackRate to: ${  storedSpeed}`);
-    this.video.playbackRate = storedSpeed;
+    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
+    
+    // Apply the speed immediately if forceLastSavedSpeed is enabled
+    if (this.config.settings.forceLastSavedSpeed && targetSpeed !== 1.0) {
+      window.VSC.logger.debug('forceLastSavedSpeed enabled - dispatching ratechange event');
+      this.video.dispatchEvent(
+        new CustomEvent('ratechange', {
+          bubbles: true,
+          composed: true,
+          detail: { origin: 'videoSpeed', speed: targetSpeed.toFixed(2) }
+        })
+      );
+    } else {
+      this.video.playbackRate = targetSpeed;
+    }
   }
 
   /**

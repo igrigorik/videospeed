@@ -48,7 +48,11 @@ window.loadModule = function(name) {
   // If module not loaded, try to load it as a script
   const modulePromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = chrome.runtime.getURL(`src/${name}.js`);
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+      script.src = chrome.runtime.getURL(`src/${name}.js`);
+    } else {
+      script.src = `src/${name}.js`;
+    }
     script.onload = () => {
       // Module should have defined itself
       if (modulePromises.has(name)) {

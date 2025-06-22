@@ -59,10 +59,10 @@ runner.test('All core modules should load correctly', async () => {
 
 runner.test('Site handlers should be configurable', async () => {
   const siteHandlerManager = window.VSC.siteHandlerManager;
-  
+
   const handler = siteHandlerManager.getCurrentHandler();
   assert.exists(handler);
-  
+
   // Should return positioning info
   const mockVideo = createMockVideo();
   const positioning = siteHandlerManager.getControllerPosition(mockDOM.container, mockVideo);
@@ -73,10 +73,11 @@ runner.test('Site handlers should be configurable', async () => {
 runner.test('Settings should integrate with ActionHandler', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  
+
   const eventManager = new window.VSC.EventManager(config, null);
-  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-  
+  // ActionHandler is created but not used in this test - just ensuring it can be instantiated
+  new window.VSC.ActionHandler(config, eventManager);
+
   // Should be able to get key bindings
   const fasterValue = config.getKeyBinding('faster');
   assert.equal(typeof fasterValue, 'number');
@@ -85,15 +86,15 @@ runner.test('Settings should integrate with ActionHandler', async () => {
 runner.test('VideoController should integrate with all dependencies', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  
+
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-  
+
   const mockVideo = createMockVideo();
   mockDOM.container.appendChild(mockVideo);
-  
+
   const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
-  
+
   assert.exists(controller);
   assert.exists(controller.div);
   assert.exists(mockVideo.vsc);
@@ -102,17 +103,17 @@ runner.test('VideoController should integrate with all dependencies', async () =
 runner.test('Event system should coordinate between modules', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  
+
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
   eventManager.actionHandler = actionHandler;
-  
+
   // Should be able to set up event listeners
   eventManager.setupEventListeners(document);
-  
+
   // Should be able to clean up
   eventManager.cleanup();
-  
+
   assert.true(true); // If we get here without errors, integration works
 });
 

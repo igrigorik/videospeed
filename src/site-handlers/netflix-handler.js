@@ -20,8 +20,8 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
    * @param {HTMLElement} video - Video element
    * @returns {Object} Positioning information
    */
-  getControllerPosition(parent, video) {
-    // Netflix has special positioning requirements
+  getControllerPosition(parent, _video) {
+    // Insert before parent to bypass Netflix's overlay
     return {
       insertionPoint: parent.parentElement,
       insertionMethod: 'beforeParent',
@@ -42,24 +42,17 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
         action: 'videospeed-seek',
         seekMs: seekSeconds * 1000
       }, 'https://www.netflix.com');
-      
-      logger.debug(`Netflix seek: ${seekSeconds} seconds`);
+
+      window.VSC.logger.debug(`Netflix seek: ${seekSeconds} seconds`);
       return true;
     } catch (error) {
-      logger.error(`Netflix seek failed: ${  error.message}`);
+      window.VSC.logger.error(`Netflix seek failed: ${error.message}`);
       // Fallback to default seeking
       video.currentTime += seekSeconds;
       return true;
     }
   }
 
-  /**
-   * Get Netflix injection script
-   * @returns {string} Script URL
-   */
-  getInjectionScript() {
-    return chrome.runtime.getURL('src/site-handlers/scripts/netflix.js');
-  }
 
   /**
    * Initialize Netflix-specific functionality
@@ -67,15 +60,10 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
    */
   initialize(document) {
     super.initialize(document);
-    
-    // Inject Netflix-specific script for seeking functionality
-    const script = this.getInjectionScript();
-    if (script) {
-      const scriptElement = document.createElement('script');
-      scriptElement.src = script;
-      document.head.appendChild(scriptElement);
-      logger.debug('Netflix script injected');
-    }
+
+    // Netflix-specific script injection is handled by content script (injector.js)
+    // since Chrome APIs are not available in injected page context
+    window.VSC.logger.debug('Netflix handler initialized - script injection handled by content script');
   }
 
   /**
@@ -86,7 +74,7 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
   shouldIgnoreVideo(video) {
     // Ignore preview videos or thumbnails
     return video.classList.contains('preview-video') ||
-           video.parentElement?.classList.contains('billboard-row');
+      video.parentElement?.classList.contains('billboard-row');
   }
 
   /**

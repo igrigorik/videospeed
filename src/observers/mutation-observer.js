@@ -20,12 +20,12 @@ class VideoMutationObserver {
    */
   start(document) {
     this.observer = new MutationObserver((mutations) => {
-      // Process DOM nodes lazily
+      // Process DOM nodes with reasonable delay
       requestIdleCallback(
         () => {
           this.processMutations(mutations);
         },
-        { timeout: 1000 }
+        { timeout: 500 }
       );
     });
 
@@ -65,21 +65,21 @@ class VideoMutationObserver {
   processChildListMutation(mutation) {
     // Handle added nodes
     mutation.addedNodes.forEach((node) => {
-      if (typeof node === 'function') {return;}
-      
+      if (typeof node === 'function') { return; }
+
       if (node === document.documentElement) {
         // Document was replaced (e.g., watch.sling.com uses document.write)
         window.VSC.logger.debug('Document was replaced, reinitializing');
         this.onDocumentReplaced();
         return;
       }
-      
+
       this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
     });
 
     // Handle removed nodes
     mutation.removedNodes.forEach((node) => {
-      if (typeof node === 'function') {return;}
+      if (typeof node === 'function') { return; }
       this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, false);
     });
   }
@@ -98,17 +98,17 @@ class VideoMutationObserver {
     ) {
       const flattenedNodes = window.VSC.DomUtils.getShadow(document.body);
       const videoNodes = flattenedNodes.filter((x) => x.tagName === 'VIDEO');
-      
+
       for (const node of videoNodes) {
         // Only add vsc the first time for the apple-tv case
         if (node.vsc && mutation.target.nodeName === 'APPLE-TV-PLUS-PLAYER') {
           continue;
         }
-        
+
         if (node.vsc) {
           node.vsc.remove();
         }
-        
+
         this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
       }
     }
@@ -152,13 +152,13 @@ class VideoMutationObserver {
    */
   processNodeChildren(node, parent, added) {
     let children = [];
-    
+
     // Handle shadow DOM
     if (node.shadowRoot) {
       this.observeShadowRoot(node.shadowRoot);
       children = Array.from(node.shadowRoot.children);
     }
-    
+
     // Handle regular children
     if (node.children) {
       children = [...children, ...node.children];
@@ -183,7 +183,7 @@ class VideoMutationObserver {
     const shadowObserver = new MutationObserver((mutations) => {
       requestIdleCallback(() => {
         this.processMutations(mutations);
-      }, { timeout: 1000 });
+      }, { timeout: 500 });
     });
 
     const observerOptions = {
@@ -194,7 +194,7 @@ class VideoMutationObserver {
 
     shadowObserver.observe(shadowRoot, observerOptions);
     this.shadowObservers.add(shadowRoot);
-    
+
     window.VSC.logger.debug('Shadow root observer added');
   }
 
@@ -217,7 +217,7 @@ class VideoMutationObserver {
     }
 
     // Clean up shadow observers
-    this.shadowObservers.forEach((shadowRoot) => {
+    this.shadowObservers.forEach((_shadowRoot) => {
       // Note: We can't access the observer directly, but disconnecting the main
       // observer should handle most cases. Shadow observers will be garbage collected.
     });

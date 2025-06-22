@@ -105,14 +105,6 @@ class SiteHandlerManager {
     return handler.detectSpecialVideos(document);
   }
 
-  /**
-   * Get injection script for current site
-   * @returns {string|null} Script URL or null
-   */
-  getInjectionScript() {
-    const handler = this.getCurrentHandler();
-    return handler.getInjectionScript();
-  }
 
   /**
    * Cleanup current handler

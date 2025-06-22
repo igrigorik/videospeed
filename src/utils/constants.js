@@ -13,7 +13,7 @@ console.log('✅ Constants loaded, window.VSC =', !!window.VSC);
 const debugDiv = document.createElement('div');
 debugDiv.id = 'vsc-constants-loaded';
 debugDiv.style.display = 'none';
-debugDiv.textContent = 'Constants loaded at ' + new Date().toISOString();
+debugDiv.textContent = `Constants loaded at ${new Date().toISOString()}`;
 document.head.appendChild(debugDiv);
 
 // Define constants directly first for ES6 exports

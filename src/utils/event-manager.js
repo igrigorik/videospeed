@@ -86,7 +86,7 @@ class EventManager {
     );
     
     console.log(`🔍 Key binding search for ${keyCode}:`, keyBinding);
-    console.log(`📋 All key bindings:`, this.config.settings.keyBindings);
+    console.log('📋 All key bindings:', this.config.settings.keyBindings);
     
     if (keyBinding) {
       console.log(`✅ Running action: ${keyBinding.action} with value: ${keyBinding.value}`);

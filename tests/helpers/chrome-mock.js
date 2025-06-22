@@ -24,9 +24,9 @@ export const chromeMock = {
         setTimeout(() => {
           const result = typeof keys === 'object' && keys !== null
             ? Object.keys(keys).reduce((acc, key) => {
-                acc[key] = mockStorage[key] || keys[key];
-                return acc;
-              }, {})
+              acc[key] = mockStorage[key] || keys[key];
+              return acc;
+            }, {})
             : { ...mockStorage };
           callback(result);
         }, 10);
@@ -46,7 +46,7 @@ export const chromeMock = {
       }
     },
     onChanged: {
-      addListener: (callback) => {
+      addListener: (_callback) => {
         // Mock storage change listener
       }
     }
@@ -55,7 +55,7 @@ export const chromeMock = {
     getURL: (path) => `chrome-extension://test-extension/${path}`,
     id: 'test-extension-id',
     onMessage: {
-      addListener: (callback) => {
+      addListener: (_callback) => {
         // Mock message listener
       }
     }

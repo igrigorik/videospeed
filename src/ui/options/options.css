@@ -105,6 +105,17 @@ button:hover {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-shade);
+  color: var(--color-shade);
+}
+
+button:disabled:hover {
+  background-color: var(--bg-shade);
+}
+
 input[type="text"] {
   width: 75px;
   text-align: center;

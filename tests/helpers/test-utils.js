@@ -9,7 +9,7 @@
  */
 export function createMockVideo(options = {}) {
   const video = document.createElement('video');
-  
+
   // Set up properties directly on the video element
   Object.defineProperties(video, {
     playbackRate: {
@@ -53,24 +53,24 @@ export function createMockVideo(options = {}) {
       configurable: true
     }
   });
-  
+
   // Mock methods
   video.play = () => {
     video.paused = false;
     return Promise.resolve();
   };
-  
+
   video.pause = () => {
     video.paused = true;
   };
-  
+
   video.getBoundingClientRect = () => ({
     top: 0,
     left: 0,
     width: 640,
     height: 480
   });
-  
+
   // Enhanced event handling
   const eventListeners = new Map();
   video.addEventListener = (type, listener) => {
@@ -79,7 +79,7 @@ export function createMockVideo(options = {}) {
     }
     eventListeners.get(type).push(listener);
   };
-  
+
   video.removeEventListener = (type, listener) => {
     if (eventListeners.has(type)) {
       const listeners = eventListeners.get(type);
@@ -89,7 +89,7 @@ export function createMockVideo(options = {}) {
       }
     }
   };
-  
+
   video.dispatchEvent = (event) => {
     if (eventListeners.has(event.type)) {
       eventListeners.get(event.type).forEach(listener => {
@@ -98,11 +98,11 @@ export function createMockVideo(options = {}) {
       });
     }
   };
-  
+
   video.matches = () => false;
   video.querySelector = () => null;
   video.querySelectorAll = () => [];
-  
+
   return video;
 }
 
@@ -113,7 +113,7 @@ export function createMockVideo(options = {}) {
  */
 export function createMockAudio(options = {}) {
   const audio = document.createElement('audio');
-  
+
   // Set default properties
   audio.playbackRate = options.playbackRate || 1.0;
   audio.currentTime = options.currentTime || 0;
@@ -122,17 +122,17 @@ export function createMockAudio(options = {}) {
   audio.paused = options.paused || false;
   audio.muted = options.muted || false;
   audio.volume = options.volume || 1.0;
-  
+
   // Mock methods
   audio.play = () => {
     audio.paused = false;
     return Promise.resolve();
   };
-  
+
   audio.pause = () => {
     audio.paused = true;
   };
-  
+
   return audio;
 }
 
@@ -144,7 +144,7 @@ export function createMockDOM() {
   const container = document.createElement('div');
   container.id = 'test-container';
   document.body.appendChild(container);
-  
+
   return {
     container,
     cleanup: () => {
@@ -190,10 +190,10 @@ export function createMockKeyboardEvent(type, keyCode, options = {}) {
     keyCode,
     ...options
   });
-  
+
   // Add keyCode property for older compatibility
   Object.defineProperty(event, 'keyCode', { value: keyCode });
-  
+
   return event;
 }
 
@@ -206,25 +206,25 @@ export const assert = {
       throw new Error(message || `Expected ${expected}, got ${actual}`);
     }
   },
-  
+
   true: (value, message) => {
     if (value !== true) {
       throw new Error(message || `Expected true, got ${value}`);
     }
   },
-  
+
   false: (value, message) => {
     if (value !== false) {
       throw new Error(message || `Expected false, got ${value}`);
     }
   },
-  
+
   exists: (value, message) => {
-    if (value == null) {
+    if (value === null || value === undefined) {
       throw new Error(message || `Expected value to exist, got ${value}`);
     }
   },
-  
+
   throws: (fn, message) => {
     let threw = false;
     try {
@@ -247,39 +247,39 @@ export class SimpleTestRunner {
     this.beforeEachHooks = [];
     this.afterEachHooks = [];
   }
-  
+
   beforeEach(fn) {
     this.beforeEachHooks.push(fn);
   }
-  
+
   afterEach(fn) {
     this.afterEachHooks.push(fn);
   }
-  
+
   test(name, fn) {
     this.tests.push({ name, fn });
   }
-  
+
   async run() {
     console.group('Running tests...');
     let passed = 0;
     let failed = 0;
-    
+
     for (const test of this.tests) {
       try {
         // Run before each hooks
         for (const hook of this.beforeEachHooks) {
           await hook();
         }
-        
+
         // Run test
         await test.fn();
-        
+
         // Run after each hooks
         for (const hook of this.afterEachHooks) {
           await hook();
         }
-        
+
         console.log(`✅ ${test.name}`);
         passed++;
       } catch (error) {
@@ -287,10 +287,10 @@ export class SimpleTestRunner {
         failed++;
       }
     }
-    
+
     console.log(`\nResults: ${passed} passed, ${failed} failed`);
     console.groupEnd();
-    
+
     return { passed, failed };
   }
 }
