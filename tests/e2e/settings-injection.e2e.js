@@ -3,7 +3,7 @@
  * Tests that user settings are properly loaded and applied in injected context
  */
 
-import { launchChromeWithExtension } from './e2e-utils.js';
+import { launchChromeWithExtension, sleep } from './e2e-utils.js';
 
 export default async function runSettingsInjectionE2ETests() {
   console.log('🧪 Running Settings Injection E2E Tests...');
@@ -33,7 +33,7 @@ export default async function runSettingsInjectionE2ETests() {
     await page.goto('https://www.youtube.com/watch?v=gGCJOTvECVQ', { waitUntil: 'networkidle2' });
 
     // Wait for extension to load and set up listeners
-    await page.waitForTimeout(3000);
+    await sleep(3000);
 
     // Wait for the extension to be fully initialized and listening for settings
     await page.waitForFunction(
@@ -69,7 +69,7 @@ export default async function runSettingsInjectionE2ETests() {
       });
 
       // Wait for settings to be processed and reload the config
-      await page.waitForTimeout(1000);
+      await sleep(1000);
 
       // Force reload the config to apply injected settings
       await page.evaluate(() => {
@@ -78,7 +78,7 @@ export default async function runSettingsInjectionE2ETests() {
         }
       });
 
-      await page.waitForTimeout(500);
+      await sleep(500);
 
       // Verify settings were applied correctly
       const settingsState = await page.evaluate(() => {
@@ -120,7 +120,7 @@ export default async function runSettingsInjectionE2ETests() {
 
       // Press D key to increase speed
       await page.keyboard.press('KeyD');
-      await page.waitForTimeout(100);
+      await sleep(100);
 
       const newSpeed = await page.evaluate(() => {
         const video = document.querySelector('video');
@@ -143,7 +143,7 @@ export default async function runSettingsInjectionE2ETests() {
 
       // Press R key to reset
       await page.keyboard.press('KeyR');
-      await page.waitForTimeout(100);
+      await sleep(100);
 
       const resetSpeed = await page.evaluate(() => {
         const video = document.querySelector('video');

@@ -1,5 +1,6 @@
 .DS_Store
 local
+dist
 tests/e2e/screenshots
 
 # IntelliJ IDEA

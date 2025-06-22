@@ -13,7 +13,8 @@
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write src/**/*.js tests/**/*.js",
-    "build": "npm run lint:fix && npm run format && npm run test"
+    "build": "npm run lint:fix && npm run format && npm run test",
+    "zip": "rm -rf dist && mkdir -p dist/videospeed && cp -r manifest.json src *.md dist/videospeed/ && cd dist && zip -r videospeed.zip videospeed && cd .. && echo 'Extension packaged at dist/videospeed.zip'"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",

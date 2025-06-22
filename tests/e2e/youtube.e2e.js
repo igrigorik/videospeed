@@ -13,6 +13,7 @@ import {
   getControllerSpeedDisplay,
   takeScreenshot,
   assert,
+  sleep,
 } from './e2e-utils.js';
 
 const YOUTUBE_TEST_URL = 'https://www.youtube.com/watch?v=gGCJOTvECVQ';
@@ -94,7 +95,7 @@ export default async function runYouTubeE2ETests() {
     await runTest('Keyboard shortcuts should work on YouTube', async () => {
       // Reset first using keyboard (R key)
       await testKeyboardShortcut(page, 'KeyR');
-      await page.waitForTimeout(1000);
+      await sleep(1000);
 
       // Test keyboard shortcuts
       const initialSpeed = await getVideoSpeed(page, 'video.html5-main-video');
@@ -117,13 +118,13 @@ export default async function runYouTubeE2ETests() {
     await runTest('Extension should handle YouTube player interactions', async () => {
       // Try pausing and playing video
       await page.click('video.html5-main-video');
-      await page.waitForTimeout(1000);
+      await sleep(1000);
 
       // Speed should be maintained across play/pause
       const speedBeforePause = await getVideoSpeed(page, 'video.html5-main-video');
 
       await page.click('video.html5-main-video'); // Play again
-      await page.waitForTimeout(1000);
+      await sleep(1000);
 
       const speedAfterPlay = await getVideoSpeed(page, 'video.html5-main-video');
       assert.equal(
@@ -145,7 +146,7 @@ export default async function runYouTubeE2ETests() {
         }
       });
 
-      await page.waitForTimeout(2000);
+      await sleep(2000);
 
       // Speed should be maintained after seeking
       const speedAfterSeek = await getVideoSpeed(page, 'video.html5-main-video');
@@ -160,7 +161,7 @@ export default async function runYouTubeE2ETests() {
           video.playbackRate = 1.0;
         }
       });
-      await page.waitForTimeout(200);
+      await sleep(200);
 
       const baseSpeed = await getVideoSpeed(page, 'video.html5-main-video');
       console.log(`   🔍 Speed after baseline reset: ${baseSpeed}`);
@@ -203,7 +204,7 @@ export default async function runYouTubeE2ETests() {
       if (currentTime !== null && currentTime > 15) {
         // Test rewind
         await controlVideo(page, 'rewind');
-        await page.waitForTimeout(1000);
+        await sleep(1000);
 
         const newTime = await page.evaluate(() => {
           const video = document.querySelector('video.html5-main-video');
@@ -214,7 +215,7 @@ export default async function runYouTubeE2ETests() {
 
         // Test advance
         await controlVideo(page, 'advance');
-        await page.waitForTimeout(1000);
+        await sleep(1000);
 
         const advancedTime = await page.evaluate(() => {
           const video = document.querySelector('video.html5-main-video');

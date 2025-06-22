@@ -10,6 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
+ * Sleep/wait utility to replace deprecated page.waitForTimeout
+ * @param {number} ms - Milliseconds to wait
+ * @returns {Promise<void>}
+ */
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * Launch Chrome with extension loaded
  * @returns {Promise<{browser: Browser, page: Page}>}
  */
@@ -65,7 +72,7 @@ export async function launchChromeWithExtension() {
     // Check if extension is loaded by navigating to chrome://extensions/
     try {
       await page.goto('chrome://extensions/', { waitUntil: 'domcontentloaded', timeout: 10000 });
-      await page.waitForTimeout(2000);
+      await sleep(2000);
 
       const extensionInfo = await page.evaluate(() => {
         const extensions = document.querySelectorAll('extensions-item');
@@ -300,7 +307,7 @@ export async function controlVideo(page, action) {
 
     if (success) {
       // Wait a bit for the action to take effect
-      await page.waitForTimeout(500);
+      await sleep(500);
       console.log(`   🔄 Performed action: ${action}`);
       return true;
     } else {
@@ -324,7 +331,7 @@ export async function testKeyboardShortcut(page, key) {
     await page.keyboard.press(key);
 
     // Wait a bit for the action to take effect
-    await page.waitForTimeout(500);
+    await sleep(500);
 
     console.log(`   ⌨️  Pressed key: ${key}`);
     return true;

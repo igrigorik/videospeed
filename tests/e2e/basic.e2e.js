@@ -13,6 +13,7 @@ import {
   getControllerSpeedDisplay,
   takeScreenshot,
   assert,
+  sleep,
 } from './e2e-utils.js';
 
 export default async function runBasicE2ETests() {
@@ -43,7 +44,7 @@ export default async function runBasicE2ETests() {
       // Navigate to our test HTML file with video
       const testPagePath = `file://${process.cwd()}/tests/e2e/test-video.html`;
       await page.goto(testPagePath, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(3000); // Give extension time to inject
+      await sleep(3000); // Give extension time to inject
 
       const extensionLoaded = await waitForExtension(page, 8000);
       assert.true(extensionLoaded, 'Extension should be loaded');
@@ -96,7 +97,7 @@ export default async function runBasicE2ETests() {
 
       // Then reset using R key
       await testKeyboardShortcut(page, 'KeyR');
-      await page.waitForTimeout(500);
+      await sleep(500);
 
       const speed = await getVideoSpeed(page);
       assert.approximately(speed, 1.0, 0.1, 'Speed should be approximately 1.0 after reset');
@@ -115,7 +116,7 @@ export default async function runBasicE2ETests() {
           window.videoSpeedExtension.config.setKeyBinding('reset', 1.0);
         }
       });
-      await page.waitForTimeout(200);
+      await sleep(200);
 
       // Test 'D' key for faster
       const initialSpeed = await getVideoSpeed(page);
@@ -135,7 +136,7 @@ export default async function runBasicE2ETests() {
       // Test 'R' key for reset (should change speed from current)
       const speedBeforeReset = await getVideoSpeed(page);
       await testKeyboardShortcut(page, 'KeyR');
-      await page.waitForTimeout(200); // Give time for reset to process
+      await sleep(200); // Give time for reset to process
       const resetSpeed = await getVideoSpeed(page);
       console.log(`   🔍 Speed before R key: ${speedBeforeReset}, after R key: ${resetSpeed}`);
       assert.true(
