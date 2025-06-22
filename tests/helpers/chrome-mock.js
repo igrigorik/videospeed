@@ -25,9 +25,9 @@ export const chromeMock = {
           const result =
             typeof keys === 'object' && keys !== null
               ? Object.keys(keys).reduce((acc, key) => {
-                acc[key] = mockStorage[key] || keys[key];
-                return acc;
-              }, {})
+                  acc[key] = mockStorage[key] || keys[key];
+                  return acc;
+                }, {})
               : { ...mockStorage };
           callback(result);
         }, 10);

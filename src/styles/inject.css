@@ -4,14 +4,20 @@
 
 .vsc-hidden {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
-.vsc-manual {
+.vsc-manual:not(.vsc-hidden) {
   visibility: visible !important;
   opacity: 1 !important;
 }
 
 .vsc-controller {
+  /* Default visible state */
+  visibility: visible;
+  opacity: 1;
+  display: block;
   /* In case of pages using `white-space: pre-line` (eg Discord), don't render vsc's whitespace */
   white-space: normal;
   /* Disables text selection when the user is dragging the controller around */

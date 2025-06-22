@@ -153,7 +153,7 @@ class MediaElementObserver {
     if (media.readyState < 2) {
       console.log('⏳ Video still loading, skipping size checks', {
         readyState: media.readyState,
-        src: media.src || media.currentSrc
+        src: media.src || media.currentSrc,
       });
 
       // Still do site-specific checks

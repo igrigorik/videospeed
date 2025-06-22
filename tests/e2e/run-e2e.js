@@ -37,9 +37,16 @@ async function runE2ETests() {
     testFiles = ['basic.e2e.js'];
   } else if (testType === 'settings') {
     testFiles = ['settings-injection.e2e.js'];
+  } else if (testType === 'display') {
+    testFiles = ['display-toggle.e2e.js'];
   } else {
     // Run all tests
-    testFiles = ['basic.e2e.js', 'youtube.e2e.js', 'settings-injection.e2e.js'];
+    testFiles = [
+      'basic.e2e.js',
+      'youtube.e2e.js',
+      'settings-injection.e2e.js',
+      'display-toggle.e2e.js',
+    ];
   }
 
   console.log(`Running ${testFiles.length} E2E test suite(s)...\n`);

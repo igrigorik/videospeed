@@ -264,6 +264,45 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
   assert.equal(mockVideo.currentTime, 25, 'Should jump back to marked time');
 });
 
+runner.test('ActionHandler should toggle display visibility', async () => {
+  const config = window.VSC.videoSpeedConfig;
+  await config.load();
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const video = document.createElement('video');
+  const controller = document.createElement('div');
+  controller.className = 'vsc-controller';
+
+  // Mock the video controller structure
+  video.vsc = {
+    div: controller,
+    speedIndicator: document.createElement('span')
+  };
+
+  config.addMediaElement(video);
+
+  // Initially controller should not be hidden
+  assert.false(controller.classList.contains('vsc-hidden'));
+  assert.false(controller.classList.contains('vsc-manual'));
+
+  // First toggle - should hide
+  actionHandler.runAction('display', null, null);
+  assert.true(controller.classList.contains('vsc-hidden'));
+  assert.true(controller.classList.contains('vsc-manual'));
+
+  // Second toggle - should show
+  actionHandler.runAction('display', null, null);
+  assert.false(controller.classList.contains('vsc-hidden'));
+  assert.true(controller.classList.contains('vsc-manual'));
+
+  // Third toggle - should hide again
+  actionHandler.runAction('display', null, null);
+  assert.true(controller.classList.contains('vsc-hidden'));
+  assert.true(controller.classList.contains('vsc-manual'));
+});
+
 // Run tests if this file is loaded directly
 if (typeof window !== 'undefined' && window.location) {
   runner.run().then(results => {

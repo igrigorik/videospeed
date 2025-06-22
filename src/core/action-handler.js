@@ -96,10 +96,37 @@ class ActionHandler {
         break;
 
       case 'display': {
-        window.VSC.logger.debug('Showing controller');
+        window.VSC.logger.debug('Display action triggered');
         const controller = video.vsc.div;
+
+        if (!controller) {
+          console.error('❌ No controller found for video!', video);
+          return;
+        }
+
+        console.log('🎮 Display action:', {
+          hasController: !!controller,
+          currentClasses: controller?.className,
+          isHidden: controller?.classList.contains('vsc-hidden')
+        });
+
         controller.classList.add('vsc-manual');
+        const wasHidden = controller.classList.contains('vsc-hidden');
         controller.classList.toggle('vsc-hidden');
+
+        console.log('🎮 After toggle:', {
+          wasHidden,
+          isNowHidden: controller.classList.contains('vsc-hidden'),
+          classes: controller.className
+        });
+
+        // Flash the controller background to confirm action worked
+        const originalBg = controller.style.backgroundColor;
+        controller.style.backgroundColor = wasHidden ? 'green' : 'red';
+        setTimeout(() => {
+          controller.style.backgroundColor = originalBg;
+        }, 200);
+
         break;
       }
 

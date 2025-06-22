@@ -103,11 +103,8 @@ class VideoController {
     const wrapper = document.createElement('div');
     wrapper.classList.add('vsc-controller');
 
-    // Force visibility with inline styles to override YouTube's hiding
+    // Set positioning styles but don't force visibility
     wrapper.style.cssText = `
-      visibility: visible !important; 
-      opacity: 1 !important; 
-      display: block !important;
       position: absolute !important;
       z-index: 9999999 !important;
     `;
