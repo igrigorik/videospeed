@@ -27,7 +27,7 @@ class ShadowDOMManager {
       }
       
       :host(:hover) #controls {
-        display: inline;
+        display: inline-block;
       }
       
       #controller {
@@ -41,6 +41,7 @@ class ShadowDOMManager {
         margin: 10px 10px 10px 15px;
         cursor: default;
         z-index: 9999999;
+        white-space: nowrap;
       }
       
       #controller:hover {
@@ -53,6 +54,7 @@ class ShadowDOMManager {
       
       #controls {
         display: none;
+        vertical-align: middle;
       }
       
       #controller.dragging {
@@ -61,11 +63,13 @@ class ShadowDOMManager {
       }
       
       #controller.dragging #controls {
-        display: inline;
+        display: inline-block;
       }
       
       .draggable {
         cursor: -webkit-grab;
+        display: inline-block;
+        vertical-align: middle;
       }
       
       .draggable:active {

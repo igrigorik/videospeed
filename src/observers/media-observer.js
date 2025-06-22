@@ -138,13 +138,6 @@ class MediaElementObserver {
       return false;
     }
 
-    // Check if element has minimum size
-    const rect = media.getBoundingClientRect();
-    if (rect.width < 50 || rect.height < 50) {
-      console.log('🚫 Video too small:', { width: rect.width, height: rect.height });
-      return false;
-    }
-
     // Check if element is visible
     const style = window.getComputedStyle(media);
     if (style.display === 'none' || style.visibility === 'hidden') {
@@ -152,6 +145,31 @@ class MediaElementObserver {
         display: style.display,
         visibility: style.visibility,
       });
+      return false;
+    }
+
+    // For videos that are still loading, skip size checks
+    // readyState: 0 = HAVE_NOTHING, 1 = HAVE_METADATA
+    if (media.readyState < 2) {
+      console.log('⏳ Video still loading, skipping size checks', {
+        readyState: media.readyState,
+        src: media.src || media.currentSrc
+      });
+
+      // Still do site-specific checks
+      if (this.siteHandler.shouldIgnoreVideo(media)) {
+        console.log('🚫 Video ignored by site handler (during loading)');
+        return false;
+      }
+
+      console.log('✅ Video accepted (still loading)');
+      return true;
+    }
+
+    // Check if element has minimum size (only after loaded)
+    const rect = media.getBoundingClientRect();
+    if (rect.width < 50 || rect.height < 50) {
+      console.log('🚫 Video too small:', { width: rect.width, height: rect.height });
       return false;
     }
 

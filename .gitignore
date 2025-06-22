@@ -1,8 +1,6 @@
 .DS_Store
+.cursor
 local
 dist
 tests/e2e/screenshots
-
-# IntelliJ IDEA
-.idea/
 node_modules

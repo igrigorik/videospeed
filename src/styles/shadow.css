@@ -5,7 +5,7 @@
 }
 
 :host(:hover) #controls {
-  display: inline;
+  display: inline-block;
 }
 
 #controller {
@@ -22,6 +22,7 @@
 
   cursor: default;
   z-index: 9999999;
+  white-space: nowrap;
 }
 
 #controller:hover {
@@ -34,6 +35,7 @@
 
 #controls {
   display: none;
+  vertical-align: middle;
 }
 
 #controller.dragging {
@@ -42,11 +44,13 @@
 }
 
 #controller.dragging #controls {
-  display: inline;
+  display: inline-block;
 }
 
 .draggable {
   cursor: -webkit-grab;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .draggable:active {

@@ -46,6 +46,11 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
    * @returns {boolean} True if video should be ignored
    */
   shouldIgnoreVideo(video) {
+    // Don't reject videos that are still loading
+    if (video.readyState < 2) {
+      return false;
+    }
+
     // Ignore product preview videos that are too small
     const rect = video.getBoundingClientRect();
     return rect.width < 200 || rect.height < 100;

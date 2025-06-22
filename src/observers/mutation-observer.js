@@ -65,7 +65,8 @@ class VideoMutationObserver {
   processChildListMutation(mutation) {
     // Handle added nodes
     mutation.addedNodes.forEach((node) => {
-      if (typeof node === 'function') {
+      // Only process element nodes (nodeType 1)
+      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
         return;
       }
 
@@ -81,7 +82,8 @@ class VideoMutationObserver {
 
     // Handle removed nodes
     mutation.removedNodes.forEach((node) => {
-      if (typeof node === 'function') {
+      // Only process element nodes (nodeType 1)
+      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
         return;
       }
       this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, false);
