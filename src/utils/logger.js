@@ -35,23 +35,23 @@ class Logger {
   log(message, level) {
     const logLevel = typeof level === 'undefined' ? this.defaultLevel : level;
     const LOG_LEVELS = window.VSC.Constants.LOG_LEVELS;
-    
+
     if (this.verbosity >= logLevel) {
       switch (logLevel) {
         case LOG_LEVELS.ERROR:
-          console.log(`ERROR:${  message}`);
+          console.log(`ERROR:${message}`);
           break;
         case LOG_LEVELS.WARNING:
-          console.log(`WARNING:${  message}`);
+          console.log(`WARNING:${message}`);
           break;
         case LOG_LEVELS.INFO:
-          console.log(`INFO:${  message}`);
+          console.log(`INFO:${message}`);
           break;
         case LOG_LEVELS.DEBUG:
-          console.log(`DEBUG:${  message}`);
+          console.log(`DEBUG:${message}`);
           break;
         case LOG_LEVELS.VERBOSE:
-          console.log(`DEBUG (VERBOSE):${  message}`);
+          console.log(`DEBUG (VERBOSE):${message}`);
           console.trace();
           break;
         default:

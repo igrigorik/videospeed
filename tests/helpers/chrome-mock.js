@@ -13,7 +13,7 @@ const mockStorage = {
   controllerOpacity: 0.3,
   controllerButtonSize: 14,
   blacklist: 'www.instagram.com\ntwitter.com',
-  logLevel: 3
+  logLevel: 3,
 };
 
 export const chromeMock = {
@@ -22,12 +22,13 @@ export const chromeMock = {
       get: (keys, callback) => {
         // Simulate async behavior
         setTimeout(() => {
-          const result = typeof keys === 'object' && keys !== null
-            ? Object.keys(keys).reduce((acc, key) => {
-              acc[key] = mockStorage[key] || keys[key];
-              return acc;
-            }, {})
-            : { ...mockStorage };
+          const result =
+            typeof keys === 'object' && keys !== null
+              ? Object.keys(keys).reduce((acc, key) => {
+                  acc[key] = mockStorage[key] || keys[key];
+                  return acc;
+                }, {})
+              : { ...mockStorage };
           callback(result);
         }, 10);
       },
@@ -37,19 +38,19 @@ export const chromeMock = {
       },
       remove: (keys, callback) => {
         const keysArray = Array.isArray(keys) ? keys : [keys];
-        keysArray.forEach(key => delete mockStorage[key]);
+        keysArray.forEach((key) => delete mockStorage[key]);
         setTimeout(() => callback && callback(), 10);
       },
       clear: (callback) => {
-        Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
+        Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
         setTimeout(() => callback && callback(), 10);
-      }
+      },
     },
     onChanged: {
       addListener: (_callback) => {
         // Mock storage change listener
-      }
-    }
+      },
+    },
   },
   runtime: {
     getURL: (path) => `chrome-extension://test-extension/${path}`,
@@ -57,26 +58,28 @@ export const chromeMock = {
     onMessage: {
       addListener: (_callback) => {
         // Mock message listener
-      }
-    }
+      },
+    },
   },
   tabs: {
     query: (queryInfo, callback) => {
-      callback([{
-        id: 1,
-        active: true,
-        url: 'https://www.youtube.com/watch?v=test'
-      }]);
+      callback([
+        {
+          id: 1,
+          active: true,
+          url: 'https://www.youtube.com/watch?v=test',
+        },
+      ]);
     },
     sendMessage: (tabId, message, callback) => {
       setTimeout(() => callback && callback({}), 10);
-    }
+    },
   },
   action: {
     setIcon: (details, callback) => {
       setTimeout(() => callback && callback(), 10);
-    }
-  }
+    },
+  },
 };
 
 /**
@@ -97,7 +100,7 @@ export function cleanupChromeMock() {
  * Reset mock storage to defaults
  */
 export function resetMockStorage() {
-  Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
+  Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
   Object.assign(mockStorage, {
     enabled: true,
     lastSpeed: 1.0,
@@ -109,6 +112,6 @@ export function resetMockStorage() {
     controllerOpacity: 0.3,
     controllerButtonSize: 14,
     blacklist: 'www.instagram.com\ntwitter.com',
-    logLevel: 3
+    logLevel: 3,
   });
 }

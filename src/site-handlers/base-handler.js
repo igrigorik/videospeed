@@ -28,7 +28,7 @@ class BaseSiteHandler {
     return {
       insertionPoint: parent,
       insertionMethod: 'firstChild', // 'firstChild', 'beforeParent', 'afterParent'
-      targetParent: parent
+      targetParent: parent,
     };
   }
 
@@ -49,7 +49,6 @@ class BaseSiteHandler {
     }
     return true;
   }
-
 
   /**
    * Handle site-specific initialization

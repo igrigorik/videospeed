@@ -27,7 +27,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     return {
       insertionPoint: targetParent,
       insertionMethod: 'firstChild',
-      targetParent: targetParent
+      targetParent: targetParent,
     };
   }
 
@@ -59,8 +59,10 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    */
   shouldIgnoreVideo(video) {
     // Ignore thumbnail videos and ads
-    return video.classList.contains('video-thumbnail') ||
-      video.parentElement?.classList.contains('ytp-ad-player-overlay');
+    return (
+      video.classList.contains('video-thumbnail') ||
+      video.parentElement?.classList.contains('ytp-ad-player-overlay')
+    );
   }
 
   /**
@@ -68,11 +70,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return [
-      '.html5-video-player',
-      '#movie_player',
-      '.ytp-player-content'
-    ];
+    return ['.html5-video-player', '#movie_player', '.ytp-player-content'];
   }
 
   /**
@@ -86,7 +84,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     // Look for videos in iframes (embedded players)
     try {
       const iframes = document.querySelectorAll('iframe[src*="youtube.com"]');
-      iframes.forEach(iframe => {
+      iframes.forEach((iframe) => {
         try {
           const iframeDoc = iframe.contentDocument;
           if (iframeDoc) {

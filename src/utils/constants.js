@@ -45,7 +45,7 @@ const DEFAULT_SETTINGS = {
     teams.microsoft.com
   `.replace(regStrip, ''),
   defaultLogLevel: 4,
-  logLevel: 3
+  logLevel: 3,
 };
 
 window.VSC.Constants.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
@@ -57,7 +57,7 @@ const DEFAULT_KEY_BINDINGS = [
   { action: 'advance', key: 88, value: 10, force: false, predefined: true }, // X
   { action: 'reset', key: 82, value: 1.0, force: false, predefined: true }, // R
   { action: 'fast', key: 71, value: 1.8, force: false, predefined: true }, // G
-  { action: 'display', key: 86, value: 0, force: false, predefined: true } // V
+  { action: 'display', key: 86, value: 0, force: false, predefined: true }, // V
 ];
 
 const LOG_LEVELS = {
@@ -66,19 +66,19 @@ const LOG_LEVELS = {
   WARNING: 3,
   INFO: 4,
   DEBUG: 5,
-  VERBOSE: 6
+  VERBOSE: 6,
 };
 
 const MESSAGE_TYPES = {
   SET_SPEED: 'VSC_SET_SPEED',
   ADJUST_SPEED: 'VSC_ADJUST_SPEED',
   RESET_SPEED: 'VSC_RESET_SPEED',
-  TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY'
+  TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
 };
 
 const SPEED_LIMITS = {
   MIN: 0.07, // Video min rate per Chromium source
-  MAX: 16    // Maximum playback speed in Chrome per Chromium source
+  MAX: 16, // Maximum playback speed in Chrome per Chromium source
 };
 
 const CUSTOM_ACTIONS_NO_VALUES = ['pause', 'muted', 'mark', 'jump', 'display'];

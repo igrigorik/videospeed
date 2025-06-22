@@ -25,7 +25,7 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
     return {
       insertionPoint: parent.parentElement,
       insertionMethod: 'beforeParent',
-      targetParent: parent.parentElement
+      targetParent: parent.parentElement,
     };
   }
 
@@ -38,10 +38,13 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
   handleSeek(video, seekSeconds) {
     try {
       // Use Netflix's postMessage API for seeking
-      window.postMessage({
-        action: 'videospeed-seek',
-        seekMs: seekSeconds * 1000
-      }, 'https://www.netflix.com');
+      window.postMessage(
+        {
+          action: 'videospeed-seek',
+          seekMs: seekSeconds * 1000,
+        },
+        'https://www.netflix.com'
+      );
 
       window.VSC.logger.debug(`Netflix seek: ${seekSeconds} seconds`);
       return true;
@@ -53,7 +56,6 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
     }
   }
 
-
   /**
    * Initialize Netflix-specific functionality
    * @param {Document} document - Document object
@@ -63,7 +65,9 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
 
     // Netflix-specific script injection is handled by content script (injector.js)
     // since Chrome APIs are not available in injected page context
-    window.VSC.logger.debug('Netflix handler initialized - script injection handled by content script');
+    window.VSC.logger.debug(
+      'Netflix handler initialized - script injection handled by content script'
+    );
   }
 
   /**
@@ -73,8 +77,10 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
    */
   shouldIgnoreVideo(video) {
     // Ignore preview videos or thumbnails
-    return video.classList.contains('preview-video') ||
-      video.parentElement?.classList.contains('billboard-row');
+    return (
+      video.classList.contains('preview-video') ||
+      video.parentElement?.classList.contains('billboard-row')
+    );
   }
 
   /**
@@ -82,11 +88,7 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return [
-      '.watch-video',
-      '.nfp-container',
-      '#netflix-player'
-    ];
+    return ['.watch-video', '.nfp-container', '#netflix-player'];
   }
 }
 

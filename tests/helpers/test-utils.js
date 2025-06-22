@@ -15,43 +15,44 @@ export function createMockVideo(options = {}) {
     playbackRate: {
       value: options.playbackRate || 1.0,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     currentTime: {
       value: options.currentTime || 0,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     duration: {
       value: options.duration || 100,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     currentSrc: {
-      value: options.currentSrc !== undefined ? options.currentSrc : 'https://example.com/video.mp4',
+      value:
+        options.currentSrc !== undefined ? options.currentSrc : 'https://example.com/video.mp4',
       writable: true,
-      configurable: true
+      configurable: true,
     },
     paused: {
       value: options.paused || false,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     muted: {
       value: options.muted || false,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     volume: {
       value: options.volume || 1.0,
       writable: true,
-      configurable: true
+      configurable: true,
     },
     ownerDocument: {
       value: document,
       writable: true,
-      configurable: true
-    }
+      configurable: true,
+    },
   });
 
   // Mock methods
@@ -68,7 +69,7 @@ export function createMockVideo(options = {}) {
     top: 0,
     left: 0,
     width: 640,
-    height: 480
+    height: 480,
   });
 
   // Enhanced event handling
@@ -92,7 +93,7 @@ export function createMockVideo(options = {}) {
 
   video.dispatchEvent = (event) => {
     if (eventListeners.has(event.type)) {
-      eventListeners.get(event.type).forEach(listener => {
+      eventListeners.get(event.type).forEach((listener) => {
         event.target = video;
         listener(event);
       });
@@ -151,7 +152,7 @@ export function createMockDOM() {
       if (container.parentNode) {
         container.parentNode.removeChild(container);
       }
-    }
+    },
   };
 }
 
@@ -161,7 +162,7 @@ export function createMockDOM() {
  * @returns {Promise} Promise that resolves after the delay
  */
 export function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -188,7 +189,7 @@ export function createMockKeyboardEvent(type, keyCode, options = {}) {
     bubbles: true,
     cancelable: true,
     keyCode,
-    ...options
+    ...options,
   });
 
   // Add keyCode property for older compatibility
@@ -235,7 +236,7 @@ export const assert = {
     if (!threw) {
       throw new Error(message || 'Expected function to throw');
     }
-  }
+  },
 };
 
 /**

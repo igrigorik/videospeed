@@ -31,15 +31,15 @@ export async function launchChromeWithExtension() {
         '--disable-features=TranslateUI',
         '--disable-ipc-flooding-protection',
         '--window-size=1280,720',
-        '--allow-file-access-from-files'
+        '--allow-file-access-from-files',
       ],
-      ignoreDefaultArgs: ['--disable-extensions', '--enable-automation']
+      ignoreDefaultArgs: ['--disable-extensions', '--enable-automation'],
     });
 
     console.log('   🌐 Chrome browser launched successfully');
 
     const pages = await browser.pages();
-    const page = pages[0] || await browser.newPage();
+    const page = pages[0] || (await browser.newPage());
 
     // Set viewport
     await page.setViewport({ width: 1280, height: 720 });
@@ -69,13 +69,13 @@ export async function launchChromeWithExtension() {
 
       const extensionInfo = await page.evaluate(() => {
         const extensions = document.querySelectorAll('extensions-item');
-        const extensionNames = Array.from(extensions).map(ext => {
+        const extensionNames = Array.from(extensions).map((ext) => {
           const nameEl = ext.shadowRoot?.querySelector('#name');
           return nameEl ? nameEl.textContent : 'Unknown';
         });
         return {
           count: extensions.length,
-          names: extensionNames
+          names: extensionNames,
         };
       });
 
@@ -109,9 +109,12 @@ export async function waitForExtension(page, timeout = 15000) {
 
     // First check if content script is injected
     const hasContentScript = await page.evaluate(() => {
-      return !!(window.VideoSpeedExtension || window.videoSpeedExtension ||
+      return !!(
+        window.VideoSpeedExtension ||
+        window.videoSpeedExtension ||
         document.querySelector('.vsc-controller') ||
-        document.querySelector('#vsc-test-indicator'));
+        document.querySelector('#vsc-test-indicator')
+      );
     });
 
     if (hasContentScript) {
@@ -123,18 +126,36 @@ export async function waitForExtension(page, timeout = 15000) {
     await page.waitForFunction(
       () => {
         // Check multiple indicators that extension is loaded
-        const hasExtension = !!(window.VideoSpeedExtension);
-        const hasExtensionInstance = !!(window.videoSpeedExtension);
-        const hasController = !!(document.querySelector('.vsc-controller'));
-        const hasVideoController = !!(document.querySelector('video')?.vsc);
-        const hasTestIndicator = !!(document.querySelector('#vsc-test-indicator'));
+        const hasExtension = !!window.VideoSpeedExtension;
+        const hasExtensionInstance = !!window.videoSpeedExtension;
+        const hasController = !!document.querySelector('.vsc-controller');
+        const hasVideoController = !!document.querySelector('video')?.vsc;
+        const hasTestIndicator = !!document.querySelector('#vsc-test-indicator');
 
         // Debug logging in browser
-        if (hasExtension || hasExtensionInstance || hasController || hasVideoController || hasTestIndicator) {
-          console.log('Extension detected:', { hasExtension, hasExtensionInstance, hasController, hasVideoController, hasTestIndicator });
+        if (
+          hasExtension ||
+          hasExtensionInstance ||
+          hasController ||
+          hasVideoController ||
+          hasTestIndicator
+        ) {
+          console.log('Extension detected:', {
+            hasExtension,
+            hasExtensionInstance,
+            hasController,
+            hasVideoController,
+            hasTestIndicator,
+          });
         }
 
-        return hasExtension || hasExtensionInstance || hasController || hasVideoController || hasTestIndicator;
+        return (
+          hasExtension ||
+          hasExtensionInstance ||
+          hasController ||
+          hasVideoController ||
+          hasTestIndicator
+        );
       },
       { timeout, polling: 1000 }
     );
@@ -147,13 +168,13 @@ export async function waitForExtension(page, timeout = 15000) {
     // Debug what's actually on the page
     const debugInfo = await page.evaluate(() => {
       return {
-        hasVideoSpeedExtension: !!(window.VideoSpeedExtension),
-        hasVideoSpeedExtensionInstance: !!(window.videoSpeedExtension),
-        hasController: !!(document.querySelector('.vsc-controller')),
-        hasVideoElement: !!(document.querySelector('video')),
-        videoHasVsc: !!(document.querySelector('video')?.vsc),
+        hasVideoSpeedExtension: !!window.VideoSpeedExtension,
+        hasVideoSpeedExtensionInstance: !!window.videoSpeedExtension,
+        hasController: !!document.querySelector('.vsc-controller'),
+        hasVideoElement: !!document.querySelector('video'),
+        videoHasVsc: !!document.querySelector('video')?.vsc,
         scriptsCount: document.scripts.length,
-        extensionId: window.chrome?.runtime?.id
+        extensionId: window.chrome?.runtime?.id,
       };
     });
 
@@ -215,7 +236,9 @@ export async function waitForController(page, timeout = 10000) {
     // Also check if the shadow DOM content is available
     const hasController = await page.evaluate(() => {
       const controller = document.querySelector('.vsc-controller');
-      return controller && controller.shadowRoot && controller.shadowRoot.querySelector('#controller');
+      return (
+        controller && controller.shadowRoot && controller.shadowRoot.querySelector('#controller')
+      );
     });
 
     if (hasController) {
@@ -267,7 +290,10 @@ export async function controlVideo(page, action) {
       } else {
         // Debug: list all available buttons
         const allButtons = controller.shadowRoot.querySelectorAll('button');
-        console.log('Available buttons:', Array.from(allButtons).map(b => b.getAttribute('data-action')));
+        console.log(
+          'Available buttons:',
+          Array.from(allButtons).map((b) => b.getAttribute('data-action'))
+        );
         return false;
       }
     }, action);
@@ -378,5 +404,5 @@ export const assert = {
     if (Math.abs(actual - expected) > tolerance) {
       throw new Error(message || `Expected ${expected} ± ${tolerance}, got ${actual}`);
     }
-  }
+  },
 };

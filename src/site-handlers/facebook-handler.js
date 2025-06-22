@@ -26,8 +26,9 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
     let targetParent = parent;
 
     try {
-      targetParent = parent.parentElement.parentElement.parentElement
-        .parentElement.parentElement.parentElement.parentElement;
+      targetParent =
+        parent.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement
+          .parentElement;
     } catch (e) {
       window.VSC.logger.warn('Facebook DOM structure changed, using fallback positioning');
       targetParent = parent.parentElement;
@@ -36,7 +37,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
     return {
       insertionPoint: targetParent,
       insertionMethod: 'firstChild',
-      targetParent: targetParent
+      targetParent: targetParent,
     };
   }
 
@@ -77,7 +78,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
     });
 
     this.facebookObserver = observer;
@@ -102,9 +103,11 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    */
   shouldIgnoreVideo(video) {
     // Ignore story videos and other non-main content
-    return video.closest('[data-story-id]') !== null ||
+    return (
+      video.closest('[data-story-id]') !== null ||
       video.closest('.story-bucket-container') !== null ||
-      video.getAttribute('data-video-width') === '0';
+      video.getAttribute('data-video-width') === '0'
+    );
   }
 
   /**
@@ -112,12 +115,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return [
-      '[data-video-id]',
-      '.video-container',
-      '.fbStoryVideoContainer',
-      '[role="main"] video'
-    ];
+    return ['[data-video-id]', '.video-container', '.fbStoryVideoContainer', '[role="main"] video'];
   }
 
   /**

@@ -29,7 +29,7 @@ class EventManager {
    */
   setupKeyboardShortcuts(document) {
     const docs = [document];
-    
+
     try {
       if (window.VSC.inIframe()) {
         docs.push(window.top.document);
@@ -41,7 +41,7 @@ class EventManager {
     docs.forEach((doc) => {
       const keydownHandler = (event) => this.handleKeydown(event);
       doc.addEventListener('keydown', keydownHandler, true);
-      
+
       // Store reference for cleanup
       if (!this.listeners.has(doc)) {
         this.listeners.set(doc, []);
@@ -49,7 +49,7 @@ class EventManager {
       this.listeners.get(doc).push({
         type: 'keydown',
         handler: keydownHandler,
-        useCapture: true
+        useCapture: true,
       });
     });
   }
@@ -62,11 +62,11 @@ class EventManager {
   handleKeydown(event) {
     const keyCode = event.keyCode;
     console.log(`🎹 Keydown event: ${keyCode} (${String.fromCharCode(keyCode)})`);
-    window.VSC.logger.verbose(`Processing keydown event: ${  keyCode}`);
+    window.VSC.logger.verbose(`Processing keydown event: ${keyCode}`);
 
     // Ignore if following modifier is active
     if (this.hasActiveModifier(event)) {
-      window.VSC.logger.debug(`Keydown event ignored due to active modifier: ${  keyCode}`);
+      window.VSC.logger.debug(`Keydown event ignored due to active modifier: ${keyCode}`);
       return;
     }
 
@@ -81,17 +81,15 @@ class EventManager {
     }
 
     // Find matching key binding
-    const keyBinding = this.config.settings.keyBindings.find(
-      (item) => item.key === keyCode
-    );
-    
+    const keyBinding = this.config.settings.keyBindings.find((item) => item.key === keyCode);
+
     console.log(`🔍 Key binding search for ${keyCode}:`, keyBinding);
     console.log('📋 All key bindings:', this.config.settings.keyBindings);
-    
+
     if (keyBinding) {
       console.log(`✅ Running action: ${keyBinding.action} with value: ${keyBinding.value}`);
       this.actionHandler.runAction(keyBinding.action, keyBinding.value);
-      
+
       if (keyBinding.force === 'true') {
         // Disable website's key bindings
         event.preventDefault();
@@ -130,9 +128,7 @@ class EventManager {
    */
   isTypingContext(target) {
     return (
-      target.nodeName === 'INPUT' ||
-      target.nodeName === 'TEXTAREA' ||
-      target.isContentEditable
+      target.nodeName === 'INPUT' || target.nodeName === 'TEXTAREA' || target.isContentEditable
     );
   }
 
@@ -143,7 +139,7 @@ class EventManager {
   setupRateChangeListener(document) {
     const rateChangeHandler = (event) => this.handleRateChange(event);
     document.addEventListener('ratechange', rateChangeHandler, true);
-    
+
     // Store reference for cleanup
     if (!this.listeners.has(document)) {
       this.listeners.set(document, []);
@@ -151,7 +147,7 @@ class EventManager {
     this.listeners.get(document).push({
       type: 'ratechange',
       handler: rateChangeHandler,
-      useCapture: true
+      useCapture: true,
     });
   }
 
@@ -190,30 +186,32 @@ class EventManager {
    */
   updateSpeedFromEvent(video) {
     // Check if video has a controller attached
-    if (!video.vsc) {return;}
+    if (!video.vsc) {
+      return;
+    }
 
     const speedIndicator = video.vsc.speedIndicator;
     const src = video.currentSrc;
     const speed = Number(video.playbackRate.toFixed(2));
 
-    window.VSC.logger.info(`Playback rate changed to ${  speed}`);
+    window.VSC.logger.info(`Playback rate changed to ${speed}`);
 
     // Update controller display
     window.VSC.logger.debug('Updating controller with new speed');
     speedIndicator.textContent = speed.toFixed(2);
-    
+
     // Store speed for this source
     this.config.settings.speeds[src] = speed;
-    
+
     // Store as last speed for remember feature
     window.VSC.logger.debug('Storing lastSpeed in settings for the rememberSpeed feature');
     this.config.settings.lastSpeed = speed;
-    
+
     // Save to Chrome storage if available
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
       window.VSC.logger.debug('Syncing chrome settings for lastSpeed');
       chrome.storage.sync.set({ lastSpeed: speed }, () => {
-        window.VSC.logger.debug(`Speed setting saved: ${  speed}`);
+        window.VSC.logger.debug(`Speed setting saved: ${speed}`);
       });
     } else {
       window.VSC.logger.debug('Chrome storage not available, skipping speed sync');
@@ -228,15 +226,15 @@ class EventManager {
    */
   refreshCoolDown() {
     window.VSC.logger.debug('Begin refreshCoolDown');
-    
+
     if (this.coolDown) {
       clearTimeout(this.coolDown);
     }
-    
+
     this.coolDown = setTimeout(() => {
       this.coolDown = false;
     }, 1000);
-    
+
     window.VSC.logger.debug('End refreshCoolDown');
   }
 
@@ -248,7 +246,9 @@ class EventManager {
     window.VSC.logger.info('Showing controller');
     controller.classList.add('vcs-show');
 
-    if (this.timer) {clearTimeout(this.timer);}
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
 
     this.timer = setTimeout(() => {
       controller.classList.remove('vcs-show');
@@ -266,18 +266,18 @@ class EventManager {
         try {
           doc.removeEventListener(type, handler, useCapture);
         } catch (e) {
-          window.VSC.logger.warn(`Failed to remove event listener: ${  e.message}`);
+          window.VSC.logger.warn(`Failed to remove event listener: ${e.message}`);
         }
       });
     });
-    
+
     this.listeners.clear();
-    
+
     if (this.coolDown) {
       clearTimeout(this.coolDown);
       this.coolDown = false;
     }
-    
+
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;

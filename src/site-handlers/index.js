@@ -13,7 +13,7 @@ class SiteHandlerManager {
       window.VSC.YouTubeHandler,
       window.VSC.FacebookHandler,
       window.VSC.AmazonHandler,
-      window.VSC.AppleHandler
+      window.VSC.AppleHandler,
     ];
   }
 
@@ -40,7 +40,7 @@ class SiteHandlerManager {
         return new HandlerClass();
       }
     }
-    
+
     window.VSC.logger.debug(`Using BaseSiteHandler for ${location.hostname}`);
     return new window.VSC.BaseSiteHandler();
   }
@@ -104,7 +104,6 @@ class SiteHandlerManager {
     const handler = this.getCurrentHandler();
     return handler.detectSpecialVideos(document);
   }
-
 
   /**
    * Cleanup current handler

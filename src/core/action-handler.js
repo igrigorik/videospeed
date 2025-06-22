@@ -31,7 +31,9 @@ class ActionHandler {
     mediaTags.forEach((v) => {
       const controller = v.vsc?.div;
 
-      if (!controller) { return; }
+      if (!controller) {
+        return;
+      }
 
       // Don't change video speed if the video has a different controller
       if (e && !(targetController === controller)) {
@@ -80,7 +82,10 @@ class ActionHandler {
 
       case 'slower': {
         window.VSC.logger.debug('Decrease speed');
-        const slowerSpeed = Math.max(video.playbackRate - value, window.VSC.Constants.SPEED_LIMITS.MIN);
+        const slowerSpeed = Math.max(
+          video.playbackRate - value,
+          window.VSC.Constants.SPEED_LIMITS.MIN
+        );
         this.setSpeed(video, slowerSpeed);
         break;
       }
@@ -137,7 +142,11 @@ class ActionHandler {
 
       case 'SET_SPEED': {
         const speed = value;
-        if (typeof speed === 'number' && speed > 0 && speed <= window.VSC.Constants.SPEED_LIMITS.MAX) {
+        if (
+          typeof speed === 'number' &&
+          speed > 0 &&
+          speed <= window.VSC.Constants.SPEED_LIMITS.MAX
+        ) {
           window.VSC.logger.log('Setting speed to:', speed);
           this.setSpeed(video, speed);
         } else {
@@ -185,7 +194,7 @@ class ActionHandler {
         new CustomEvent('ratechange', {
           bubbles: true,
           composed: true,
-          detail: { origin: 'videoSpeed', speed: speedValue }
+          detail: { origin: 'videoSpeed', speed: speedValue },
         })
       );
     } else {
@@ -210,7 +219,7 @@ class ActionHandler {
     // Save settings to storage for persistence
     this.config.save({
       lastSpeed: this.config.settings.lastSpeed,
-      speeds: this.config.settings.speeds
+      speeds: this.config.settings.speeds,
     });
 
     this.eventManager.refreshCoolDown();
@@ -320,10 +329,7 @@ class ActionHandler {
    * @param {number} duration - Duration in ms (default 1000)
    */
   blinkController(controller, duration) {
-    if (
-      controller.classList.contains('vsc-hidden') ||
-      controller.blinkTimeOut !== undefined
-    ) {
+    if (controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined) {
       clearTimeout(controller.blinkTimeOut);
       controller.classList.remove('vsc-hidden');
       controller.blinkTimeOut = setTimeout(

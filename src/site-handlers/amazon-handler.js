@@ -11,10 +11,12 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
    * @returns {boolean} True if on Amazon
    */
   static matches() {
-    return location.hostname === 'www.amazon.com' || 
-           location.hostname === 'www.primevideo.com' ||
-           location.hostname.includes('amazon.') ||
-           location.hostname.includes('primevideo.');
+    return (
+      location.hostname === 'www.amazon.com' ||
+      location.hostname === 'www.primevideo.com' ||
+      location.hostname.includes('amazon.') ||
+      location.hostname.includes('primevideo.')
+    );
   }
 
   /**
@@ -30,14 +32,13 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
       return {
         insertionPoint: parent.parentElement,
         insertionMethod: 'beforeParent',
-        targetParent: parent.parentElement
+        targetParent: parent.parentElement,
       };
     }
-    
+
     // Default positioning for product videos
     return super.getControllerPosition(parent, video);
   }
-
 
   /**
    * Check if video should be ignored on Amazon
@@ -55,11 +56,7 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return [
-      '.dv-player-container',
-      '.webPlayerContainer',
-      '[data-testid="video-player"]'
-    ];
+    return ['.dv-player-container', '.webPlayerContainer', '[data-testid="video-player"]'];
   }
 }
 

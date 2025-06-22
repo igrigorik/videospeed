@@ -24,16 +24,16 @@ class DragHandler {
     const initialMouseXY = [e.clientX, e.clientY];
     const initialControllerXY = [
       parseInt(shadowController.style.left) || 0,
-      parseInt(shadowController.style.top) || 0
+      parseInt(shadowController.style.top) || 0,
     ];
 
     const startDragging = (e) => {
       const style = shadowController.style;
       const dx = e.clientX - initialMouseXY[0];
       const dy = e.clientY - initialMouseXY[1];
-      
-      style.left = `${initialControllerXY[0] + dx  }px`;
-      style.top = `${initialControllerXY[1] + dy  }px`;
+
+      style.left = `${initialControllerXY[0] + dx}px`;
+      style.top = `${initialControllerXY[1] + dy}px`;
     };
 
     const stopDragging = () => {
@@ -43,14 +43,14 @@ class DragHandler {
 
       shadowController.classList.remove('dragging');
       video.classList.remove('vcs-dragging');
-      
+
       window.VSC.logger.debug('Drag operation completed');
     };
 
     parentElement.addEventListener('mouseup', stopDragging);
     parentElement.addEventListener('mouseleave', stopDragging);
     parentElement.addEventListener('mousemove', startDragging);
-    
+
     window.VSC.logger.debug('Drag operation started');
   }
 }

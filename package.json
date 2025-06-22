@@ -13,16 +13,15 @@
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write src/**/*.js tests/**/*.js",
-    "check": "npm run lint && npm run test"
+    "build": "npm run lint:fix && npm run format && npm run test"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",
-    "cws-publish": "^2.1.1",
     "eslint": "^8.57.0",
     "globals": "^13.24.0",
     "jsdom": "^23.0.0",
     "prettier": "^3.1.0",
-    "puppeteer": "^21.11.0"
+    "puppeteer": "^24.10.2"
   },
   "eslintConfig": {
     "env": {

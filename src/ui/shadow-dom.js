@@ -13,13 +13,7 @@ class ShadowDOMManager {
    * @returns {ShadowRoot} Created shadow root
    */
   static createShadowDOM(wrapper, options = {}) {
-    const {
-      top = '0px',
-      left = '0px',
-      speed = '1.00',
-      opacity = 0.3,
-      buttonSize = 14
-    } = options;
+    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
 
@@ -145,10 +139,10 @@ class ShadowDOMManager {
       { action: 'slower', text: '−', class: '' },
       { action: 'faster', text: '+', class: '' },
       { action: 'advance', text: '»', class: 'rw' },
-      { action: 'display', text: '×', class: 'hideButton' }
+      { action: 'display', text: '×', class: 'hideButton' },
     ];
 
-    buttons.forEach(btnConfig => {
+    buttons.forEach((btnConfig) => {
       const button = document.createElement('button');
       button.setAttribute('data-action', btnConfig.action);
       if (btnConfig.class) {

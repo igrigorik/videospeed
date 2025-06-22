@@ -74,7 +74,6 @@ class VideoSpeedExtension {
 
       this.logger.info('Video Speed Controller initialized successfully');
       this.initialized = true;
-
     } catch (error) {
       console.error(`❌ Failed to initialize Video Speed Controller: ${error.message}`);
       console.error('📋 Full error details:', error);
@@ -102,7 +101,7 @@ class VideoSpeedExtension {
       this.eventManager.setupEventListeners(document);
 
       // Site-specific script injection is now handled by content script (injector.js)
-      
+
       // Set up CSS for non-main documents
       if (document !== window.document) {
         this.setupDocumentCSS(document);
@@ -116,11 +115,9 @@ class VideoSpeedExtension {
       // Scan for existing media elements
       this.scanExistingMedia(document);
 
-
       this.logger.debug('Document initialization completed');
-
     } catch (error) {
-      this.logger.error(`Failed to initialize document: ${  error.message}`);
+      this.logger.error(`Failed to initialize document: ${error.message}`);
     }
   }
 
@@ -151,7 +148,7 @@ class VideoSpeedExtension {
         className: video.className,
         readyState: video.readyState,
         videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight
+        videoHeight: video.videoHeight,
       });
 
       if (!this.mediaObserver.isValidMediaElement(video)) {
@@ -170,7 +167,6 @@ class VideoSpeedExtension {
       this.logger.debug('Attaching controller to new video element');
       video.vsc = new this.VideoController(video, parent, this.config, this.actionHandler);
       console.log('🎮 VideoController created successfully');
-
     } catch (error) {
       console.error('💥 Failed to attach controller to video:', error);
       this.logger.error(`Failed to attach controller to video: ${error.message}`);
@@ -199,7 +195,7 @@ class VideoSpeedExtension {
   scanExistingMedia(document) {
     try {
       const mediaElements = this.mediaObserver.scanAll(document);
-      
+
       console.log(`🔍 Found ${mediaElements.length} media elements`);
       mediaElements.forEach((media, index) => {
         console.log(`🎥 Media ${index + 1}:`, {
@@ -207,18 +203,16 @@ class VideoSpeedExtension {
           src: media.src || media.currentSrc || 'no-src',
           className: media.className,
           parentClassName: media.parentElement?.className,
-          hasVsc: !!media.vsc
+          hasVsc: !!media.vsc,
         });
         this.onVideoFound(media, media.parentElement);
       });
 
       this.logger.info(`Attached controllers to ${mediaElements.length} existing media elements`);
-
     } catch (error) {
       this.logger.error(`Failed to scan existing media: ${error.message}`);
     }
   }
-
 
   /**
    * Set up CSS for iframe documents
@@ -226,7 +220,10 @@ class VideoSpeedExtension {
    */
   setupDocumentCSS(document) {
     const link = document.createElement('link');
-    link.href = typeof chrome !== 'undefined' && chrome.runtime ? chrome.runtime.getURL('src/styles/inject.css') : '/src/styles/inject.css';
+    link.href =
+      typeof chrome !== 'undefined' && chrome.runtime
+        ? chrome.runtime.getURL('src/styles/inject.css')
+        : '/src/styles/inject.css';
     link.type = 'text/css';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
@@ -257,7 +254,6 @@ class VideoSpeedExtension {
 
       this.initialized = false;
       this.logger.info('Video Speed Controller cleaned up');
-
     } catch (error) {
       this.logger.error(`Failed to cleanup: ${error.message}`);
     }
@@ -271,7 +267,7 @@ console.log('🌉 Setting up message listener for popup communication...');
 window.addEventListener('VSC_MESSAGE', (event) => {
   const message = event.detail;
   console.log('🌉 Message received from bridge:', message);
-  
+
   // Handle namespaced VSC message types
   if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
     const videos = document.querySelectorAll('video');
@@ -280,7 +276,7 @@ window.addEventListener('VSC_MESSAGE', (event) => {
       case window.VSC.Constants.MESSAGE_TYPES.SET_SPEED:
         if (message.payload && typeof message.payload.speed === 'number') {
           const targetSpeed = message.payload.speed;
-          videos.forEach(video => {
+          videos.forEach((video) => {
             if (video.vsc) {
               extension.actionHandler.setSpeed(video, targetSpeed);
             } else {
@@ -293,7 +289,7 @@ window.addEventListener('VSC_MESSAGE', (event) => {
       case window.VSC.Constants.MESSAGE_TYPES.ADJUST_SPEED:
         if (message.payload && typeof message.payload.delta === 'number') {
           const delta = message.payload.delta;
-          videos.forEach(video => {
+          videos.forEach((video) => {
             const newSpeed = Math.min(Math.max(video.playbackRate + delta, 0.07), 16);
             if (video.vsc) {
               extension.actionHandler.setSpeed(video, newSpeed);
@@ -305,7 +301,7 @@ window.addEventListener('VSC_MESSAGE', (event) => {
         break;
 
       case window.VSC.Constants.MESSAGE_TYPES.RESET_SPEED:
-        videos.forEach(video => {
+        videos.forEach((video) => {
           if (video.vsc) {
             extension.actionHandler.resetSpeed(video, 1.0);
           } else {

@@ -51,15 +51,20 @@ function validateExtension() {
     const manifest = JSON.parse(readFileSync(join(extensionRoot, 'manifest.json'), 'utf8'));
 
     test('Manifest version is 3', manifest.manifest_version === 3);
-    test('Content scripts defined', manifest.content_scripts && manifest.content_scripts.length > 0);
-    test('Content script has ES6 module type',
-      manifest.content_scripts[0].type === 'module');
-    test('Required permissions present',
-      manifest.permissions && manifest.permissions.includes('storage'));
-    test('Content script matches all sites',
+    test(
+      'Content scripts defined',
+      manifest.content_scripts && manifest.content_scripts.length > 0
+    );
+    test('Content script has ES6 module type', manifest.content_scripts[0].type === 'module');
+    test(
+      'Required permissions present',
+      manifest.permissions && manifest.permissions.includes('storage')
+    );
+    test(
+      'Content script matches all sites',
       manifest.content_scripts[0].matches &&
-      manifest.content_scripts[0].matches.includes('https://*/*'));
-
+        manifest.content_scripts[0].matches.includes('https://*/*')
+    );
   } catch (error) {
     test('Manifest.json is valid JSON', false, error.message);
   }
@@ -71,7 +76,6 @@ function validateExtension() {
     test('Inject script uses ES6 imports', injectScript.includes('import'));
     test('Inject script imports VideoSpeedExtension', injectScript.includes('VideoSpeedExtension'));
     test('Inject script initializes extension', injectScript.includes('initialize'));
-
   } catch (error) {
     test('Inject script readable', false, error.message);
   }
@@ -88,7 +92,6 @@ function validateExtension() {
     test('Test scripts defined', packageJson.scripts && packageJson.scripts.test);
     test('E2E test script defined', packageJson.scripts && packageJson.scripts['test:e2e']);
     test('Type is module', packageJson.type === 'module');
-
   } catch (error) {
     test('Package.json is valid', false, error.message);
   }

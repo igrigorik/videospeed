@@ -19,22 +19,24 @@ class VideoSpeedConfig {
     try {
       // In injected context, wait for user settings to be available
       const isInjectedContext = typeof chrome === 'undefined' || !chrome.storage;
-      const storage = isInjectedContext 
-        ? await window.VSC.StorageManager.waitForInjectedSettings(window.VSC.Constants.DEFAULT_SETTINGS)
+      const storage = isInjectedContext
+        ? await window.VSC.StorageManager.waitForInjectedSettings(
+            window.VSC.Constants.DEFAULT_SETTINGS
+          )
         : await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
-      
+
       // Handle key bindings migration/initialization
       console.log('🔑 Storage keyBindings:', storage.keyBindings);
       this.settings.keyBindings = storage.keyBindings || [];
       console.log('🔑 Settings keyBindings after assignment:', this.settings.keyBindings);
-      
+
       if (!storage.keyBindings || storage.keyBindings.length === 0) {
         console.log('🔑 Initializing default key bindings...');
         window.VSC.logger.info('First initialization - setting up default key bindings');
         await this.initializeDefaultKeyBindings(storage);
         console.log('🔑 Key bindings after initialization:', this.settings.keyBindings);
       }
-      
+
       // Apply loaded settings
       this.settings.lastSpeed = Number(storage.lastSpeed);
       this.settings.displayKeyCode = Number(storage.displayKeyCode);
@@ -46,19 +48,20 @@ class VideoSpeedConfig {
       this.settings.controllerOpacity = Number(storage.controllerOpacity);
       this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
       this.settings.blacklist = String(storage.blacklist);
-      this.settings.logLevel = Number(storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel);
+      this.settings.logLevel = Number(
+        storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel
+      );
 
       // Ensure display binding exists (for upgrades)
       this.ensureDisplayBinding(storage);
-      
+
       // Update logger verbosity
       window.VSC.logger.setVerbosity(this.settings.logLevel);
-      
+
       window.VSC.logger.info('Settings loaded successfully');
       return this.settings;
-      
     } catch (error) {
-      window.VSC.logger.error(`Failed to load settings: ${  error.message}`);
+      window.VSC.logger.error(`Failed to load settings: ${error.message}`);
       return window.VSC.Constants.DEFAULT_SETTINGS;
     }
   }
@@ -74,7 +77,7 @@ class VideoSpeedConfig {
       await window.VSC.StorageManager.set(this.settings);
       window.VSC.logger.info('Settings saved successfully');
     } catch (error) {
-      window.VSC.logger.error(`Failed to save settings: ${  error.message}`);
+      window.VSC.logger.error(`Failed to save settings: ${error.message}`);
     }
   }
 
@@ -89,7 +92,7 @@ class VideoSpeedConfig {
       const binding = this.settings.keyBindings.find((item) => item.action === action);
       return binding ? binding[property] : false;
     } catch (e) {
-      window.VSC.logger.error(`Failed to get key binding for ${  action  }: ${  e.message}`);
+      window.VSC.logger.error(`Failed to get key binding for ${action}: ${e.message}`);
       return false;
     }
   }
@@ -106,7 +109,7 @@ class VideoSpeedConfig {
         binding.value = value;
       }
     } catch (e) {
-      window.VSC.logger.error(`Failed to set key binding for ${  action  }: ${  e.message}`);
+      window.VSC.logger.error(`Failed to set key binding for ${action}: ${e.message}`);
     }
   }
 
@@ -117,54 +120,54 @@ class VideoSpeedConfig {
    */
   async initializeDefaultKeyBindings(storage) {
     const keyBindings = [];
-    
+
     // Migrate from legacy settings if they exist
     keyBindings.push({
       action: 'slower',
       key: Number(storage.slowerKeyCode) || 83,
       value: Number(storage.speedStep) || 0.1,
       force: false,
-      predefined: true
+      predefined: true,
     });
-    
+
     keyBindings.push({
       action: 'faster',
       key: Number(storage.fasterKeyCode) || 68,
       value: Number(storage.speedStep) || 0.1,
       force: false,
-      predefined: true
+      predefined: true,
     });
-    
+
     keyBindings.push({
       action: 'rewind',
       key: Number(storage.rewindKeyCode) || 90,
       value: Number(storage.rewindTime) || 10,
       force: false,
-      predefined: true
+      predefined: true,
     });
-    
+
     keyBindings.push({
       action: 'advance',
       key: Number(storage.advanceKeyCode) || 88,
       value: Number(storage.advanceTime) || 10,
       force: false,
-      predefined: true
+      predefined: true,
     });
-    
+
     keyBindings.push({
       action: 'reset',
       key: Number(storage.resetKeyCode) || 82,
       value: 1.0,
       force: false,
-      predefined: true
+      predefined: true,
     });
-    
+
     keyBindings.push({
       action: 'fast',
       key: Number(storage.fastKeyCode) || 71,
       value: Number(storage.fastSpeed) || 1.8,
       force: false,
-      predefined: true
+      predefined: true,
     });
 
     this.settings.keyBindings = keyBindings;
@@ -182,7 +185,7 @@ class VideoSpeedConfig {
       enabled: this.settings.enabled,
       controllerOpacity: this.settings.controllerOpacity,
       controllerButtonSize: this.settings.controllerButtonSize,
-      blacklist: this.settings.blacklist
+      blacklist: this.settings.blacklist,
     });
   }
 
@@ -198,7 +201,7 @@ class VideoSpeedConfig {
         key: Number(storage.displayKeyCode) || 86,
         value: 0,
         force: false,
-        predefined: true
+        predefined: true,
       });
     }
   }

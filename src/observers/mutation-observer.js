@@ -32,7 +32,7 @@ class VideoMutationObserver {
     const observerOptions = {
       attributeFilter: ['aria-hidden', 'data-focus-method'],
       childList: true,
-      subtree: true
+      subtree: true,
     };
 
     this.observer.observe(document, observerOptions);
@@ -65,7 +65,9 @@ class VideoMutationObserver {
   processChildListMutation(mutation) {
     // Handle added nodes
     mutation.addedNodes.forEach((node) => {
-      if (typeof node === 'function') { return; }
+      if (typeof node === 'function') {
+        return;
+      }
 
       if (node === document.documentElement) {
         // Document was replaced (e.g., watch.sling.com uses document.write)
@@ -79,7 +81,9 @@ class VideoMutationObserver {
 
     // Handle removed nodes
     mutation.removedNodes.forEach((node) => {
-      if (typeof node === 'function') { return; }
+      if (typeof node === 'function') {
+        return;
+      }
       this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, false);
     });
   }
@@ -181,15 +185,18 @@ class VideoMutationObserver {
     }
 
     const shadowObserver = new MutationObserver((mutations) => {
-      requestIdleCallback(() => {
-        this.processMutations(mutations);
-      }, { timeout: 500 });
+      requestIdleCallback(
+        () => {
+          this.processMutations(mutations);
+        },
+        { timeout: 500 }
+      );
     });
 
     const observerOptions = {
       attributeFilter: ['aria-hidden', 'data-focus-method'],
       childList: true,
-      subtree: true
+      subtree: true,
     };
 
     shadowObserver.observe(shadowRoot, observerOptions);

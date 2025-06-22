@@ -11,7 +11,7 @@ window.VSC.DomUtils = {};
  * @param {string} str - String to escape
  * @returns {string} Escaped string
  */
-window.VSC.DomUtils.escapeStringRegExp = function(str) {
+window.VSC.DomUtils.escapeStringRegExp = function (str) {
   const matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
   return str.replace(matchOperatorsRe, '\\$&');
 };
@@ -21,9 +21,9 @@ window.VSC.DomUtils.escapeStringRegExp = function(str) {
  * @param {string} blacklist - Blacklist string from settings
  * @returns {boolean} True if page is blacklisted
  */
-window.VSC.DomUtils.isBlacklisted = function(blacklist) {
+window.VSC.DomUtils.isBlacklisted = function (blacklist) {
   let blacklisted = false;
-  
+
   blacklist.split('\n').forEach((match) => {
     match = match.replace(window.VSC.Constants.regStrip, '');
     if (match.length === 0) {
@@ -53,10 +53,9 @@ window.VSC.DomUtils.isBlacklisted = function(blacklist) {
 
     if (regexp.test(location.href)) {
       blacklisted = true;
-      
     }
   });
-  
+
   return blacklisted;
 };
 
@@ -64,7 +63,7 @@ window.VSC.DomUtils.isBlacklisted = function(blacklist) {
  * Check if we're running in an iframe
  * @returns {boolean} True if in iframe
  */
-window.VSC.DomUtils.inIframe = function() {
+window.VSC.DomUtils.inIframe = function () {
   try {
     return window.self !== window.top;
   } catch (e) {
@@ -77,9 +76,9 @@ window.VSC.DomUtils.inIframe = function() {
  * @param {Element} parent - Parent element to search
  * @returns {Array<Element>} Flattened array of all elements
  */
-window.VSC.DomUtils.getShadow = function(parent) {
+window.VSC.DomUtils.getShadow = function (parent) {
   const result = [];
-  
+
   function getChild(parent) {
     if (parent.firstElementChild) {
       let child = parent.firstElementChild;
@@ -93,7 +92,7 @@ window.VSC.DomUtils.getShadow = function(parent) {
       } while (child);
     }
   }
-  
+
   getChild(parent);
   return result.flat(Infinity);
 };
@@ -103,9 +102,9 @@ window.VSC.DomUtils.getShadow = function(parent) {
  * @param {Element} element - Starting element
  * @returns {Element} Parent element
  */
-window.VSC.DomUtils.findVideoParent = function(element) {
+window.VSC.DomUtils.findVideoParent = function (element) {
   let parentElement = element.parentElement;
-  
+
   while (
     parentElement.parentNode &&
     parentElement.parentNode.offsetHeight === parentElement.offsetHeight &&
@@ -113,7 +112,7 @@ window.VSC.DomUtils.findVideoParent = function(element) {
   ) {
     parentElement = parentElement.parentNode;
   }
-  
+
   return parentElement;
 };
 
@@ -122,13 +121,13 @@ window.VSC.DomUtils.findVideoParent = function(element) {
  * @param {Document} document - Document to initialize
  * @param {Function} callback - Callback to run when ready
  */
-window.VSC.DomUtils.initializeWhenReady = function(document, callback) {
+window.VSC.DomUtils.initializeWhenReady = function (document, callback) {
   window.VSC.logger.debug('Begin initializeWhenReady');
-  
+
   window.onload = () => {
     callback(window.document);
   };
-  
+
   if (document) {
     if (document.readyState === 'complete') {
       callback(document);
@@ -140,7 +139,7 @@ window.VSC.DomUtils.initializeWhenReady = function(document, callback) {
       };
     }
   }
-  
+
   window.VSC.logger.debug('End initializeWhenReady');
 };
 
@@ -150,29 +149,29 @@ window.VSC.DomUtils.initializeWhenReady = function(document, callback) {
  * @param {boolean} audioEnabled - Whether to check for audio elements
  * @returns {Array<Element>} Array of media elements found
  */
-window.VSC.DomUtils.findMediaElements = function(node, audioEnabled = false) {
+window.VSC.DomUtils.findMediaElements = function (node, audioEnabled = false) {
   if (!node) {
     return [];
   }
-  
+
   const mediaElements = [];
   const selector = audioEnabled ? 'video,audio' : 'video';
-  
+
   // Check the node itself
   if (node && node.matches && node.matches(selector)) {
     mediaElements.push(node);
   }
-  
+
   // Check children
   if (node.querySelectorAll) {
     mediaElements.push(...Array.from(node.querySelectorAll(selector)));
   }
-  
+
   // Check shadow roots
   if (node.shadowRoot) {
     mediaElements.push(...Array.from(node.shadowRoot.querySelectorAll(selector)));
   }
-  
+
   return mediaElements;
 };
 

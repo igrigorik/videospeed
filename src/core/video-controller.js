@@ -45,11 +45,11 @@ class VideoController {
    */
   initializeSpeed() {
     let targetSpeed = 1.0; // Default speed
-    
+
     // Check if we should use per-video stored speeds
     const videoSrc = this.video.currentSrc || this.video.src;
     const storedVideoSpeed = this.config.settings.speeds[videoSrc];
-    
+
     if (this.config.settings.rememberSpeed) {
       if (storedVideoSpeed) {
         window.VSC.logger.debug(`Using stored speed for video: ${storedVideoSpeed}`);
@@ -58,7 +58,7 @@ class VideoController {
         window.VSC.logger.debug(`Using lastSpeed: ${this.config.settings.lastSpeed}`);
         targetSpeed = this.config.settings.lastSpeed;
       }
-      
+
       // Reset speed isn't really a reset, it's a toggle to stored speed
       this.config.setKeyBinding('reset', targetSpeed);
     } else {
@@ -69,7 +69,7 @@ class VideoController {
     }
 
     window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
-    
+
     // Apply the speed immediately if forceLastSavedSpeed is enabled
     if (this.config.settings.forceLastSavedSpeed && targetSpeed !== 1.0) {
       window.VSC.logger.debug('forceLastSavedSpeed enabled - dispatching ratechange event');
@@ -77,7 +77,7 @@ class VideoController {
         new CustomEvent('ratechange', {
           bubbles: true,
           composed: true,
-          detail: { origin: 'videoSpeed', speed: targetSpeed.toFixed(2) }
+          detail: { origin: 'videoSpeed', speed: targetSpeed.toFixed(2) },
         })
       );
     } else {
@@ -92,17 +92,17 @@ class VideoController {
    */
   initializeControls() {
     window.VSC.logger.debug('initializeControls Begin');
-    
+
     const document = this.video.ownerDocument;
     const speed = this.video.playbackRate.toFixed(2);
     const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
 
-    window.VSC.logger.debug(`Speed variable set to: ${  speed}`);
+    window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
     // Create wrapper element
     const wrapper = document.createElement('div');
     wrapper.classList.add('vsc-controller');
-    
+
     // Force visibility with inline styles to override YouTube's hiding
     wrapper.style.cssText = `
       visibility: visible !important; 
@@ -129,7 +129,7 @@ class VideoController {
       left: position.left,
       speed: speed,
       opacity: this.config.settings.controllerOpacity,
-      buttonSize: this.config.settings.controllerButtonSize
+      buttonSize: this.config.settings.controllerButtonSize,
     });
 
     // Set up control events
@@ -156,23 +156,29 @@ class VideoController {
     fragment.appendChild(wrapper);
 
     // Get site-specific positioning information
-    const positioning = window.VSC.siteHandlerManager.getControllerPosition(this.parent, this.video);
-    
+    const positioning = window.VSC.siteHandlerManager.getControllerPosition(
+      this.parent,
+      this.video
+    );
+
     switch (positioning.insertionMethod) {
       case 'beforeParent':
         positioning.insertionPoint.parentElement.insertBefore(fragment, positioning.insertionPoint);
         break;
-      
+
       case 'afterParent':
-        positioning.insertionPoint.parentElement.insertBefore(fragment, positioning.insertionPoint.nextSibling);
+        positioning.insertionPoint.parentElement.insertBefore(
+          fragment,
+          positioning.insertionPoint.nextSibling
+        );
         break;
-      
+
       case 'firstChild':
       default:
         positioning.insertionPoint.insertBefore(fragment, positioning.insertionPoint.firstChild);
         break;
     }
-    
+
     window.VSC.logger.debug(`Controller inserted using ${positioning.insertionMethod} method`);
   }
 
@@ -183,7 +189,7 @@ class VideoController {
   setupEventHandlers() {
     const mediaEventAction = (event) => {
       let storedSpeed = this.config.settings.speeds[event.target.currentSrc];
-      
+
       if (!this.config.settings.rememberSpeed) {
         if (!storedSpeed) {
           window.VSC.logger.info('Overwriting stored speed to 1.0 (rememberSpeed not enabled)');
@@ -195,8 +201,8 @@ class VideoController {
         window.VSC.logger.debug('Storing lastSpeed into settings (rememberSpeed enabled)');
         storedSpeed = this.config.settings.lastSpeed;
       }
-      
-      window.VSC.logger.info(`Explicitly setting playbackRate to: ${  storedSpeed}`);
+
+      window.VSC.logger.info(`Explicitly setting playbackRate to: ${storedSpeed}`);
       this.actionHandler.setSpeed(event.target, storedSpeed);
     };
 
@@ -216,8 +222,7 @@ class VideoController {
       mutations.forEach((mutation) => {
         if (
           mutation.type === 'attributes' &&
-          (mutation.attributeName === 'src' ||
-            mutation.attributeName === 'currentSrc')
+          (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')
         ) {
           window.VSC.logger.debug('mutation of A/V element');
           const controller = this.div;
@@ -229,9 +234,9 @@ class VideoController {
         }
       });
     });
-    
+
     this.targetObserver.observe(this.video, {
-      attributeFilter: ['src', 'currentSrc']
+      attributeFilter: ['src', 'currentSrc'],
     });
   }
 
@@ -240,12 +245,12 @@ class VideoController {
    */
   remove() {
     window.VSC.logger.debug('Removing VideoController');
-    
+
     // Remove DOM element
     if (this.div && this.div.parentNode) {
       this.div.remove();
     }
-    
+
     // Remove event listeners
     if (this.handlePlay) {
       this.video.removeEventListener('play', this.handlePlay);
@@ -253,18 +258,18 @@ class VideoController {
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
     }
-    
+
     // Disconnect mutation observer
     if (this.targetObserver) {
       this.targetObserver.disconnect();
     }
-    
+
     // Remove from tracking
     this.config.removeMediaElement(this.video);
-    
+
     // Remove reference from video element
     delete this.video.vsc;
-    
+
     window.VSC.logger.debug('VideoController removed successfully');
   }
 }

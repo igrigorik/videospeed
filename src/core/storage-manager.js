@@ -8,7 +8,7 @@ window.VSC = window.VSC || {};
 class StorageManager {
   // Cache for user settings injected from content script
   static _injectedSettings = null;
-  
+
   // Listen for injected settings from content script
   static _setupSettingsListener() {
     if (typeof window !== 'undefined' && !this._listenerSetup) {
@@ -27,7 +27,7 @@ class StorageManager {
   static async get(defaults = {}) {
     // Set up listener for injected settings
     this._setupSettingsListener();
-    
+
     // Check if Chrome APIs are available (content script context)
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
       return new Promise((resolve) => {
@@ -50,7 +50,7 @@ class StorageManager {
       }
     }
   }
-  
+
   /**
    * Wait for injected settings to become available
    * @param {Object} defaults - Default values
@@ -58,13 +58,13 @@ class StorageManager {
    */
   static async waitForInjectedSettings(defaults = {}) {
     this._setupSettingsListener();
-    
+
     if (this._injectedSettings) {
       const merged = { ...defaults, ...this._injectedSettings };
       console.log('⚙️ Using available injected settings:', merged);
       return Promise.resolve(merged);
     }
-    
+
     return new Promise((resolve) => {
       const checkSettings = () => {
         if (this._injectedSettings) {
@@ -98,15 +98,17 @@ class StorageManager {
       // Fallback for injected page context - send save request to content script
       console.log('📤 Sending save request to content script:', data);
       window.VSC.logger.debug('Sending settings save request to content script');
-      
+
       // Send data to content script via custom event
-      window.dispatchEvent(new CustomEvent('VSC_SAVE_SETTINGS', {
-        detail: data
-      }));
-      
+      window.dispatchEvent(
+        new CustomEvent('VSC_SAVE_SETTINGS', {
+          detail: data,
+        })
+      );
+
       // Update injected settings cache
       this._injectedSettings = { ...this._injectedSettings, ...data };
-      
+
       return Promise.resolve();
     }
   }

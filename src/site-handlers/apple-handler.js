@@ -25,7 +25,7 @@ class AppleHandler extends window.VSC.BaseSiteHandler {
     return {
       insertionPoint: parent.parentNode,
       insertionMethod: 'firstChild',
-      targetParent: parent.parentNode
+      targetParent: parent.parentNode,
     };
   }
 
@@ -34,11 +34,7 @@ class AppleHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return [
-      'apple-tv-plus-player',
-      '[data-testid="player"]',
-      '.video-container'
-    ];
+    return ['apple-tv-plus-player', '[data-testid="player"]', '.video-container'];
   }
 
   /**

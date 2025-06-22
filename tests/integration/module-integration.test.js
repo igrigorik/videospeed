@@ -119,7 +119,7 @@ runner.test('Event system should coordinate between modules', async () => {
 
 // Run tests if this file is loaded directly
 if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
+  runner.run().then((results) => {
     console.log('Module integration tests completed:', results);
   });
 }

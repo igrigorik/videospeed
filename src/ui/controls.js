@@ -30,7 +30,7 @@ class ControlsManager {
    */
   setupDragHandler(shadow) {
     const draggable = shadow.querySelector('.draggable');
-    
+
     draggable.addEventListener(
       'mousedown',
       (e) => {
@@ -82,26 +82,33 @@ class ControlsManager {
    */
   setupWheelHandler(shadow, video) {
     const controller = shadow.querySelector('#controller');
-    
-    controller.addEventListener('wheel', (event) => {
-      event.preventDefault();
-      
-      const delta = Math.sign(event.deltaY);
-      const step = 0.1;
 
-      let newSpeed = video.playbackRate + (delta < 0 ? step : -step);
-      newSpeed = Math.min(Math.max(newSpeed, window.VSC.Constants.SPEED_LIMITS.MIN), window.VSC.Constants.SPEED_LIMITS.MAX);
-      
-      video.playbackRate = newSpeed;
+    controller.addEventListener(
+      'wheel',
+      (event) => {
+        event.preventDefault();
 
-      // Update visual speed display
-      const speedIndicator = shadow.querySelector('.draggable');
-      if (speedIndicator) {
-        speedIndicator.textContent = newSpeed.toFixed(2);
-      }
-      
-      window.VSC.logger.debug(`Wheel control: speed changed to ${newSpeed.toFixed(2)}`);
-    }, { passive: false });
+        const delta = Math.sign(event.deltaY);
+        const step = 0.1;
+
+        let newSpeed = video.playbackRate + (delta < 0 ? step : -step);
+        newSpeed = Math.min(
+          Math.max(newSpeed, window.VSC.Constants.SPEED_LIMITS.MIN),
+          window.VSC.Constants.SPEED_LIMITS.MAX
+        );
+
+        video.playbackRate = newSpeed;
+
+        // Update visual speed display
+        const speedIndicator = shadow.querySelector('.draggable');
+        if (speedIndicator) {
+          speedIndicator.textContent = newSpeed.toFixed(2);
+        }
+
+        window.VSC.logger.debug(`Wheel control: speed changed to ${newSpeed.toFixed(2)}`);
+      },
+      { passive: false }
+    );
   }
 
   /**
@@ -111,7 +118,7 @@ class ControlsManager {
    */
   setupClickPrevention(shadow) {
     const controller = shadow.querySelector('#controller');
-    
+
     // Prevent clicks from bubbling up to page
     controller.addEventListener('click', (e) => e.stopPropagation(), false);
     controller.addEventListener('mousedown', (e) => e.stopPropagation(), false);

@@ -42,7 +42,9 @@ class MediaElementObserver {
       return !this.siteHandler.shouldIgnoreVideo(media);
     });
 
-    window.VSC.logger.info(`Found ${filteredMedia.length} media elements (${mediaElements.length} total, ${mediaElements.length - filteredMedia.length} filtered out)`);
+    window.VSC.logger.info(
+      `Found ${filteredMedia.length} media elements (${mediaElements.length} total, ${mediaElements.length - filteredMedia.length} filtered out)`
+    );
     return filteredMedia;
   }
 
@@ -65,7 +67,7 @@ class MediaElementObserver {
           window.VSC.logger.debug(`Found ${iframeMedia.length} media elements in iframe`);
         }
       } catch (e) {
-        window.VSC.logger.debug(`Cannot access iframe content (cross-origin): ${  e.message}`);
+        window.VSC.logger.debug(`Cannot access iframe content (cross-origin): ${e.message}`);
       }
     });
 
@@ -119,7 +121,7 @@ class MediaElementObserver {
 
     // Remove duplicates
     const uniqueMedia = [...new Set(allMedia)];
-    
+
     window.VSC.logger.info(`Total unique media elements found: ${uniqueMedia.length}`);
     return uniqueMedia;
   }
@@ -146,7 +148,10 @@ class MediaElementObserver {
     // Check if element is visible
     const style = window.getComputedStyle(media);
     if (style.display === 'none' || style.visibility === 'hidden') {
-      console.log('🚫 Video not visible:', { display: style.display, visibility: style.visibility });
+      console.log('🚫 Video not visible:', {
+        display: style.display,
+        visibility: style.visibility,
+      });
       return false;
     }
 

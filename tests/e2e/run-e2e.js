@@ -95,7 +95,7 @@ async function runE2ETests() {
   process.exit(totalFailed > 0 ? 1 : 0);
 }
 
-runE2ETests().catch(error => {
+runE2ETests().catch((error) => {
   console.error('💥 E2E test runner failed:', error);
   process.exit(1);
 });
