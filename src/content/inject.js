@@ -3,11 +3,6 @@
  * Modular architecture using global variables loaded via script array
  */
 
-console.log('🚀 Video Speed Controller starting...');
-console.log('🔧 Constants loaded:', !!window.VSC?.Constants);
-console.log('🔧 Logger loaded:', !!window.VSC?.logger);
-console.log('🔧 VideoController loaded:', !!window.VSC?.VideoController);
-
 class VideoSpeedExtension {
   constructor() {
     this.config = null;
@@ -23,9 +18,6 @@ class VideoSpeedExtension {
    */
   async initialize() {
     try {
-      console.log('🔧 Initializing Video Speed Controller...');
-      console.log('✅ All modules loaded via script array!');
-
       // Access global modules
       this.VideoController = window.VSC.VideoController;
       this.ActionHandler = window.VSC.ActionHandler;
@@ -143,30 +135,18 @@ class VideoSpeedExtension {
    */
   onVideoFound(video, parent) {
     try {
-      console.log('🎯 Checking video for controller attachment:', {
-        src: video.src || video.currentSrc || 'no-src',
-        className: video.className,
-        readyState: video.readyState,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-      });
-
       if (!this.mediaObserver.isValidMediaElement(video)) {
-        console.log('❌ Video element is not valid for controller attachment');
         this.logger.debug('Video element is not valid for controller attachment');
         return;
       }
 
       if (video.vsc) {
-        console.log('⚠️ Video already has controller attached');
         this.logger.debug('Video already has controller attached');
         return;
       }
 
-      console.log('✅ Creating VideoController for video element');
       this.logger.debug('Attaching controller to new video element');
       video.vsc = new this.VideoController(video, parent, this.config, this.actionHandler);
-      console.log('🎮 VideoController created successfully');
     } catch (error) {
       console.error('💥 Failed to attach controller to video:', error);
       this.logger.error(`Failed to attach controller to video: ${error.message}`);
@@ -196,15 +176,7 @@ class VideoSpeedExtension {
     try {
       const mediaElements = this.mediaObserver.scanAll(document);
 
-      console.log(`🔍 Found ${mediaElements.length} media elements`);
-      mediaElements.forEach((media, index) => {
-        console.log(`🎥 Media ${index + 1}:`, {
-          tagName: media.tagName,
-          src: media.src || media.currentSrc || 'no-src',
-          className: media.className,
-          parentClassName: media.parentElement?.className,
-          hasVsc: !!media.vsc,
-        });
+      mediaElements.forEach((media) => {
         this.onVideoFound(media, media.parentElement);
       });
 
@@ -261,12 +233,9 @@ class VideoSpeedExtension {
 }
 
 // Message handler for popup communication via bridge
-console.log('🌉 Setting up message listener for popup communication...');
-
 // Listen for messages from content script bridge
 window.addEventListener('VSC_MESSAGE', (event) => {
   const message = event.detail;
-  console.log('🌉 Message received from bridge:', message);
 
   // Handle namespaced VSC message types
   if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
@@ -319,8 +288,6 @@ window.addEventListener('VSC_MESSAGE', (event) => {
   }
 });
 
-console.log('✅ Message listener set up for popup communication');
-
 // Create and initialize extension instance
 const extension = new VideoSpeedExtension();
 
@@ -344,4 +311,3 @@ const testIndicator = document.createElement('div');
 testIndicator.id = 'vsc-test-indicator';
 testIndicator.style.display = 'none';
 document.head.appendChild(testIndicator);
-console.log('🧪 Test indicator added for E2E detection');

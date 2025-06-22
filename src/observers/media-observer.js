@@ -132,54 +132,45 @@ class MediaElementObserver {
    * @returns {boolean} True if valid
    */
   isValidMediaElement(media) {
-    // Check if element is in DOM
-    if (!document.body.contains(media)) {
-      console.log('🚫 Video not in DOM');
+    // Skip videos that are not in the DOM
+    if (!media.isConnected) {
+      window.VSC.logger.debug('Video not in DOM');
       return false;
     }
 
-    // Check if element is visible
+    // Check visibility
     const style = window.getComputedStyle(media);
-    if (style.display === 'none' || style.visibility === 'hidden') {
-      console.log('🚫 Video not visible:', {
-        display: style.display,
-        visibility: style.visibility,
-      });
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      window.VSC.logger.debug('Video not visible');
       return false;
     }
 
-    // For videos that are still loading, skip size checks
-    // readyState: 0 = HAVE_NOTHING, 1 = HAVE_METADATA
+    // If video hasn't loaded yet, skip size checks but continue with other validation
     if (media.readyState < 2) {
-      console.log('⏳ Video still loading, skipping size checks', {
-        readyState: media.readyState,
-        src: media.src || media.currentSrc,
-      });
+      window.VSC.logger.debug('Video still loading, skipping size checks');
 
-      // Still do site-specific checks
+      // Let site handler decide for loading videos
       if (this.siteHandler.shouldIgnoreVideo(media)) {
-        console.log('🚫 Video ignored by site handler (during loading)');
+        window.VSC.logger.debug('Video ignored by site handler (during loading)');
         return false;
       }
 
-      console.log('✅ Video accepted (still loading)');
       return true;
     }
 
-    // Check if element has minimum size (only after loaded)
+    // Check if the video is reasonably sized
     const rect = media.getBoundingClientRect();
     if (rect.width < 50 || rect.height < 50) {
-      console.log('🚫 Video too small:', { width: rect.width, height: rect.height });
+      window.VSC.logger.debug(`Video too small: ${rect.width}x${rect.height}`);
       return false;
     }
 
-    // Site-specific checks
+    // Let site handler have final say
     if (this.siteHandler.shouldIgnoreVideo(media)) {
-      console.log('🚫 Video ignored by site handler');
+      window.VSC.logger.debug('Video ignored by site handler');
       return false;
     }
 
-    console.log('✅ Video passed all validation checks');
     return true;
   }
 

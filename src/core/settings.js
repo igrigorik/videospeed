@@ -26,15 +26,11 @@ class VideoSpeedConfig {
         : await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
 
       // Handle key bindings migration/initialization
-      console.log('🔑 Storage keyBindings:', storage.keyBindings);
       this.settings.keyBindings = storage.keyBindings || [];
-      console.log('🔑 Settings keyBindings after assignment:', this.settings.keyBindings);
 
       if (!storage.keyBindings || storage.keyBindings.length === 0) {
-        console.log('🔑 Initializing default key bindings...');
         window.VSC.logger.info('First initialization - setting up default key bindings');
         await this.initializeDefaultKeyBindings(storage);
-        console.log('🔑 Key bindings after initialization:', this.settings.keyBindings);
       }
 
       // Apply loaded settings

@@ -61,7 +61,7 @@ class EventManager {
    */
   handleKeydown(event) {
     const keyCode = event.keyCode;
-    console.log(`🎹 Keydown event: ${keyCode} (${String.fromCharCode(keyCode)})`);
+
     window.VSC.logger.verbose(`Processing keydown event: ${keyCode}`);
 
     // Ignore if following modifier is active
@@ -83,11 +83,7 @@ class EventManager {
     // Find matching key binding
     const keyBinding = this.config.settings.keyBindings.find((item) => item.key === keyCode);
 
-    console.log(`🔍 Key binding search for ${keyCode}:`, keyBinding);
-    console.log('📋 All key bindings:', this.config.settings.keyBindings);
-
     if (keyBinding) {
-      console.log(`✅ Running action: ${keyBinding.action} with value: ${keyBinding.value}`);
       this.actionHandler.runAction(keyBinding.action, keyBinding.value);
 
       if (keyBinding.force === 'true') {
@@ -96,7 +92,7 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      console.log(`❌ No key binding found for keyCode: ${keyCode}`);
+      window.VSC.logger.verbose(`No key binding found for keyCode: ${keyCode}`);
     }
 
     return false;

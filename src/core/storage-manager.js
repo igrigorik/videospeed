@@ -13,7 +13,7 @@ class StorageManager {
   static _setupSettingsListener() {
     if (typeof window !== 'undefined' && !this._listenerSetup) {
       window.addEventListener('VSC_USER_SETTINGS', (event) => {
-        console.log('⚙️ Received user settings from content script:', event.detail);
+        window.VSC.logger.debug('Received user settings from content script');
         this._injectedSettings = event.detail;
       });
       this._listenerSetup = true;
@@ -39,12 +39,11 @@ class StorageManager {
     } else {
       // Fallback for injected page context - use injected settings if available
       if (this._injectedSettings) {
-        console.log('⚙️ Using injected user settings');
+        window.VSC.logger.debug('Using injected user settings');
         window.VSC.logger.debug('Using injected user settings from content script');
         // Merge injected settings with defaults
         return Promise.resolve({ ...defaults, ...this._injectedSettings });
       } else {
-        console.log('🔒 Chrome storage not available, using defaults');
         window.VSC.logger.debug('Chrome storage not available, using default settings');
         return Promise.resolve(defaults);
       }
@@ -61,7 +60,7 @@ class StorageManager {
 
     if (this._injectedSettings) {
       const merged = { ...defaults, ...this._injectedSettings };
-      console.log('⚙️ Using available injected settings:', merged);
+      window.VSC.logger.debug('Using available injected settings');
       return Promise.resolve(merged);
     }
 
@@ -69,7 +68,7 @@ class StorageManager {
       const checkSettings = () => {
         if (this._injectedSettings) {
           const merged = { ...defaults, ...this._injectedSettings };
-          console.log('⚙️ Injected settings now available:', merged);
+          window.VSC.logger.debug('Injected settings now available');
           resolve(merged);
         } else {
           // Check again in next tick
@@ -96,7 +95,7 @@ class StorageManager {
       });
     } else {
       // Fallback for injected page context - send save request to content script
-      console.log('📤 Sending save request to content script:', data);
+      window.VSC.logger.debug('Sending save request to content script');
       window.VSC.logger.debug('Sending settings save request to content script');
 
       // Send data to content script via custom event

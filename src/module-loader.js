@@ -12,12 +12,12 @@ const modulePromises = new Map();
 /**
  * Define a module (replaces export)
  */
-window.defineModule = function(name, dependencies, factory) {
+window.defineModule = function (name, dependencies, factory) {
   if (typeof dependencies === 'function') {
     factory = dependencies;
     dependencies = [];
   }
-  
+
   const modulePromise = Promise.all(
     dependencies.map(dep => loadModule(dep))
   ).then(deps => {
@@ -28,7 +28,7 @@ window.defineModule = function(name, dependencies, factory) {
     moduleRegistry.set(name, moduleExports);
     return moduleExports;
   });
-  
+
   modulePromises.set(name, modulePromise);
   return modulePromise;
 };
@@ -36,15 +36,15 @@ window.defineModule = function(name, dependencies, factory) {
 /**
  * Load a module (replaces import)
  */
-window.loadModule = function(name) {
+window.loadModule = function (name) {
   if (moduleRegistry.has(name)) {
     return Promise.resolve(moduleRegistry.get(name));
   }
-  
+
   if (modulePromises.has(name)) {
     return modulePromises.get(name);
   }
-  
+
   // If module not loaded, try to load it as a script
   const modulePromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
@@ -64,9 +64,9 @@ window.loadModule = function(name) {
     script.onerror = () => reject(new Error(`Failed to load module: ${name}`));
     document.head.appendChild(script);
   });
-  
+
   modulePromises.set(name, modulePromise);
   return modulePromise;
 };
 
-console.log('📦 Module loader initialized');
+window.VSC.logger.debug('Module loader initialized');

@@ -4,10 +4,9 @@
  */
 
 // Initialize global namespace for content script
-console.log('📦 Loading constants.js...');
+
 window.VSC = window.VSC || {};
 window.VSC.Constants = {};
-console.log('✅ Constants loaded, window.VSC =', !!window.VSC);
 
 // Add debug info to DOM for inspection
 const debugDiv = document.createElement('div');
