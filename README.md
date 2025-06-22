@@ -44,6 +44,8 @@ even better, simply use your keyboard:
 - **X** - advance video by 10 seconds.
 - **G** - toggle between current and user configurable preferred speed.
 - **V** - show/hide the controller.
+- **M** - set a marker at the current playback position.
+- **J** - jump back to the previously set marker.
 
 You can customize and reassign the default shortcut keys in the extensions
 settings page as well as add additional shortcut keys to match your

@@ -58,6 +58,8 @@ const DEFAULT_KEY_BINDINGS = [
   { action: 'reset', key: 82, value: 1.0, force: false, predefined: true }, // R
   { action: 'fast', key: 71, value: 1.8, force: false, predefined: true }, // G
   { action: 'display', key: 86, value: 0, force: false, predefined: true }, // V
+  { action: 'mark', key: 77, value: 0, force: false, predefined: true }, // M
+  { action: 'jump', key: 74, value: 0, force: false, predefined: true }, // J
 ];
 
 const LOG_LEVELS = {

@@ -21,8 +21,8 @@ class VideoSpeedConfig {
       const isInjectedContext = typeof chrome === 'undefined' || !chrome.storage;
       const storage = isInjectedContext
         ? await window.VSC.StorageManager.waitForInjectedSettings(
-            window.VSC.Constants.DEFAULT_SETTINGS
-          )
+          window.VSC.Constants.DEFAULT_SETTINGS
+        )
         : await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
 
       // Handle key bindings migration/initialization
@@ -166,6 +166,22 @@ class VideoSpeedConfig {
       action: 'fast',
       key: Number(storage.fastKeyCode) || 71,
       value: Number(storage.fastSpeed) || 1.8,
+      force: false,
+      predefined: true,
+    });
+
+    keyBindings.push({
+      action: 'mark',
+      key: 77, // M key
+      value: 0,
+      force: false,
+      predefined: true,
+    });
+
+    keyBindings.push({
+      action: 'jump',
+      key: 74, // J key
+      value: 0,
       force: false,
       predefined: true,
     });
