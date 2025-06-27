@@ -38,8 +38,7 @@ const DEFAULT_SETTINGS = {
   keyBindings: [],
   blacklist: `
     www.instagram.com
-    twitter.com
-    vine.co
+    x.com
     imgur.com
     teams.microsoft.com
   `.replace(regStrip, ''),

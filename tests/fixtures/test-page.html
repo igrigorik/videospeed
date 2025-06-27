@@ -113,7 +113,7 @@
         const { isBlacklisted, inIframe, findMediaElements } = await import('../../src/utils/dom-utils.js');
         
         // Test blacklist functionality
-        const blacklisted = isBlacklisted('www.instagram.com\ntwitter.com');
+        const blacklisted = isBlacklisted('www.instagram.com\nx.com');
         resultsDiv.textContent += `Blacklist test (should be false): ${!blacklisted ? 'PASS' : 'FAIL'}\n`;
         
         // Test iframe detection

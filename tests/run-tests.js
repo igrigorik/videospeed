@@ -46,7 +46,7 @@ global.chrome = {
           startHidden: false,
           controllerOpacity: 0.3,
           controllerButtonSize: 14,
-          blacklist: "www.instagram.com\ntwitter.com",
+          blacklist: "www.instagram.com\nx.com",
           logLevel: 3
         };
         setTimeout(() => callback(mockData), 10);
