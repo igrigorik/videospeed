@@ -68,8 +68,14 @@ class ShadowDOMManager {
       
       .draggable {
         cursor: -webkit-grab;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.8em;
+        height: 1.4em;
+        text-align: center;
         vertical-align: middle;
+        box-sizing: border-box;
       }
       
       .draggable:active {
@@ -114,6 +120,7 @@ class ShadowDOMManager {
       
       button.hideButton {
         opacity: 0.65;
+        margin-left: 8px;
         margin-right: 2px;
       }
     `;
@@ -128,7 +135,7 @@ class ShadowDOMManager {
     const draggable = document.createElement('span');
     draggable.setAttribute('data-action', 'drag');
     draggable.className = 'draggable';
-    draggable.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
+    draggable.style.cssText = `font-size: ${buttonSize}px;`;
     draggable.textContent = speed;
     controller.appendChild(draggable);
 

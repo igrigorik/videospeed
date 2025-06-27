@@ -208,7 +208,7 @@ class ActionHandler {
     }
 
     const speedIndicator = video.vsc.speedIndicator;
-    speedIndicator.textContent = speedValue;
+    speedIndicator.textContent = numericSpeed.toFixed(2);
 
     // Update settings
     this.config.settings.lastSpeed = numericSpeed;
