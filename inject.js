@@ -352,6 +352,7 @@ function defineVideoController() {
     }
 
     var shadow = wrapper.attachShadow({ mode: "open" });
+    // changed Here : Comment => Display Speed Number on TopLeft HTML
     var shadowTemplate = `
         <style>
           @import "${chrome.runtime.getURL("shadow.css")}";
@@ -520,6 +521,12 @@ function setupListener() {
       log("Speed setting saved: " + speed, 5);
     });
     // show/display the controller for 1000ms if it's hidden.
+
+    // changed Here:: Disable blink for PrimeVideos
+    const skip_websites = ["primevideo"];
+    if (skip_websites.includes(WEBSITES_NAME)) {
+      return;
+    }
     runAction("blink", null, null);
   }
 
