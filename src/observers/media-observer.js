@@ -26,12 +26,22 @@ class MediaElementObserver {
     mediaElements.push(...regularMedia);
 
     // Find media elements in shadow DOMs
-    document.querySelectorAll('*').forEach((element) => {
-      if (element.shadowRoot) {
-        const shadowMedia = element.shadowRoot.querySelectorAll(mediaTagSelector);
-        mediaElements.push(...shadowMedia);
-      }
-    });
+    function findShadowMedia(root, selector) {
+      const results = [];
+      // Add any matching elements in current shadow root
+      results.push(...root.querySelectorAll(selector));
+      // Recursively check all elements with shadow roots
+      root.querySelectorAll('*').forEach(element => {
+        if (element.shadowRoot) {
+          results.push(...findShadowMedia(element.shadowRoot, selector));
+        }
+      });
+      return results;
+    }
+    
+    // In scanForMedia method, replace the existing shadow DOM search with:
+    const shadowMedia = findShadowMedia(document, mediaTagSelector);
+    mediaElements.push(...shadowMedia);
 
     // Find site-specific media elements
     const siteSpecificMedia = this.siteHandler.detectSpecialVideos(document);
