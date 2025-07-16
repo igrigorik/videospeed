@@ -177,7 +177,9 @@ class VideoSpeedExtension {
       const mediaElements = this.mediaObserver.scanAll(document);
 
       mediaElements.forEach((media) => {
-        this.onVideoFound(media, media.parentElement);
+        // media.parentElement almost always works. However, if there's a shadow DOM and the
+        // video is in the root, parentElement is undefined.
+        this.onVideoFound(media, media.parentElement || media.parentNode);
       });
 
       this.logger.info(`Attached controllers to ${mediaElements.length} existing media elements`);
