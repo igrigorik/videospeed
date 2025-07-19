@@ -109,7 +109,9 @@ class VideoController {
       z-index: 9999999 !important;
     `;
 
-    if (!this.video.currentSrc) {
+    // Only hide controller if video has no source AND is not ready/functional
+    // This prevents hiding controllers for live streams or dynamically loaded videos
+    if (!this.video.currentSrc && !this.video.src && this.video.readyState < 2) {
       wrapper.classList.add('vsc-nosource');
     }
 
