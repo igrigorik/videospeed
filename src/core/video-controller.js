@@ -103,10 +103,12 @@ class VideoController {
     const wrapper = document.createElement('div');
     wrapper.classList.add('vsc-controller');
 
-    // Set positioning styles but don't force visibility
+    // Set positioning styles with calculated position
     wrapper.style.cssText = `
       position: absolute !important;
       z-index: 9999999 !important;
+      top: ${position.top} !important;
+      left: ${position.left} !important;
     `;
 
     // Only hide controller if video has no source AND is not ready/functional
@@ -122,10 +124,10 @@ class VideoController {
       wrapper.classList.add('vcs-show');
     }
 
-    // Create shadow DOM
+    // Create shadow DOM with relative positioning inside shadow root
     const shadow = window.VSC.ShadowDOMManager.createShadowDOM(wrapper, {
-      top: position.top,
-      left: position.left,
+      top: '0px', // Position relative to shadow root since wrapper is already positioned
+      left: '0px', // Position relative to shadow root since wrapper is already positioned
       speed: speed,
       opacity: this.config.settings.controllerOpacity,
       buttonSize: this.config.settings.controllerButtonSize,

@@ -92,8 +92,6 @@ class VideoSpeedExtension {
       // Set up event listeners
       this.eventManager.setupEventListeners(document);
 
-      // Site-specific script injection is now handled by content script (injector.js)
-
       // Set up CSS for non-main documents
       if (document !== window.document) {
         this.setupDocumentCSS(document);
@@ -102,9 +100,11 @@ class VideoSpeedExtension {
       // Start mutation observer
       if (this.mutationObserver) {
         this.mutationObserver.start(document);
+        this.logger.debug('Mutation observer started for document');
       }
 
-      // Scan for existing media elements
+      // Scan for existing media elements and add periodic scan on initialization to catch
+      // missed videos by initial scan or mutation observer
       this.scanExistingMedia(document);
 
       this.logger.debug('Document initialization completed');
@@ -124,7 +124,8 @@ class VideoSpeedExtension {
     this.mutationObserver = new this.VideoMutationObserver(
       this.config,
       (video, parent) => this.onVideoFound(video, parent),
-      (video) => this.onVideoRemoved(video)
+      (video) => this.onVideoRemoved(video),
+      this.mediaObserver
     );
   }
 
