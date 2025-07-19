@@ -150,6 +150,18 @@
       <input id="controllerButtonSize" type="text" value="" />
     </div>
     <div class="row">
+      <label for="logLevel">Log Level<br />
+        <em>Controls the verbosity of debug logging in the browser console</em></label>
+      <select id="logLevel">
+        <option value="1">None</option>
+        <option value="2">Error</option>
+        <option value="3">Warning</option>
+        <option value="4">Info</option>
+        <option value="5">Debug</option>
+        <option value="6">Verbose</option>
+      </select>
+    </div>
+    <div class="row">
       <label for="blacklist">Sites on which extension is disabled<br />
         (one per line)<br />
         <br />

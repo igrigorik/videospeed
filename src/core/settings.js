@@ -71,6 +71,12 @@ class VideoSpeedConfig {
     try {
       this.settings = { ...this.settings, ...newSettings };
       await window.VSC.StorageManager.set(this.settings);
+
+      // Update logger verbosity if logLevel was changed
+      if (newSettings.logLevel !== undefined) {
+        window.VSC.logger.setVerbosity(this.settings.logLevel);
+      }
+
       window.VSC.logger.info('Settings saved successfully');
     } catch (error) {
       window.VSC.logger.error(`Failed to save settings: ${error.message}`);
