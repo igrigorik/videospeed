@@ -97,20 +97,105 @@ class VideoSpeedExtension {
         this.setupDocumentCSS(document);
       }
 
-      // Start mutation observer
-      if (this.mutationObserver) {
-        this.mutationObserver.start(document);
-        this.logger.debug('Mutation observer started for document');
-      }
-
-      // Scan for existing media elements and add periodic scan on initialization to catch
-      // missed videos by initial scan or mutation observer
-      this.scanExistingMedia(document);
+      // Defer expensive operations to avoid blocking page load
+      this.deferExpensiveOperations(document);
 
       this.logger.debug('Document initialization completed');
     } catch (error) {
       this.logger.error(`Failed to initialize document: ${error.message}`);
     }
+  }
+
+  /**
+   * Defer expensive operations to avoid blocking page load
+   * @param {Document} document - Document to defer operations for
+   */
+  deferExpensiveOperations(document) {
+    // Use requestIdleCallback with a longer timeout to avoid blocking critical page load
+    const callback = () => {
+      try {
+        // Start mutation observer after page load is complete
+        if (this.mutationObserver) {
+          this.mutationObserver.start(document);
+          this.logger.debug('Mutation observer started for document');
+        }
+
+        // Defer media scanning to avoid blocking page load
+        this.deferredMediaScan(document);
+      } catch (error) {
+        this.logger.error(`Failed to complete deferred operations: ${error.message}`);
+      }
+    };
+
+    // Use requestIdleCallback if available, with reasonable timeout
+    if (window.requestIdleCallback) {
+      requestIdleCallback(callback, { timeout: 2000 });
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      setTimeout(callback, 100);
+    }
+  }
+
+  /**
+   * Perform media scanning in a non-blocking way
+   * @param {Document} document - Document to scan
+   */
+  deferredMediaScan(document) {
+    // Split media scanning into smaller chunks to avoid blocking
+    const performChunkedScan = () => {
+      try {
+        // Use a lighter initial scan - avoid expensive shadow DOM traversal initially
+        const lightMedia = this.mediaObserver.scanForMediaLight(document);
+
+        lightMedia.forEach((media) => {
+          this.onVideoFound(media, media.parentElement || media.parentNode);
+        });
+
+        this.logger.info(
+          `Attached controllers to ${lightMedia.length} media elements (light scan)`
+        );
+
+        // Schedule comprehensive scan for later if needed
+        if (lightMedia.length === 0) {
+          this.scheduleComprehensiveScan(document);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to scan media elements: ${error.message}`);
+      }
+    };
+
+    // Use requestIdleCallback for the scan as well
+    if (window.requestIdleCallback) {
+      requestIdleCallback(performChunkedScan, { timeout: 3000 });
+    } else {
+      setTimeout(performChunkedScan, 200);
+    }
+  }
+
+  /**
+   * Schedule a comprehensive scan if the light scan didn't find anything
+   * @param {Document} document - Document to scan comprehensively
+   */
+  scheduleComprehensiveScan(document) {
+    // Only do comprehensive scan if we didn't find any media with light scan
+    setTimeout(() => {
+      try {
+        const comprehensiveMedia = this.mediaObserver.scanAll(document);
+
+        comprehensiveMedia.forEach((media) => {
+          // Skip if already has controller
+          if (!media.vsc) {
+            this.onVideoFound(media, media.parentElement || media.parentNode);
+          }
+        });
+
+        this.logger.info(
+          `Comprehensive scan found ${comprehensiveMedia.length} additional media elements`
+        );
+      } catch (error) {
+        this.logger.error(`Failed comprehensive media scan: ${error.message}`);
+      }
+    }, 1000); // Wait 1 second before comprehensive scan
   }
 
   /**
@@ -136,7 +221,7 @@ class VideoSpeedExtension {
    */
   onVideoFound(video, parent) {
     try {
-      if (!this.mediaObserver.isValidMediaElement(video)) {
+      if (this.mediaObserver && !this.mediaObserver.isValidMediaElement(video)) {
         this.logger.debug('Video element is not valid for controller attachment');
         return;
       }
@@ -166,26 +251,6 @@ class VideoSpeedExtension {
       }
     } catch (error) {
       this.logger.error(`Failed to remove video controller: ${error.message}`);
-    }
-  }
-
-  /**
-   * Scan for existing media elements in document
-   * @param {Document} document - Document to scan
-   */
-  scanExistingMedia(document) {
-    try {
-      const mediaElements = this.mediaObserver.scanAll(document);
-
-      mediaElements.forEach((media) => {
-        // media.parentElement almost always works. However, if there's a shadow DOM and the
-        // video is in the root, parentElement is undefined.
-        this.onVideoFound(media, media.parentElement || media.parentNode);
-      });
-
-      this.logger.info(`Attached controllers to ${mediaElements.length} existing media elements`);
-    } catch (error) {
-      this.logger.error(`Failed to scan existing media: ${error.message}`);
     }
   }
 

@@ -58,9 +58,21 @@ async function injectModules() {
       'src/content/inject.js',
     ];
 
-    // Inject modules sequentially to maintain order
-    for (const module of modules) {
+    // Inject modules with yielding to avoid blocking page load
+    for (let i = 0; i < modules.length; i++) {
+      const module = modules[i];
       await injectScript(module);
+
+      // Yield control to browser every few modules to avoid blocking
+      if (i > 0 && i % 5 === 0) {
+        await new Promise((resolve) => {
+          if (window.requestIdleCallback) {
+            requestIdleCallback(resolve, { timeout: 50 });
+          } else {
+            setTimeout(resolve, 5);
+          }
+        });
+      }
     }
 
     // Inject site-specific scripts if needed
@@ -202,7 +214,28 @@ async function injectUserSettings() {
 
 // Start injection when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', injectModules);
+  // Wait for DOMContentLoaded, then defer injection to avoid blocking page load
+  document.addEventListener('DOMContentLoaded', () => {
+    // Use requestIdleCallback to wait for browser to be less busy
+    if (window.requestIdleCallback) {
+      requestIdleCallback(injectModules, { timeout: 3000 });
+    } else {
+      // Fallback with short delay to let page finish initial rendering
+      setTimeout(injectModules, 100);
+    }
+  });
+} else if (document.readyState === 'interactive') {
+  // Document is still loading, wait a bit more
+  if (window.requestIdleCallback) {
+    requestIdleCallback(injectModules, { timeout: 2000 });
+  } else {
+    setTimeout(injectModules, 50);
+  }
 } else {
-  injectModules();
+  // Document is complete, but still defer to avoid interfering with other scripts
+  if (window.requestIdleCallback) {
+    requestIdleCallback(injectModules, { timeout: 1000 });
+  } else {
+    setTimeout(injectModules, 10);
+  }
 }

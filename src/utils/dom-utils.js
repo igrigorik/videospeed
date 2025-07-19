@@ -74,20 +74,39 @@ window.VSC.DomUtils.inIframe = function () {
 /**
  * Get all elements in shadow DOMs recursively
  * @param {Element} parent - Parent element to search
+ * @param {number} maxDepth - Maximum recursion depth to prevent infinite loops
  * @returns {Array<Element>} Flattened array of all elements
  */
-window.VSC.DomUtils.getShadow = function (parent) {
+window.VSC.DomUtils.getShadow = function (parent, maxDepth = 10) {
   const result = [];
+  const visited = new WeakSet(); // Prevent infinite loops
 
-  function getChild(parent) {
-    if (parent.firstElementChild) {
-      let child = parent.firstElementChild;
+  function getChild(element, depth = 0) {
+    // Prevent infinite recursion and excessive depth
+    if (depth > maxDepth || visited.has(element)) {
+      return;
+    }
+
+    visited.add(element);
+
+    if (element.firstElementChild) {
+      let child = element.firstElementChild;
       do {
         result.push(child);
-        getChild(child);
-        if (child.shadowRoot) {
-          result.push(window.VSC.DomUtils.getShadow(child.shadowRoot));
+        getChild(child, depth + 1);
+
+        // Only traverse shadow roots if we haven't exceeded depth limit
+        if (child.shadowRoot && depth < maxDepth - 2) {
+          // Use setTimeout to yield control back to browser for deep shadow roots
+          if (depth > 5) {
+            setTimeout(() => {
+              result.push(...window.VSC.DomUtils.getShadow(child.shadowRoot, maxDepth - depth));
+            }, 0);
+          } else {
+            result.push(...window.VSC.DomUtils.getShadow(child.shadowRoot, maxDepth - depth));
+          }
         }
+
         child = child.nextElementSibling;
       } while (child);
     }

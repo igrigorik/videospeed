@@ -58,6 +58,41 @@ class MediaElementObserver {
   }
 
   /**
+   * Lightweight scan that avoids expensive shadow DOM traversal
+   * Used during initial load to avoid blocking page performance
+   * @param {Document} document - Document to scan
+   * @returns {Array<HTMLMediaElement>} Found media elements
+   */
+  scanForMediaLight(document) {
+    const mediaElements = [];
+    const audioEnabled = this.config.settings.audioBoolean;
+    const mediaTagSelector = audioEnabled ? 'video,audio' : 'video';
+
+    try {
+      // Only do basic DOM query, no shadow DOM traversal
+      const regularMedia = Array.from(document.querySelectorAll(mediaTagSelector));
+      mediaElements.push(...regularMedia);
+
+      // Find site-specific media elements (usually lightweight)
+      const siteSpecificMedia = this.siteHandler.detectSpecialVideos(document);
+      mediaElements.push(...siteSpecificMedia);
+
+      // Filter out ignored videos
+      const filteredMedia = mediaElements.filter((media) => {
+        return !this.siteHandler.shouldIgnoreVideo(media);
+      });
+
+      window.VSC.logger.info(
+        `Light scan found ${filteredMedia.length} media elements (${mediaElements.length} total, ${mediaElements.length - filteredMedia.length} filtered out)`
+      );
+      return filteredMedia;
+    } catch (error) {
+      window.VSC.logger.error(`Light media scan failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Scan iframes for media elements
    * @param {Document} document - Document to scan
    * @returns {Array<HTMLMediaElement>} Found media elements in iframes
