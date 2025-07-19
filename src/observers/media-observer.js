@@ -169,9 +169,28 @@ class MediaElementObserver {
 
     // Check if the video is reasonably sized
     const rect = media.getBoundingClientRect();
-    if (rect.width < 50 || rect.height < 50) {
-      window.VSC.logger.debug(`Video too small: ${rect.width}x${rect.height}`);
-      return false;
+
+    // Use different thresholds for video vs audio elements
+    if (media.tagName === 'AUDIO' && this.config.settings.audioBoolean) {
+      // For audio elements with audio support enabled, check if should start hidden
+      if (
+        rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_WIDTH ||
+        rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_HEIGHT
+      ) {
+        window.VSC.logger.debug(
+          `Audio element too small for visible controller: ${rect.width}x${rect.height}, will create hidden controller`
+        );
+      }
+      return true; // Always create controller for audio when audioBoolean enabled
+    } else {
+      // For video elements (or audio without audio support), use video thresholds for rejection
+      if (
+        rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.VIDEO_MIN_WIDTH ||
+        rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.VIDEO_MIN_HEIGHT
+      ) {
+        window.VSC.logger.debug(`Video too small: ${rect.width}x${rect.height}`);
+        return false;
+      }
     }
 
     // Let site handler have final say

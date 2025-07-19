@@ -13,8 +13,12 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "options_ui": {
     "page": "src/ui/options/options.html",
     "open_in_tab": true

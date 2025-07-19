@@ -132,7 +132,9 @@ async function runTests() {
       'unit/core/settings.test.js',
       'unit/core/action-handler.test.js',
       'unit/core/video-controller.test.js',
+      'unit/core/icon-integration.test.js',
       'unit/observers/mutation-observer.test.js',
+      'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/utils/recursive-shadow-dom.test.js'
     ];
@@ -146,7 +148,9 @@ async function runTests() {
       'unit/core/settings.test.js',
       'unit/core/action-handler.test.js',
       'unit/core/video-controller.test.js',
+      'unit/core/icon-integration.test.js',
       'unit/observers/mutation-observer.test.js',
+      'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'integration/module-integration.test.js'

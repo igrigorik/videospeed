@@ -74,11 +74,26 @@ const MESSAGE_TYPES = {
   ADJUST_SPEED: 'VSC_ADJUST_SPEED',
   RESET_SPEED: 'VSC_RESET_SPEED',
   TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
+
+  // Badge management messages
+  CONTROLLER_CREATED: 'VSC_CONTROLLER_CREATED',
+  CONTROLLER_REMOVED: 'VSC_CONTROLLER_REMOVED',
+  QUERY_ACTIVE_CONTROLLERS: 'VSC_QUERY_ACTIVE_CONTROLLERS',
 };
 
 const SPEED_LIMITS = {
   MIN: 0.07, // Video min rate per Chromium source
   MAX: 16, // Maximum playback speed in Chrome per Chromium source
+};
+
+const CONTROLLER_SIZE_LIMITS = {
+  // Video elements: minimum size before rejecting controller entirely
+  VIDEO_MIN_WIDTH: 40,
+  VIDEO_MIN_HEIGHT: 40,
+
+  // Audio elements: minimum size before starting controller hidden
+  AUDIO_MIN_WIDTH: 20,
+  AUDIO_MIN_HEIGHT: 20,
 };
 
 const CUSTOM_ACTIONS_NO_VALUES = ['pause', 'muted', 'mark', 'jump', 'display'];
@@ -88,6 +103,7 @@ window.VSC.Constants.DEFAULT_KEY_BINDINGS = DEFAULT_KEY_BINDINGS;
 window.VSC.Constants.LOG_LEVELS = LOG_LEVELS;
 window.VSC.Constants.MESSAGE_TYPES = MESSAGE_TYPES;
 window.VSC.Constants.SPEED_LIMITS = SPEED_LIMITS;
+window.VSC.Constants.CONTROLLER_SIZE_LIMITS = CONTROLLER_SIZE_LIMITS;
 window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES = CUSTOM_ACTIONS_NO_VALUES;
 
 // Global variables available for both browser and testing

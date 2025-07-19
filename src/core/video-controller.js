@@ -18,6 +18,9 @@ class VideoController {
     this.actionHandler = actionHandler;
     this.controlsManager = new window.VSC.ControlsManager(actionHandler, config);
 
+    // Generate unique controller ID for badge tracking
+    this.controllerId = this.generateControllerId(target);
+
     // Add to tracked media elements
     config.addMediaElement(target);
 
@@ -37,6 +40,13 @@ class VideoController {
     target.vsc = this;
 
     window.VSC.logger.info('VideoController initialized for video element');
+
+    // Dispatch controller created event for badge management
+    this.dispatchControllerEvent('VSC_CONTROLLER_CREATED', {
+      controllerId: this.controllerId,
+      videoSrc: this.video.currentSrc || this.video.src,
+      tagName: this.video.tagName,
+    });
   }
 
   /**
@@ -120,8 +130,22 @@ class VideoController {
     if (this.config.settings.startHidden) {
       wrapper.classList.add('vsc-hidden');
     } else {
-      // Ensure controller is visible, especially on YouTube
-      wrapper.classList.add('vcs-show');
+      // Check if this is a small audio element that should start hidden
+      const rect = this.video.getBoundingClientRect();
+      if (
+        this.video.tagName === 'AUDIO' &&
+        this.config.settings.audioBoolean &&
+        (rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_WIDTH ||
+          rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_HEIGHT)
+      ) {
+        wrapper.classList.add('vsc-hidden');
+        window.VSC.logger.debug(
+          `Starting audio controller hidden due to small size: ${rect.width}x${rect.height}`
+        );
+      } else {
+        // Ensure controller is visible, especially on YouTube
+        wrapper.classList.add('vcs-show');
+      }
     }
 
     // Create shadow DOM with relative positioning inside shadow root
@@ -272,6 +296,51 @@ class VideoController {
     delete this.video.vsc;
 
     window.VSC.logger.debug('VideoController removed successfully');
+
+    // Dispatch controller removed event for badge management
+    this.dispatchControllerEvent('VSC_CONTROLLER_REMOVED', {
+      controllerId: this.controllerId,
+      videoSrc: this.video.currentSrc || this.video.src,
+      tagName: this.video.tagName,
+    });
+  }
+
+  /**
+   * Generate unique controller ID for badge tracking
+   * @param {HTMLElement} target - Video/audio element
+   * @returns {string} Unique controller ID
+   * @private
+   */
+  generateControllerId(target) {
+    const timestamp = Date.now();
+    const src = target.currentSrc || target.src || 'no-src';
+    const tagName = target.tagName.toLowerCase();
+
+    // Create a simple hash from src for uniqueness
+    const srcHash = src.split('').reduce((hash, char) => {
+      hash = (hash << 5) - hash + char.charCodeAt(0);
+      return hash & hash; // Convert to 32-bit integer
+    }, 0);
+
+    return `${tagName}-${Math.abs(srcHash)}-${timestamp}`;
+  }
+
+  /**
+   * Dispatch controller lifecycle events for badge management
+   * @param {string} eventType - Event type (VSC_CONTROLLER_CREATED or VSC_CONTROLLER_REMOVED)
+   * @param {Object} detail - Event detail data
+   * @private
+   */
+  dispatchControllerEvent(eventType, detail) {
+    try {
+      const event = new CustomEvent(eventType, { detail });
+      window.dispatchEvent(event);
+      window.VSC.logger.debug(
+        `Dispatched ${eventType} event for controller ${detail.controllerId}`
+      );
+    } catch (error) {
+      window.VSC.logger.error(`Failed to dispatch ${eventType} event:`, error);
+    }
   }
 }
 

@@ -130,6 +130,25 @@ function setupMessageBridge() {
       console.error('❌ Failed to save settings to Chrome storage:', error);
     }
   });
+
+  // Listen for controller lifecycle events from injected page context
+  window.addEventListener('VSC_CONTROLLER_CREATED', (event) => {
+    // Forward controller creation to background script for badge management
+    chrome.runtime.sendMessage({
+      type: 'VSC_CONTROLLER_CREATED',
+      controllerId: event.detail?.controllerId || 'default',
+      timestamp: Date.now(),
+    });
+  });
+
+  window.addEventListener('VSC_CONTROLLER_REMOVED', (event) => {
+    // Forward controller removal to background script for badge management
+    chrome.runtime.sendMessage({
+      type: 'VSC_CONTROLLER_REMOVED',
+      controllerId: event.detail?.controllerId || 'default',
+      timestamp: Date.now(),
+    });
+  });
 }
 
 // Fetch user settings from Chrome storage and inject into page context
