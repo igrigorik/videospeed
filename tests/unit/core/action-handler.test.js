@@ -291,6 +291,57 @@ runner.test('ActionHandler should toggle display visibility', async () => {
   assert.true(controller.classList.contains('vsc-manual'));
 });
 
+runner.test('ActionHandler should work with videos in nested shadow DOM', async () => {
+  const config = window.VSC.videoSpeedConfig;
+  await config.load();
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  // Create nested shadow DOM structure
+  const host = document.createElement('div');
+  const level1Shadow = host.attachShadow({ mode: 'open' });
+
+  const nestedHost = document.createElement('div');
+  level1Shadow.appendChild(nestedHost);
+  const level2Shadow = nestedHost.attachShadow({ mode: 'open' });
+
+  const mockVideo = createMockVideo({ playbackRate: 1.0 });
+  level2Shadow.appendChild(mockVideo);
+
+  document.body.appendChild(host);
+  config.addMediaElement(mockVideo);
+
+  // Create a proper mock speedIndicator that behaves like a real DOM element
+  const mockSpeedIndicator = {
+    textContent: '1.00',
+    // Add other properties that might be needed
+    nodeType: 1,
+    tagName: 'SPAN'
+  };
+
+  // Mock video controller structure for shadow DOM video
+  mockVideo.vsc = {
+    div: mockDOM.container,
+    speedIndicator: mockSpeedIndicator,
+    // Add remove method to prevent errors during cleanup
+    remove: () => { }
+  };
+
+  // Test speed change on shadow DOM video
+  actionHandler.runAction('faster', 0.2);
+  assert.equal(mockVideo.playbackRate, 1.2);
+
+  // Test slower action
+  actionHandler.runAction('slower', 0.1);
+  assert.equal(mockVideo.playbackRate, 1.1);
+
+  // Test direct speed setting
+  actionHandler.setSpeed(mockVideo, 2.5);
+  assert.equal(mockVideo.playbackRate, 2.5);
+  assert.equal(mockVideo.vsc.speedIndicator.textContent, '2.50');
+});
+
 // Run tests if this file is loaded directly
 if (typeof window !== 'undefined' && window.location) {
   runner.run().then(results => {

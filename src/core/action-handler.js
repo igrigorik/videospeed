@@ -208,6 +208,12 @@ class ActionHandler {
     }
 
     const speedIndicator = video.vsc.speedIndicator;
+    if (!speedIndicator) {
+      window.VSC.logger.warn(
+        'Cannot update speed indicator: video controller UI not fully initialized'
+      );
+      return;
+    }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
     // Update settings

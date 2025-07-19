@@ -25,21 +25,20 @@ class MediaElementObserver {
     const regularMedia = Array.from(document.querySelectorAll(mediaTagSelector));
     mediaElements.push(...regularMedia);
 
-    // Find media elements in shadow DOMs
+    // Find media elements in shadow DOMs recursively
     function findShadowMedia(root, selector) {
       const results = [];
       // Add any matching elements in current shadow root
       results.push(...root.querySelectorAll(selector));
       // Recursively check all elements with shadow roots
-      root.querySelectorAll('*').forEach(element => {
+      root.querySelectorAll('*').forEach((element) => {
         if (element.shadowRoot) {
           results.push(...findShadowMedia(element.shadowRoot, selector));
         }
       });
       return results;
     }
-    
-    // In scanForMedia method, replace the existing shadow DOM search with:
+
     const shadowMedia = findShadowMedia(document, mediaTagSelector);
     mediaElements.push(...shadowMedia);
 

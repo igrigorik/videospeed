@@ -237,6 +237,14 @@ export const assert = {
       throw new Error(message || 'Expected function to throw');
     }
   },
+
+  deepEqual: (actual, expected, message) => {
+    const actualStr = JSON.stringify(actual);
+    const expectedStr = JSON.stringify(expected);
+    if (actualStr !== expectedStr) {
+      throw new Error(message || `Expected ${expectedStr}, got ${actualStr}`);
+    }
+  },
 };
 
 /**

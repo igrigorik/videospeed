@@ -66,4 +66,4 @@ export async function loadObserverModules() {
   await import('../../src/utils/logger.js');
   await import('../../src/utils/dom-utils.js');
   await import('../../src/observers/mutation-observer.js');
-} 
+}

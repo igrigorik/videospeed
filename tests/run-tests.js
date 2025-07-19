@@ -133,7 +133,8 @@ async function runTests() {
       'unit/core/action-handler.test.js',
       'unit/core/video-controller.test.js',
       'unit/observers/mutation-observer.test.js',
-      'unit/content/inject.test.js'
+      'unit/content/inject.test.js',
+      'unit/utils/recursive-shadow-dom.test.js'
     ];
   } else if (testType === 'integration') {
     testFiles = [
@@ -147,6 +148,7 @@ async function runTests() {
       'unit/core/video-controller.test.js',
       'unit/observers/mutation-observer.test.js',
       'unit/content/inject.test.js',
+      'unit/utils/recursive-shadow-dom.test.js',
       'integration/module-integration.test.js'
     ];
   }
