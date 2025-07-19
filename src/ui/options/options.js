@@ -22,7 +22,7 @@ var tcDefaults = {
     { action: "jump", key: 74, value: 0, force: false, predefined: true } // J
   ],
   blacklist: `www.instagram.com
-    twitter.com
+    x.com
     imgur.com
     teams.microsoft.com
   `.replace(regStrip, "")

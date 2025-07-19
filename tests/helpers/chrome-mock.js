@@ -12,7 +12,7 @@ const mockStorage = {
   startHidden: false,
   controllerOpacity: 0.3,
   controllerButtonSize: 14,
-  blacklist: 'www.instagram.com\ntwitter.com',
+  blacklist: 'www.instagram.com\nx.com',
   logLevel: 3,
 };
 
@@ -111,7 +111,7 @@ export function resetMockStorage() {
     startHidden: false,
     controllerOpacity: 0.3,
     controllerButtonSize: 14,
-    blacklist: 'www.instagram.com\ntwitter.com',
+    blacklist: 'www.instagram.com\nx.com',
     logLevel: 3,
   });
 }
