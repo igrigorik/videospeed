@@ -5,28 +5,10 @@
 
 import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../helpers/chrome-mock.js';
 import { SimpleTestRunner, assert, createMockVideo, createMockDOM } from '../helpers/test-utils.js';
+import { loadCoreModules } from '../helpers/module-loader.js';
 
-// Load modules by executing them to populate global variables
-import '../../src/utils/constants.js';
-import '../../src/utils/logger.js';
-import '../../src/utils/dom-utils.js';
-import '../../src/utils/event-manager.js';
-import '../../src/core/storage-manager.js';
-import '../../src/core/settings.js';
-import '../../src/observers/media-observer.js';
-import '../../src/observers/mutation-observer.js';
-import '../../src/core/action-handler.js';
-import '../../src/core/video-controller.js';
-import '../../src/ui/controls.js';
-import '../../src/ui/drag-handler.js';
-import '../../src/ui/shadow-dom.js';
-import '../../src/site-handlers/base-handler.js';
-import '../../src/site-handlers/netflix-handler.js';
-import '../../src/site-handlers/youtube-handler.js';
-import '../../src/site-handlers/facebook-handler.js';
-import '../../src/site-handlers/amazon-handler.js';
-import '../../src/site-handlers/apple-handler.js';
-import '../../src/site-handlers/index.js';
+// Load all required modules
+await loadCoreModules();
 
 const runner = new SimpleTestRunner();
 let mockDOM;

@@ -1,11 +1,10 @@
 // Import necessary modules
 import { installChromeMock, cleanupChromeMock } from '../../helpers/chrome-mock.js';
 import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
+import { loadObserverModules } from '../../helpers/module-loader.js';
 
-// Load modules
-import '../../../src/utils/logger.js';
-import '../../../src/utils/dom-utils.js';
-import '../../../src/observers/mutation-observer.js';
+// Load all required modules
+await loadObserverModules();
 
 const runner = new SimpleTestRunner();
 
