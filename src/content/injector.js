@@ -133,21 +133,49 @@ function setupMessageBridge() {
 
   // Listen for controller lifecycle events from injected page context
   window.addEventListener('VSC_CONTROLLER_CREATED', (event) => {
-    // Forward controller creation to background script for badge management
-    chrome.runtime.sendMessage({
-      type: 'VSC_CONTROLLER_CREATED',
-      controllerId: event.detail?.controllerId || 'default',
-      timestamp: Date.now(),
-    });
+    // Forward controller creation to background script for icon management
+    try {
+      if (chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: 'VSC_CONTROLLER_CREATED',
+          controllerId: event.detail?.controllerId || 'default',
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      // Silently ignore extension context invalidation errors
+      try {
+        if (!error.message?.includes('Extension context invalidated')) {
+          console.warn('Failed to send controller created message:', error);
+        }
+      } catch (innerError) {
+        // Even accessing error.message can fail when context is invalidated
+        // Silently ignore all errors during extension reloads
+      }
+    }
   });
 
   window.addEventListener('VSC_CONTROLLER_REMOVED', (event) => {
-    // Forward controller removal to background script for badge management
-    chrome.runtime.sendMessage({
-      type: 'VSC_CONTROLLER_REMOVED',
-      controllerId: event.detail?.controllerId || 'default',
-      timestamp: Date.now(),
-    });
+    // Forward controller removal to background script for icon management
+    try {
+      if (chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: 'VSC_CONTROLLER_REMOVED',
+          controllerId: event.detail?.controllerId || 'default',
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      // Silently ignore extension context invalidation errors
+      try {
+        if (!error.message?.includes('Extension context invalidated')) {
+          console.warn('Failed to send controller removed message:', error);
+        }
+      } catch (innerError) {
+        // Even accessing error.message can fail when context is invalidated
+        // Silently ignore all errors during extension reloads
+      }
+    }
   });
 }
 
