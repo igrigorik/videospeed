@@ -6,7 +6,7 @@
 window.VSC = window.VSC || {};
 
 class VideoController {
-  constructor(target, parent, config, actionHandler) {
+  constructor(target, parent, config, actionHandler, shouldStartHidden = false) {
     // Return existing controller if already attached
     if (target.vsc) {
       return target.vsc;
@@ -17,6 +17,7 @@ class VideoController {
     this.config = config;
     this.actionHandler = actionHandler;
     this.controlsManager = new window.VSC.ControlsManager(actionHandler, config);
+    this.shouldStartHidden = shouldStartHidden;
 
     // Generate unique controller ID for badge tracking
     this.controllerId = this.generateControllerId(target);
@@ -127,25 +128,14 @@ class VideoController {
       wrapper.classList.add('vsc-nosource');
     }
 
-    if (this.config.settings.startHidden) {
+    if (this.config.settings.startHidden || this.shouldStartHidden) {
       wrapper.classList.add('vsc-hidden');
-    } else {
-      // Check if this is a small audio element that should start hidden
-      const rect = this.video.getBoundingClientRect();
-      if (
-        this.video.tagName === 'AUDIO' &&
-        this.config.settings.audioBoolean &&
-        (rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_WIDTH ||
-          rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_HEIGHT)
-      ) {
-        wrapper.classList.add('vsc-hidden');
-        window.VSC.logger.debug(
-          `Starting audio controller hidden due to small size: ${rect.width}x${rect.height}`
-        );
-      } else {
-        // Ensure controller is visible, especially on YouTube
-        wrapper.classList.add('vcs-show');
+      if (this.shouldStartHidden) {
+        window.VSC.logger.debug('Starting controller hidden due to video visibility/size');
       }
+    } else {
+      // Ensure controller is visible, especially on YouTube
+      wrapper.classList.add('vcs-show');
     }
 
     // Create shadow DOM with relative positioning inside shadow root
@@ -323,6 +313,50 @@ class VideoController {
     }, 0);
 
     return `${tagName}-${Math.abs(srcHash)}-${timestamp}`;
+  }
+
+  /**
+   * Check if the video element is currently visible
+   * @returns {boolean} True if video is visible
+   */
+  isVideoVisible() {
+    // Check if video is still connected to DOM
+    if (!this.video.isConnected) {
+      return false;
+    }
+
+    // Check computed style for visibility
+    const style = window.getComputedStyle(this.video);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      return false;
+    }
+
+    // Check if video has reasonable dimensions
+    const rect = this.video.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Update controller visibility based on video visibility
+   * Called when video visibility changes
+   */
+  updateVisibility() {
+    const isVisible = this.isVideoVisible();
+    const isCurrentlyHidden = this.div.classList.contains('vsc-hidden');
+
+    if (isVisible && isCurrentlyHidden && !this.div.classList.contains('vsc-manual')) {
+      // Video became visible and controller is hidden (but not manually hidden)
+      this.div.classList.remove('vsc-hidden');
+      window.VSC.logger.debug('Showing controller - video became visible');
+    } else if (!isVisible && !isCurrentlyHidden) {
+      // Video became invisible and controller is visible
+      this.div.classList.add('vsc-hidden');
+      window.VSC.logger.debug('Hiding controller - video became invisible');
+    }
   }
 
   /**

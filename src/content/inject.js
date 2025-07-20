@@ -231,8 +231,22 @@ class VideoSpeedExtension {
         return;
       }
 
-      this.logger.debug('Attaching controller to new video element');
-      video.vsc = new this.VideoController(video, parent, this.config, this.actionHandler);
+      // Check if controller should start hidden based on video visibility/size
+      const shouldStartHidden = this.mediaObserver
+        ? this.mediaObserver.shouldStartHidden(video)
+        : false;
+
+      this.logger.debug(
+        'Attaching controller to new video element',
+        shouldStartHidden ? '(starting hidden)' : ''
+      );
+      video.vsc = new this.VideoController(
+        video,
+        parent,
+        this.config,
+        this.actionHandler,
+        shouldStartHidden
+      );
     } catch (error) {
       console.error('💥 Failed to attach controller to video:', error);
       this.logger.error(`Failed to attach controller to video: ${error.message}`);

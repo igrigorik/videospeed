@@ -182,59 +182,38 @@ class MediaElementObserver {
       return false;
     }
 
-    // Check visibility
-    const style = window.getComputedStyle(media);
-    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-      window.VSC.logger.debug('Video not visible');
+    // Skip audio elements when audio support is disabled
+    if (media.tagName === 'AUDIO' && !this.config.settings.audioBoolean) {
+      window.VSC.logger.debug('Audio element rejected - audioBoolean disabled');
       return false;
     }
 
-    // If video hasn't loaded yet, skip size checks but continue with other validation
-    if (media.readyState < 2) {
-      window.VSC.logger.debug('Video still loading, skipping size checks');
-
-      // Let site handler decide for loading videos
-      if (this.siteHandler.shouldIgnoreVideo(media)) {
-        window.VSC.logger.debug('Video ignored by site handler (during loading)');
-        return false;
-      }
-
-      return true;
-    }
-
-    // Check if the video is reasonably sized
-    const rect = media.getBoundingClientRect();
-
-    // Use different thresholds for video vs audio elements
-    if (media.tagName === 'AUDIO' && this.config.settings.audioBoolean) {
-      // For audio elements with audio support enabled, check if should start hidden
-      if (
-        rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_WIDTH ||
-        rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.AUDIO_MIN_HEIGHT
-      ) {
-        window.VSC.logger.debug(
-          `Audio element too small for visible controller: ${rect.width}x${rect.height}, will create hidden controller`
-        );
-      }
-      return true; // Always create controller for audio when audioBoolean enabled
-    } else {
-      // For video elements (or audio without audio support), use video thresholds for rejection
-      if (
-        rect.width < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.VIDEO_MIN_WIDTH ||
-        rect.height < window.VSC.Constants.CONTROLLER_SIZE_LIMITS.VIDEO_MIN_HEIGHT
-      ) {
-        window.VSC.logger.debug(`Video too small: ${rect.width}x${rect.height}`);
-        return false;
-      }
-    }
-
-    // Let site handler have final say
+    // Let site handler have final say on whether to ignore this video
     if (this.siteHandler.shouldIgnoreVideo(media)) {
       window.VSC.logger.debug('Video ignored by site handler');
       return false;
     }
 
+    // Accept all connected media elements that pass site handler validation
+    // Visibility and size will be handled by controller initialization
     return true;
+  }
+
+  /**
+   * Check if media element should start with hidden controller
+   * @param {HTMLMediaElement} media - Media element to check
+   * @returns {boolean} True if controller should start hidden
+   */
+  shouldStartHidden(media) {
+    // Check visibility - only hide controllers for truly invisible media elements
+    const style = window.getComputedStyle(media);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      window.VSC.logger.debug('Media not visible, controller will start hidden');
+      return true;
+    }
+
+    // All visible media elements get visible controllers regardless of size
+    return false;
   }
 
   /**

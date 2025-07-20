@@ -162,11 +162,14 @@ class VideoMutationObserver {
     }
 
     if (video.vsc) {
-      // Video already has controller, check if it should be removed
+      // Video already has controller, check if it should be removed or just hidden
       if (!this.mediaObserver.isValidMediaElement(video)) {
         window.VSC.logger.debug('Video became invalid, removing controller');
         video.vsc.remove();
         video.vsc = null;
+      } else {
+        // Video is still valid, update visibility based on current state
+        video.vsc.updateVisibility();
       }
     } else {
       // Video doesn't have controller, check if it should get one
