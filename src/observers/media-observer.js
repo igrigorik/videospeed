@@ -205,10 +205,32 @@ class MediaElementObserver {
    * @returns {boolean} True if controller should start hidden
    */
   shouldStartHidden(media) {
-    // Check visibility - only hide controllers for truly invisible media elements
+    // For audio elements, only hide controller if audio support is disabled
+    // Audio players are often intentionally invisible but still functional
+    if (media.tagName === 'AUDIO') {
+      if (!this.config.settings.audioBoolean) {
+        window.VSC.logger.debug('Audio controller hidden - audio support disabled');
+        return true;
+      }
+
+      // Audio elements can be functional even when invisible
+      // Only hide if the audio element is explicitly disabled or has no functionality
+      if (media.disabled || media.style.pointerEvents === 'none') {
+        window.VSC.logger.debug('Audio controller hidden - element disabled or no pointer events');
+        return true;
+      }
+
+      // Keep audio controllers visible even for hidden audio elements
+      window.VSC.logger.debug(
+        'Audio controller will start visible (audio elements can be invisible but functional)'
+      );
+      return false;
+    }
+
+    // For video elements, check visibility - only hide controllers for truly invisible media elements
     const style = window.getComputedStyle(media);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-      window.VSC.logger.debug('Media not visible, controller will start hidden');
+      window.VSC.logger.debug('Video not visible, controller will start hidden');
       return true;
     }
 

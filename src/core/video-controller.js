@@ -115,11 +115,12 @@ class VideoController {
     wrapper.classList.add('vsc-controller');
 
     // Set positioning styles with calculated position
+    // Use inline styles without !important so CSS rules can override
     wrapper.style.cssText = `
       position: absolute !important;
       z-index: 9999999 !important;
-      top: ${position.top} !important;
-      left: ${position.left} !important;
+      top: ${position.top};
+      left: ${position.left};
     `;
 
     // Only hide controller if video has no source AND is not ready/functional
@@ -348,6 +349,25 @@ class VideoController {
     const isVisible = this.isVideoVisible();
     const isCurrentlyHidden = this.div.classList.contains('vsc-hidden');
 
+    // Special handling for audio elements - don't hide controllers for functional audio
+    if (this.video.tagName === 'AUDIO') {
+      // For audio, only hide if manually hidden or if audio support is disabled
+      if (!this.config.settings.audioBoolean && !isCurrentlyHidden) {
+        this.div.classList.add('vsc-hidden');
+        window.VSC.logger.debug('Hiding audio controller - audio support disabled');
+      } else if (
+        this.config.settings.audioBoolean &&
+        isCurrentlyHidden &&
+        !this.div.classList.contains('vsc-manual')
+      ) {
+        // Show audio controller if audio support is enabled and not manually hidden
+        this.div.classList.remove('vsc-hidden');
+        window.VSC.logger.debug('Showing audio controller - audio support enabled');
+      }
+      return;
+    }
+
+    // Original logic for video elements
     if (isVisible && isCurrentlyHidden && !this.div.classList.contains('vsc-manual')) {
       // Video became visible and controller is hidden (but not manually hidden)
       this.div.classList.remove('vsc-hidden');

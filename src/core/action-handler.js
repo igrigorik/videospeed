@@ -341,17 +341,44 @@ class ActionHandler {
    * @param {number} duration - Duration in ms (default 1000)
    */
   blinkController(controller, duration) {
+    // Don't hide audio controllers after blinking - audio elements are often invisible by design
+    // but should maintain visible controllers for user interaction
+    const isAudioController = this.isAudioController(controller);
+
     if (controller.classList.contains('vsc-hidden') || controller.blinkTimeOut !== undefined) {
       clearTimeout(controller.blinkTimeOut);
       controller.classList.remove('vsc-hidden');
-      controller.blinkTimeOut = setTimeout(
-        () => {
-          controller.classList.add('vsc-hidden');
-          controller.blinkTimeOut = undefined;
-        },
-        duration ? duration : 1000
-      );
+
+      // For audio controllers, don't set timeout to hide again
+      if (!isAudioController) {
+        controller.blinkTimeOut = setTimeout(
+          () => {
+            controller.classList.add('vsc-hidden');
+            controller.blinkTimeOut = undefined;
+          },
+          duration ? duration : 1000
+        );
+      } else {
+        window.VSC.logger.debug('Audio controller blink - keeping visible');
+      }
     }
+  }
+
+  /**
+   * Check if controller is associated with an audio element
+   * @param {HTMLElement} controller - Controller element
+   * @returns {boolean} True if associated with audio element
+   * @private
+   */
+  isAudioController(controller) {
+    // Find associated media element
+    const mediaElements = this.config.getMediaElements();
+    for (const media of mediaElements) {
+      if (media.vsc && media.vsc.div === controller) {
+        return media.tagName === 'AUDIO';
+      }
+    }
+    return false;
   }
 
   /**

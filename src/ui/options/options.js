@@ -4,7 +4,7 @@ var tcDefaults = {
   speed: 1.0, // default:
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
-  audioBoolean: false, // default: false
+  audioBoolean: true, // default: true (enable audio controller support)
   startHidden: false, // default: false
   forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled

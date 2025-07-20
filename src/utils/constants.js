@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS = {
   displayKeyCode: 86, // default: V
   rememberSpeed: false, // default: false
   forceLastSavedSpeed: false, //default: false
-  audioBoolean: false, // default: false
+  audioBoolean: true, // default: true (enable audio controller support)
   startHidden: false, // default: false
   controllerOpacity: 0.3, // default: 0.3
   controllerButtonSize: 14,

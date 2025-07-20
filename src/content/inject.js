@@ -51,6 +51,9 @@ class VideoSpeedExtension {
       // Initialize site handler
       this.siteHandlerManager.initialize(document);
 
+      // Add domain-specific class to body for CSS targeting
+      this.addDomainClass();
+
       // Create action handler and event manager
       this.eventManager = new this.EventManager(this.config, null);
       this.actionHandler = new this.ActionHandler(this.config, this.eventManager);
@@ -199,6 +202,24 @@ class VideoSpeedExtension {
   }
 
   /**
+   * Add domain-specific class to body for CSS targeting
+   */
+  addDomainClass() {
+    try {
+      const hostname = window.location.hostname;
+      // Convert domain to valid CSS class name
+      const domainClass = `vsc-domain-${hostname.replace(/\./g, '-')}`;
+
+      if (document.body) {
+        document.body.classList.add(domainClass);
+        this.logger.debug(`Added domain class: ${domainClass}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to add domain class: ${error.message}`);
+    }
+  }
+
+  /**
    * Set up observers for DOM changes and video detection
    */
   setupObservers() {
@@ -321,7 +342,7 @@ window.addEventListener('VSC_MESSAGE', (event) => {
 
   // Handle namespaced VSC message types
   if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
-    const videos = document.querySelectorAll('video');
+    const videos = document.querySelectorAll('video, audio');
 
     switch (message.type) {
       case window.VSC.Constants.MESSAGE_TYPES.SET_SPEED:

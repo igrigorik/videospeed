@@ -37,6 +37,7 @@ async function injectModules() {
     const modules = [
       'src/utils/constants.js',
       'src/utils/logger.js',
+      'src/utils/debug-helper.js',
       'src/utils/dom-utils.js',
       'src/utils/event-manager.js',
       'src/core/storage-manager.js',

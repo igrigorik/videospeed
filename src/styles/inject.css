@@ -120,3 +120,11 @@ div.legacy-video-player.has_played.vertically_center:before {
 section[role="tabpanel"][aria-label="Video Player"] {
   top: 80px;
 }
+
+/* ChatGPT audio controller positioning */
+/* https://chatgpt.com */
+body.vsc-domain-chatgpt-com .vsc-controller {
+  position: relative !important;
+  top: 0px !important;
+  left: 35px !important;
+}
