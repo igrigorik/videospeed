@@ -12,6 +12,9 @@ class EventManager {
     this.listeners = new Map();
     this.coolDown = false;
     this.timer = null;
+
+    // Event deduplication to prevent duplicate key processing
+    this.lastKeyEventSignature = null;
   }
 
   /**
@@ -64,6 +67,15 @@ class EventManager {
 
     window.VSC.logger.verbose(`Processing keydown event: ${keyCode}`);
 
+    // Event deduplication - prevent same key event from being processed multiple times
+    const eventSignature = `${keyCode}_${event.timeStamp}_${event.type}`;
+
+    if (this.lastKeyEventSignature === eventSignature) {
+      return;
+    }
+
+    this.lastKeyEventSignature = eventSignature;
+
     // Ignore if following modifier is active
     if (this.hasActiveModifier(event)) {
       window.VSC.logger.debug(`Keydown event ignored due to active modifier: ${keyCode}`);
@@ -84,7 +96,7 @@ class EventManager {
     const keyBinding = this.config.settings.keyBindings.find((item) => item.key === keyCode);
 
     if (keyBinding) {
-      this.actionHandler.runAction(keyBinding.action, keyBinding.value);
+      this.actionHandler.runAction(keyBinding.action, keyBinding.value, event);
 
       if (keyBinding.force === 'true') {
         // Disable website's key bindings

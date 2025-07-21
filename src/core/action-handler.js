@@ -36,7 +36,8 @@ class ActionHandler {
       }
 
       // Don't change video speed if the video has a different controller
-      if (e && !(targetController === controller)) {
+      // Only apply this check for button clicks (when targetController is set)
+      if (e && targetController && !(targetController === controller)) {
         return;
       }
 
