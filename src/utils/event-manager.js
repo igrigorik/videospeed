@@ -251,15 +251,26 @@ class EventManager {
    * @param {Element} controller - Controller element
    */
   showController(controller) {
-    window.VSC.logger.info('Showing controller');
-    controller.classList.add('vcs-show');
+    // Respect startHidden setting - don't show controllers that should stay hidden
+    // unless they've been manually toggled by the user (have vsc-manual class)
+    if (this.config.settings.startHidden && !controller.classList.contains('vsc-manual')) {
+      window.VSC.logger.info(
+        `Controller hidden by default - not showing temporarily (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
+      );
+      return;
+    }
+
+    window.VSC.logger.info(
+      `Showing controller temporarily (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
+    );
+    controller.classList.add('vsc-show');
 
     if (this.timer) {
       clearTimeout(this.timer);
     }
 
     this.timer = setTimeout(() => {
-      controller.classList.remove('vcs-show');
+      controller.classList.remove('vsc-show');
       this.timer = null;
       window.VSC.logger.debug('Hiding controller');
     }, 2000);

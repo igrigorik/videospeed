@@ -107,6 +107,14 @@ class ActionHandler {
 
         controller.classList.add('vsc-manual');
         controller.classList.toggle('vsc-hidden');
+
+        // Clear inline fallback styles to prevent conflicts with CSS classes
+        if (controller.classList.contains('vsc-manual')) {
+          controller.style.removeProperty('display');
+          controller.style.removeProperty('visibility');
+          controller.style.removeProperty('opacity');
+          window.VSC.logger.debug('Cleared inline fallback styles for manual toggle');
+        }
         break;
       }
 

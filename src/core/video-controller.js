@@ -112,32 +112,52 @@ class VideoController {
 
     // Create wrapper element
     const wrapper = document.createElement('div');
-    wrapper.classList.add('vsc-controller');
+
+    // Apply all CSS classes at once to prevent race condition flash
+    const cssClasses = ['vsc-controller'];
+
+    // Only hide controller if video has no source AND is not ready/functional
+    // This prevents hiding controllers for live streams or dynamically loaded videos
+    if (!this.video.currentSrc && !this.video.src && this.video.readyState < 2) {
+      cssClasses.push('vsc-nosource');
+    }
+
+    if (this.config.settings.startHidden || this.shouldStartHidden) {
+      cssClasses.push('vsc-hidden');
+      if (this.shouldStartHidden) {
+        window.VSC.logger.debug('Starting controller hidden due to video visibility/size');
+      } else {
+        window.VSC.logger.info(
+          `Controller starting hidden due to startHidden setting: ${this.config.settings.startHidden}`
+        );
+      }
+    }
+    // When startHidden=false, use natural visibility (no special class needed)
+
+    // Apply all classes at once to prevent visible flash
+    wrapper.className = cssClasses.join(' ');
 
     // Set positioning styles with calculated position
     // Use inline styles without !important so CSS rules can override
-    wrapper.style.cssText = `
+    let styleText = `
       position: absolute !important;
       z-index: 9999999 !important;
       top: ${position.top};
       left: ${position.left};
     `;
 
-    // Only hide controller if video has no source AND is not ready/functional
-    // This prevents hiding controllers for live streams or dynamically loaded videos
-    if (!this.video.currentSrc && !this.video.src && this.video.readyState < 2) {
-      wrapper.classList.add('vsc-nosource');
+    // Add inline fallback styles if controller should start hidden
+    // This prevents FOUC if inject.css hasn't loaded yet
+    if (this.config.settings.startHidden || this.shouldStartHidden) {
+      styleText += `
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      `;
+      window.VSC.logger.debug('Applied inline fallback styles for hidden controller');
     }
 
-    if (this.config.settings.startHidden || this.shouldStartHidden) {
-      wrapper.classList.add('vsc-hidden');
-      if (this.shouldStartHidden) {
-        window.VSC.logger.debug('Starting controller hidden due to video visibility/size');
-      }
-    } else {
-      // Ensure controller is visible, especially on YouTube
-      wrapper.classList.add('vcs-show');
-    }
+    wrapper.style.cssText = styleText;
 
     // Create shadow DOM with relative positioning inside shadow root
     const shadow = window.VSC.ShadowDOMManager.createShadowDOM(wrapper, {
@@ -156,6 +176,9 @@ class VideoController {
 
     // Insert into DOM based on site-specific rules
     this.insertIntoDOM(document, wrapper);
+
+    // Debug: Log final classes on controller
+    window.VSC.logger.info(`Controller classes after creation: ${wrapper.className}`);
 
     window.VSC.logger.debug('initializeControls End');
     return wrapper;
@@ -368,8 +391,13 @@ class VideoController {
     }
 
     // Original logic for video elements
-    if (isVisible && isCurrentlyHidden && !this.div.classList.contains('vsc-manual')) {
-      // Video became visible and controller is hidden (but not manually hidden)
+    if (
+      isVisible &&
+      isCurrentlyHidden &&
+      !this.div.classList.contains('vsc-manual') &&
+      !this.config.settings.startHidden
+    ) {
+      // Video became visible and controller is hidden (but not manually hidden and not set to start hidden)
       this.div.classList.remove('vsc-hidden');
       window.VSC.logger.debug('Showing controller - video became visible');
     } else if (!isVisible && !isCurrentlyHidden) {

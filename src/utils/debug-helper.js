@@ -289,7 +289,7 @@ class DebugHelper {
     controllers.forEach((controller, index) => {
       // Remove all hiding classes
       controller.classList.remove('vsc-hidden', 'vsc-nosource');
-      controller.classList.add('vsc-manual', 'vcs-show');
+      controller.classList.add('vsc-manual', 'vsc-show');
 
       // Force visibility styles
       controller.style.display = 'block !important';
@@ -317,7 +317,7 @@ class DebugHelper {
 
         // Remove all hiding classes
         controller.classList.remove('vsc-hidden', 'vsc-nosource');
-        controller.classList.add('vsc-manual', 'vcs-show');
+        controller.classList.add('vsc-manual', 'vsc-show');
 
         // Force visibility styles
         controller.style.display = 'block !important';

@@ -139,10 +139,10 @@ runner.test('VideoController should start visible for small audio elements', asy
     'Small audio controller should start visible'
   );
 
-  // Verify it's marked as visible
-  assert.true(
-    controller.div.classList.contains('vcs-show'),
-    'Small audio controller should have vcs-show class'
+  // Verify it's not hidden (uses natural visibility)
+  assert.false(
+    controller.div.classList.contains('vsc-hidden'),
+    'Small audio controller should not be hidden'
   );
 
   // Cleanup
