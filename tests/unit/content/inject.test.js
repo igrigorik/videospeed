@@ -158,8 +158,14 @@ runner.test('onVideoFound should prefer parentElement when available', async () 
 });
 
 runner.test('onVideoFound should handle video with neither parentElement nor parentNode', async () => {
+  // Verify VideoSpeedExtension is available
+  assert.exists(window.VideoSpeedExtension, 'VideoSpeedExtension class should be available on window');
+  
   // Create extension instance
   extension = new window.VideoSpeedExtension();
+  
+  // Verify extension was created
+  assert.exists(extension, 'Extension instance should be created');
 
   try {
     await extension.initialize();
@@ -198,12 +204,5 @@ runner.test('onVideoFound should handle video with neither parentElement nor par
     assert.true(false, `Test should not throw error: ${error.message}`);
   }
 });
-
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('Inject tests completed:', results);
-  });
-}
 
 export { runner as injectTestRunner }; 

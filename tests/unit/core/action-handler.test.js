@@ -342,11 +342,4 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
   assert.equal(mockVideo.vsc.speedIndicator.textContent, '2.50');
 });
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('ActionHandler tests completed:', results);
-  });
-}
-
 export { runner as actionHandlerTestRunner };

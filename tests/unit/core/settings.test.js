@@ -96,11 +96,4 @@ runner.test('VideoSpeedConfig should handle invalid key binding requests gracefu
   config.setKeyBinding('nonexistent', 123);
 });
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('Settings tests completed:', results);
-  });
-}
-
 export { runner as settingsTestRunner };

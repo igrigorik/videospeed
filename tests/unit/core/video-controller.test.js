@@ -176,11 +176,4 @@ runner.test('VideoController should track media elements in config', async () =>
   assert.equal(config.getMediaElements().length, 2);
 });
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('VideoController tests completed:', results);
-  });
-}
-
 export { runner as videoControllerTestRunner };

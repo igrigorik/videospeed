@@ -321,11 +321,4 @@ runner.test('Performance test - should handle many nested shadow roots efficient
   assert.true(duration < 100, `Search took ${duration}ms, should be under 100ms`);
 });
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('Recursive shadow DOM tests completed:', results);
-  });
-}
-
 export { runner as recursiveShadowDOMTestRunner }; 

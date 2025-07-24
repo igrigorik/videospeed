@@ -223,11 +223,4 @@ runner.test('VideoMutationObserver should detect nested video elements', () => {
   assert.equal(mockOnVideoFound[0].parent, videoElement.parentNode);
 });
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then(results => {
-    console.log('Mutation observer tests completed:', results);
-  });
-}
-
 export { runner as mutationObserverTestRunner }; 

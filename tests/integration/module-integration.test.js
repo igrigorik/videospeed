@@ -158,11 +158,4 @@ runner.test(
   }
 );
 
-// Run tests if this file is loaded directly
-if (typeof window !== 'undefined' && window.location) {
-  runner.run().then((results) => {
-    console.log('Module integration tests completed:', results);
-  });
-}
-
 export { runner as moduleIntegrationTestRunner };
