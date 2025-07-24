@@ -59,18 +59,6 @@ meet.google.com`.replace(regStrip, ''),
 
   window.VSC.Constants.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
 
-  const DEFAULT_KEY_BINDINGS = [
-    { action: 'slower', key: 83, value: 0.1, force: false, predefined: true }, // S
-    { action: 'faster', key: 68, value: 0.1, force: false, predefined: true }, // D
-    { action: 'rewind', key: 90, value: 10, force: false, predefined: true }, // Z
-    { action: 'advance', key: 88, value: 10, force: false, predefined: true }, // X
-    { action: 'reset', key: 82, value: 1.0, force: false, predefined: true }, // R
-    { action: 'fast', key: 71, value: 1.8, force: false, predefined: true }, // G
-    { action: 'display', key: 86, value: 0, force: false, predefined: true }, // V
-    { action: 'mark', key: 77, value: 0, force: false, predefined: true }, // M
-    { action: 'jump', key: 74, value: 0, force: false, predefined: true }, // J
-  ];
-
   const LOG_LEVELS = {
     NONE: 1,
     ERROR: 2,
@@ -110,7 +98,6 @@ meet.google.com`.replace(regStrip, ''),
   const CUSTOM_ACTIONS_NO_VALUES = ['pause', 'muted', 'mark', 'jump', 'display'];
 
   // Assign to global namespace
-  window.VSC.Constants.DEFAULT_KEY_BINDINGS = DEFAULT_KEY_BINDINGS;
   window.VSC.Constants.LOG_LEVELS = LOG_LEVELS;
   window.VSC.Constants.MESSAGE_TYPES = MESSAGE_TYPES;
   window.VSC.Constants.SPEED_LIMITS = SPEED_LIMITS;
