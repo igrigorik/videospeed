@@ -97,14 +97,8 @@ window.VSC.DomUtils.getShadow = function (parent, maxDepth = 10) {
 
         // Only traverse shadow roots if we haven't exceeded depth limit
         if (child.shadowRoot && depth < maxDepth - 2) {
-          // Use setTimeout to yield control back to browser for deep shadow roots
-          if (depth > 5) {
-            setTimeout(() => {
-              result.push(...window.VSC.DomUtils.getShadow(child.shadowRoot, maxDepth - depth));
-            }, 0);
-          } else {
-            result.push(...window.VSC.DomUtils.getShadow(child.shadowRoot, maxDepth - depth));
-          }
+          // Always handle shadow roots synchronously to maintain function contract
+          result.push(...window.VSC.DomUtils.getShadow(child.shadowRoot, maxDepth - depth));
         }
 
         child = child.nextElementSibling;
