@@ -16,6 +16,18 @@ function debounce(func, wait) {
 
 var keyBindings = [];
 
+// Minimal blacklist - only keys that would interfere with form navigation
+const BLACKLISTED_KEYCODES = [
+  9,   // Tab - needed for keyboard navigation
+  16,  // Shift (alone)
+  17,  // Ctrl/Control (alone)
+  18,  // Alt (alone)
+  91,  // Meta/Windows/Command Left
+  92,  // Meta/Windows Right
+  93,  // Context Menu/Right Command
+  224  // Meta/Command (Firefox)
+];
+
 var keyCodeAliases = {
   0: "null",
   null: "null",
@@ -52,6 +64,18 @@ var keyCodeAliases = {
   121: "F10",
   122: "F11",
   123: "F12",
+  124: "F13",
+  125: "F14",
+  126: "F15",
+  127: "F16",
+  128: "F17",
+  129: "F18",
+  130: "F19",
+  131: "F20",
+  132: "F21",
+  133: "F22",
+  134: "F23",
+  135: "F24",
   186: ";",
   188: "<",
   189: "-",
@@ -66,25 +90,37 @@ var keyCodeAliases = {
 };
 
 function recordKeyPress(e) {
-  if (
-    (e.keyCode >= 48 && e.keyCode <= 57) || // Numbers 0-9
-    (e.keyCode >= 65 && e.keyCode <= 90) || // Letters A-Z
-    keyCodeAliases[e.keyCode] // Other character keys
-  ) {
-    e.target.value =
-      keyCodeAliases[e.keyCode] || String.fromCharCode(e.keyCode);
-    e.target.keyCode = e.keyCode;
-
-    e.preventDefault();
-    e.stopPropagation();
-  } else if (e.keyCode === 8) {
+  // Special handling for backspace and escape
+  if (e.keyCode === 8) {
     // Clear input when backspace pressed
     e.target.value = "";
+    e.preventDefault();
+    e.stopPropagation();
+    return;
   } else if (e.keyCode === 27) {
     // When esc clicked, clear input
     e.target.value = "null";
     e.target.keyCode = null;
+    e.preventDefault();
+    e.stopPropagation();
+    return;
   }
+
+  // Block blacklisted keys
+  if (BLACKLISTED_KEYCODES.includes(e.keyCode)) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+
+  // Accept all other keys
+  // Use friendly name if available, otherwise show "Key {code}"
+  e.target.value = keyCodeAliases[e.keyCode] ||
+    (e.keyCode >= 48 && e.keyCode <= 90 ? String.fromCharCode(e.keyCode) : `Key ${e.keyCode}`);
+  e.target.keyCode = e.keyCode;
+
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 function inputFilterNumbersOnly(e) {
@@ -100,18 +136,21 @@ function inputFocus(e) {
 }
 
 function inputBlur(e) {
-  e.target.value =
-    keyCodeAliases[e.target.keyCode] || String.fromCharCode(e.target.keyCode);
+  const keyCode = e.target.keyCode;
+  e.target.value = keyCodeAliases[keyCode] ||
+    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
 }
 
 function updateShortcutInputText(inputId, keyCode) {
-  document.getElementById(inputId).value =
-    keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
-  document.getElementById(inputId).keyCode = keyCode;
+  const input = document.getElementById(inputId);
+  input.value = keyCodeAliases[keyCode] ||
+    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
+  input.keyCode = keyCode;
 }
 
 function updateCustomShortcutInputText(inputItem, keyCode) {
-  inputItem.value = keyCodeAliases[keyCode] || String.fromCharCode(keyCode);
+  inputItem.value = keyCodeAliases[keyCode] ||
+    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
   inputItem.keyCode = keyCode;
 }
 
