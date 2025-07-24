@@ -119,7 +119,10 @@ runner.test('ActionHandler should handle pause action', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const mockVideo = createMockVideo({ paused: false });
-  mockVideo.vsc = { div: mockDOM.container };
+  mockVideo.vsc = { 
+    div: mockDOM.container,
+    speedIndicator: { textContent: '1.00' }
+  };
   config.addMediaElement(mockVideo);
 
   actionHandler.runAction('pause');
@@ -135,7 +138,10 @@ runner.test('ActionHandler should handle mute action', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const mockVideo = createMockVideo({ muted: false });
-  mockVideo.vsc = { div: mockDOM.container };
+  mockVideo.vsc = { 
+    div: mockDOM.container,
+    speedIndicator: { textContent: '1.00' }
+  };
   config.addMediaElement(mockVideo);
 
   actionHandler.runAction('muted');
@@ -151,7 +157,10 @@ runner.test('ActionHandler should handle volume actions', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const mockVideo = createMockVideo({ volume: 0.5 });
-  mockVideo.vsc = { div: mockDOM.container };
+  mockVideo.vsc = { 
+    div: mockDOM.container,
+    speedIndicator: { textContent: '1.00' }
+  };
   config.addMediaElement(mockVideo);
 
   actionHandler.runAction('louder', 0.1);
@@ -169,7 +178,10 @@ runner.test('ActionHandler should handle seek actions', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const mockVideo = createMockVideo({ currentTime: 50 });
-  mockVideo.vsc = { div: mockDOM.container };
+  mockVideo.vsc = { 
+    div: mockDOM.container,
+    speedIndicator: { textContent: '1.00' }
+  };
   config.addMediaElement(mockVideo);
 
   actionHandler.runAction('advance', 10);
@@ -187,7 +199,10 @@ runner.test('ActionHandler should handle mark and jump actions', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const mockVideo = createMockVideo({ currentTime: 30 });
-  mockVideo.vsc = { div: mockDOM.container };
+  mockVideo.vsc = { 
+    div: mockDOM.container,
+    speedIndicator: { textContent: '1.00' }
+  };
   config.addMediaElement(mockVideo);
 
   // Set mark
@@ -213,7 +228,7 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
   const mockVideo = createMockVideo({ currentTime: 25 });
   mockVideo.vsc = {
     div: mockDOM.container,
-    speedIndicator: mockDOM.speedIndicator,
+    speedIndicator: { textContent: '1.00' },
     mark: undefined
   };
   config.addMediaElement(mockVideo);

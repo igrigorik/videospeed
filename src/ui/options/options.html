@@ -4,6 +4,10 @@
 <head>
   <title>Video Speed Controller: Options</title>
   <link rel="stylesheet" href="options.css" />
+  <script src="../../utils/constants.js"></script>
+  <script src="../../utils/logger.js"></script>
+  <script src="../../core/storage-manager.js"></script>
+  <script src="../../core/settings.js"></script>
   <script src="options.js"></script>
 </head>
 
@@ -19,7 +23,7 @@
         <option value="display">Show/hide controller</option>
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0.10)" />
+      <input class="customValue" type="text" placeholder="value (0.10)" style="display: none;" />
       <select class="customForce">
         <option value="false">Do not disable website key bindings</option>
         <option value="true">Disable website key bindings</option>
@@ -74,7 +78,7 @@
         <option value="reset">Reset speed</option>
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (1.00)" disabled />
+      <input class="customValue" type="text" placeholder="value (1.00)" />
       <select class="customForce">
         <option value="false">Do not disable website key bindings</option>
         <option value="true">Disable website key bindings</option>
@@ -96,7 +100,7 @@
         <option value="mark">Set marker</option>
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0)" disabled />
+      <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
       <select class="customForce">
         <option value="false">Do not disable website key bindings</option>
         <option value="true">Disable website key bindings</option>
@@ -107,7 +111,7 @@
         <option value="jump">Jump to marker</option>
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0)" disabled />
+      <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
       <select class="customForce">
         <option value="false">Do not disable website key bindings</option>
         <option value="true">Disable website key bindings</option>
@@ -120,26 +124,21 @@
   <section>
     <h3>Other</h3>
     <div class="row">
-      <label for="enabled">Enable</label>
-      <input id="enabled" type="checkbox" />
-    </div>
-    <div class="row">
-      <label for="startHidden">Hide controller by default</label>
-      <input id="startHidden" type="checkbox" />
+      <label for="audioBoolean">Audio support</label>
+      <input id="audioBoolean" type="checkbox" />
     </div>
     <div class="row">
       <label for="rememberSpeed">Remember playback speed</label>
       <input id="rememberSpeed" type="checkbox" />
     </div>
     <div class="row">
-      <label for="forceLastSavedSpeed">Force last saved speed<br />
-        <em>Useful for video players that override the speeds set by
-          VideoSpeed</em></label>
-      <input id="forceLastSavedSpeed" type="checkbox" />
+      <label for="startHidden">Hide controller by default</label>
+      <input id="startHidden" type="checkbox" />
     </div>
     <div class="row">
-      <label for="audioBoolean">Work on audio</label>
-      <input id="audioBoolean" type="checkbox" />
+      <label for="forceLastSavedSpeed">Force last saved speed<br />
+        <em>Prevent video players that override VSC speed</em></label>
+      <input id="forceLastSavedSpeed" type="checkbox" />
     </div>
     <div class="row">
       <label for="controllerOpacity">Controller opacity</label>
@@ -150,8 +149,8 @@
       <input id="controllerButtonSize" type="text" value="" />
     </div>
     <div class="row">
-      <label for="logLevel">Log Level<br />
-        <em>Controls the verbosity of debug logging in the browser console</em></label>
+      <label for="logLevel">Console Log Level<br />
+        <em>Set verbosity in the browser console</em></label>
       <select id="logLevel">
         <option value="1">None</option>
         <option value="2">Error</option>
@@ -163,13 +162,9 @@
     </div>
     <div class="row">
       <label for="blacklist">Sites on which extension is disabled<br />
-        (one per line)<br />
-        <br />
-        <em>
-          <a href="https://www.regexpal.com/">Regex</a> is supported.<br />
-          Be sure to use the literal notation.<br />
-          ie: /(.+)youtube\.com(\/*)$/gi
-        </em>
+        One per line, <a href="https://www.regexpal.com/">Regex</a> is supported.<br />
+        Be sure to use the literal notation.<br />
+        e.g. <code>/(.+)youtube\.com(\/*)$/gi</code>
       </label>
       <textarea id="blacklist" rows="10" cols="50"></textarea>
       </label>
@@ -177,7 +172,7 @@
 
   <button id="save">Save</button>
   <button id="restore">Restore Defaults</button>
-  <button id="experimental">Show Experimental Features</button>
+  <button id="experimental">Advanced Features</button>
 
   <div id="status"></div>
   <br />
@@ -193,40 +188,16 @@
   </section>
 
   <div id="faq">
-    <h4>Extension controls not appearing?</h4>
+    <h4>The speed controls are not showing up for local videos or Incognito mode?</h4>
     <p>
-      This extension is only compatible with HTML5 audio and video. If you
-      don't see the controls showing up, chances are you are viewing a Flash
-      content. If you want to confirm, try right-clicking on the content and
-      inspect the menu: if it mentions flash, then that's the issue. That
-      said, <b>most sites will fallback to HTML5</b> if they detect that Flash
-      is not available. You can try manually disabling Flash plugin in the
-      browser:
+      To enable playback of local media (e.g. File &gt; Open File) or Incognito mode, you need
+      to manually grant additional permissions to the extension.
     </p>
-
-    <ul>
-      <li>
-        In a new tab, navigate to <code>chrome://settings/content/flash</code>
-      </li>
-      <li>Disable "Allow sites to run Flash"</li>
-      <li>Restart your browser and try playing your audio or video again</li>
-    </ul>
-
-    <h4>The speed controls are not showing up for local videos?</h4>
-    <p>
-      To enable playback of local media (e.g. File &gt; Open File), you need
-      to grant additional permissions to the extension.
-    </p>
-
     <ul>
       <li>In a new tab, navigate to <code>chrome://extensions</code></li>
       <li>
         Find "Video Speed Controller" extension in the list and enable "Allow
-        access to file URLs"
-      </li>
-      <li>
-        Open a new tab and try opening a local file, the controls should show
-        up
+        access to file URLs" and/or "Allow in Incognito".
       </li>
     </ul>
   </div>
