@@ -270,7 +270,6 @@ export class SimpleTestRunner {
   }
 
   async run() {
-    console.group('Running tests...');
     let passed = 0;
     let failed = 0;
 

@@ -136,7 +136,8 @@ async function runTests() {
       'unit/observers/mutation-observer.test.js',
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
-      'unit/utils/recursive-shadow-dom.test.js'
+      'unit/utils/recursive-shadow-dom.test.js',
+      'unit/utils/blacklist-regex.test.js'
     ];
   } else if (testType === 'integration') {
     testFiles = [
@@ -153,6 +154,7 @@ async function runTests() {
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
+      'unit/utils/blacklist-regex.test.js',
       'integration/module-integration.test.js'
     ];
   }
