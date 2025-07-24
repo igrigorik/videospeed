@@ -1,194 +1,701 @@
+/* Material Design Variables - matching popup.css */
 :root {
-  --main-bg-color: #fefefe;
-  --main-color: #010101;
-  --bg-shade: #eee;
-  --color-shade: #777;
+  /* Light theme */
+  --md-surface: #ffffff;
+  --md-surface-variant: #f3f3f3;
+  --md-surface-container: #fafafa;
+  --md-on-surface: #1c1b1f;
+  --md-on-surface-variant: #49454f;
+  --md-primary: #6750a4;
+  --md-primary-container: #eaddff;
+  --md-on-primary: #ffffff;
+  --md-on-primary-container: #21005d;
+  --md-outline: #79747e;
+  --md-outline-variant: #cac4d0;
+  --md-shadow: rgba(0, 0, 0, 0.1);
+  --md-shadow-2: rgba(0, 0, 0, 0.15);
+
+  /* Legacy variable mapping */
+  --main-bg-color: var(--md-surface);
+  --main-color: var(--md-on-surface);
+  --bg-shade: var(--md-surface-variant);
+  --color-shade: var(--md-on-surface-variant);
 }
 
-@media screen and (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --main-bg-color: #010101;
-    --main-color: #fefefe;
-    --bg-shade: #333;
-    --color-shade: #aaa;
+    /* Dark theme */
+    --md-surface: #131316;
+    --md-surface-variant: #2b2930;
+    --md-surface-container: #1f1f23;
+    --md-on-surface: #e6e0e9;
+    --md-on-surface-variant: #cac4cf;
+    --md-primary: #d0bcff;
+    --md-primary-container: #4f378b;
+    --md-on-primary: #371e73;
+    --md-on-primary-container: #eaddff;
+    --md-outline: #938f99;
+    --md-outline-variant: #49454f;
+    --md-shadow: rgba(0, 0, 0, 0.3);
+    --md-shadow-2: rgba(0, 0, 0, 0.4);
   }
 
   a {
-    color: aqua;
+    color: var(--md-primary);
   }
 
   a:visited {
-    color: lightblue;
+    color: var(--md-primary-container);
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
 html {
-  max-width: 640px;
+  max-width: 720px;
   padding: 0 1em;
   margin: auto;
   line-height: 1.75;
-  font-size: 1.2em;
-  background-color: var(--main-bg-color);
-  color: var(--main-color);
+  font-size: 1em;
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
-  padding-left: 15px;
-  padding-top: 53px;
-  font-family: sans-serif;
-}
-
-h1,
-h2,
-h3 {
-  font-weight: normal;
-  line-height: 1;
-  user-select: none;
-  cursor: default;
-}
-
-h1 {
-  font-size: 1.5em;
-  margin: 21px 0 13px;
-}
-
-h3 {
-  font-size: 1.2em;
-  margin-bottom: 0.8em;
-}
-
-p {
-  margin: 0.65em 0;
+  padding: 0 20px 40px;
 }
 
 header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding-left: 1em;
-  border-bottom: 1px solid var(--color-shade);
-  background: var(--main-bg-color);
+  margin: 0 -20px 24px;
+  padding: 20px 40px;
+  background: var(--md-surface-container);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--md-on-surface);
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 32px 0 16px;
+  color: var(--md-on-surface);
 }
 
 section {
-  padding-left: 18px;
+  margin: 0 0 32px;
+}
+
+/* Material Design form elements */
+.row {
+  margin: 16px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* First row after heading should have less top margin */
+h3+.row {
   margin-top: 8px;
-  margin-bottom: 24px;
 }
 
-section h3 {
-  margin-left: -18px;
+.row.customs {
+  gap: 8px;
+  align-items: center;
+  display: grid;
+  grid-template-columns: 180px 75px 75px;
+  position: relative;
+  padding-left: 44px;
 }
 
-button {
-  -webkit-appearance: none;
-
-  margin: 0 1px 0 0;
-  padding: 0 10px;
-  min-width: 4em;
-  min-height: 2em;
-  background-color: var(--bg-shade);
-  border: 1px solid var(--color-shade);
-
-  border-radius: 2px;
-  outline: none;
-  color: var(--main-color);
-  font: inherit;
-
-  user-select: none;
+/* When advanced features are shown */
+.row.customs:has(.customForce) {
+  grid-template-columns: 180px 75px 75px 200px;
 }
 
-button:hover {
-  background-color: var(--color-shade);
+
+
+/* Special handling for rows without value inputs */
+.row.customs:has(input[style*="display: none"]) {
+  grid-template-columns: 180px 75px 0;
+}
+
+.row.customs:has(input[style*="display: none"]):has(.customForce) {
+  grid-template-columns: 180px 75px 0 200px;
+}
+
+.row.customs:has(input[style*="display: none"]) .customValue {
+  width: 0;
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
+/* Remove button styling - positioned absolutely on the left */
+.removeParent {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 16px;
+  background-color: var(--md-surface-variant);
+  color: var(--md-on-surface);
+  border: 1px solid var(--md-outline-variant);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: var(--bg-shade);
-  color: var(--color-shade);
+/* Hide remove button for predefined shortcuts */
+.row.customs[id] .removeParent {
+  display: none;
 }
 
-button:disabled:hover {
-  background-color: var(--bg-shade);
+/* Style disabled selects consistently */
+select:disabled {
+  opacity: 0.8;
+  background-color: var(--md-surface-variant);
+  cursor: default;
 }
 
-input[type="text"] {
+select:disabled:hover {
+  border-color: var(--md-outline);
+  background-color: var(--md-surface-variant);
+}
+
+.removeParent:hover {
+  background-color: #ffebee;
+  color: #d32f2f;
+  border-color: #d32f2f;
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 2px 4px var(--md-shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  .removeParent:hover {
+    background-color: rgba(211, 47, 47, 0.15);
+    color: #ef5350;
+    border-color: #ef5350;
+  }
+}
+
+.removeParent:active {
+  transform: translateY(-50%) scale(0.95);
+  box-shadow: 0 1px 2px var(--md-shadow);
+}
+
+.removeParent:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+}
+
+/* Improved label styling with context */
+label {
+  flex: 0 0 280px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--md-on-surface);
+  font-weight: 500;
+}
+
+label em {
+  display: block;
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+  font-weight: 400;
+  margin-top: 2px;
+  font-style: normal;
+}
+
+/* Material Design text inputs */
+input[type="text"],
+input[type="number"] {
+  padding: 8px 12px;
+  border: 1px solid var(--md-outline);
+  border-radius: 4px;
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: 14px;
+  transition: all 0.2s ease;
+  min-height: 40px;
   width: 75px;
   text-align: center;
-  border: 1px solid var(--color-shade);
-  background-color: var(--bg-shade);
-  color: var(--main-color);
+}
+
+/* Custom key input styling */
+.customKey {
+  color: transparent;
+  text-shadow: 0 0 0 var(--md-on-surface);
+}
+
+/* Specific input widths */
+#controllerOpacity,
+#controllerButtonSize {
+  width: 60px;
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover {
+  border-color: var(--md-on-surface);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 1px var(--md-primary);
 }
 
 input::placeholder {
-  opacity: 0.8;
-  color: var(--main-color);
+  opacity: 0.7;
+  color: var(--md-on-surface-variant);
 }
 
 input:disabled {
   cursor: not-allowed;
-  color: var(--color-shade);
+  opacity: 0.7;
+  background-color: var(--md-surface-variant);
 }
 
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--md-primary);
+}
+
+/* Material Design textarea */
 textarea {
-  border: 1px solid var(--color-shade);
-  background-color: var(--bg-shade);
-  color: var(--main-color);
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--md-outline);
+  border-radius: 4px;
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s ease;
 }
 
-.row {
-  margin: 5px 0px;
+textarea:hover {
+  border-color: var(--md-on-surface);
 }
 
-.row label {
-  width: 300px;
+textarea:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 1px var(--md-primary);
 }
 
-label {
-  display: inline-block;
-  vertical-align: top;
-}
-
-#status {
-  color: var(--main-color);
-  display: inline-block;
-  margin-left: 50px;
-}
-
-#faq {
-  margin-top: 2em;
-}
-
+/* Customizable select styling */
 select {
-  width: 170px;
-  border: 1px solid var(--color-shade);
-  background-color: var(--bg-shade);
-  color: var(--main-color);
+  appearance: none;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--md-outline);
+  border-radius: 4px;
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2349454f' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23cac4cf' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  }
+}
+
+select:hover {
+  border-color: var(--md-on-surface);
+  background-color: var(--md-surface-variant);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 1px var(--md-primary);
+}
+
+/* Specific select widths */
+.customDo {
+  width: 180px;
 }
 
 .customForce {
-  display: none;
-  width: 250px;
+  visibility: hidden;
+  opacity: 0;
+  width: 200px;
+  transition: all 0.3s ease;
 }
 
-.customKey {
-  color: transparent;
-  text-shadow: 0 0 0 #000000;
+/* Advanced features styling */
+.customForce.show {
+  visibility: visible;
+  opacity: 1;
+  background-color: rgba(255, 235, 59, 0.1);
+  border-color: rgba(255, 193, 7, 0.8);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .customForce.show {
+    background-color: rgba(255, 193, 7, 0.08);
+    border-color: rgba(255, 193, 7, 0.6);
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.15);
+  }
+}
+
+#logLevel {
+  width: 120px;
+}
+
+/* Material Design buttons */
+button {
+  appearance: none;
+  padding: 0 24px;
+  min-height: 40px;
+  border: none;
+  border-radius: 20px;
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  box-shadow: 0 2px 4px var(--md-shadow);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 2px var(--md-shadow);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
 }
 
 /* Secondary buttons */
 .secondary {
-  margin: 5px 10px 5px 0;
-  font-size: 0.9em;
   background-color: transparent;
-  border: 1px solid var(--color-shade);
-  color: var(--main-color);
+  color: var(--md-primary);
+  border: 1px solid var(--md-outline);
 }
 
 .secondary:hover {
-  background-color: var(--bg-shade);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border-color: var(--md-primary);
+}
+
+/* Specific button styling */
+#save {
+  background-color: var(--md-primary);
+}
+
+#experimental {
+  background-color: var(--md-surface-variant);
+  color: var(--md-on-surface);
+}
+
+#experimental:hover {
+  background-color: var(--md-outline-variant);
+}
+
+#restore {
+  background-color: transparent;
+  color: var(--md-on-surface-variant);
+  border: 1px solid var(--md-outline-variant);
+}
+
+#restore:hover {
+  background-color: rgba(234, 67, 53, 0.08);
+  color: #d32f2f;
+  border-color: #d32f2f;
+}
+
+@media (prefers-color-scheme: dark) {
+  #restore:hover {
+    background-color: rgba(244, 67, 54, 0.12);
+    color: #ef5350;
+    border-color: #ef5350;
+  }
+}
+
+#experimental:disabled {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: var(--md-on-surface);
+  opacity: 1;
+  cursor: default;
+}
+
+#experimental:disabled:hover {
+  background-color: rgba(255, 193, 7, 0.15);
+  transform: none;
+}
+
+#add {
+  margin-top: 16px;
+  margin-left: 44px;
+  padding: 0 16px;
+  min-height: 36px;
+  font-size: 14px;
+}
+
+/* Button group layout */
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  gap: 16px;
+}
+
+.primary-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Status message */
+#status {
+  display: block;
+  margin-top: 16px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  opacity: 0;
+  transition: all 0.3s ease;
+  text-align: center;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#status.show {
+  opacity: 1;
+  transform: translateY(-4px);
+}
+
+/* Success state */
+#status.success {
+  background-color: #4caf50;
+  color: white;
+}
+
+/* Error state */
+#status.error {
+  background-color: #f44336;
+  color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  #status {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  #status.success {
+    background-color: #2e7d32;
+  }
+
+  #status.error {
+    background-color: #d32f2f;
+  }
+}
+
+/* Special row for blacklist textarea */
+.row:has(#blacklist) {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row:has(#blacklist) label {
+  flex: none;
+}
+
+/* FAQ section */
+#faq {
+  margin-top: 24px;
+  padding: 24px;
+  background-color: var(--md-surface-variant);
+  border-radius: 12px;
+}
+
+#faq h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--md-on-surface);
+}
+
+#faq p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--md-on-surface-variant);
+}
+
+#faq code {
+  padding: 2px 6px;
+  background-color: var(--md-surface);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--md-primary);
+}
+
+/* Advanced features - hidden by default */
+.row.advanced-feature {
+  visibility: hidden;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.row.advanced-feature.show {
+  visibility: visible;
+  opacity: 1;
+  height: auto;
+  display: flex;
+  margin: 16px 0;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* Advanced feature inputs and selects */
+.row.advanced-feature.show input[type="text"],
+.row.advanced-feature.show select,
+.row.advanced-feature.show textarea {
+  background-color: rgba(255, 235, 59, 0.1);
+  border-color: rgba(255, 193, 7, 0.8);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+}
+
+.row.advanced-feature.show input[type="text"]:hover,
+.row.advanced-feature.show select:hover,
+.row.advanced-feature.show textarea:hover {
+  border-color: rgba(255, 193, 7, 1);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+}
+
+.row.advanced-feature.show input[type="text"]:focus,
+.row.advanced-feature.show select:focus,
+.row.advanced-feature.show textarea:focus {
+  border-color: rgba(255, 152, 0, 1);
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  .row.advanced-feature.show input[type="text"],
+  .row.advanced-feature.show select,
+  .row.advanced-feature.show textarea {
+    background-color: rgba(255, 235, 59, 0.08);
+    border-color: rgba(255, 193, 7, 0.6);
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.15);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .row.customs {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 44px;
+  }
+
+  .row.customs>* {
+    margin-bottom: 8px;
+  }
+
+  label {
+    flex: none;
+  }
+
+  select,
+  input[type="text"] {
+    width: 100%;
+  }
+
+  .customDo {
+    width: 100%;
+  }
+
+  .customForce {
+    width: 100%;
+  }
+
+  .button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primary-buttons {
+    width: 100%;
+  }
+
+  .primary-buttons button {
+    flex: 1;
+  }
+}
+
+/* Ripple effect for buttons */
+button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.1;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+button:active::before {
+  width: 300px;
+  height: 300px;
 }

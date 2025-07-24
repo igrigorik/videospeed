@@ -134,10 +134,6 @@ function add_shortcut() {
     </select>
     <input class="customKey" type="text" placeholder="press a key"/>
     <input class="customValue" type="text" placeholder="value (0.10)"/>
-    <select class="customForce">
-    <option value="false">Do not disable website key bindings</option>
-    <option value="true">Disable website key bindings</option>
-    </select>
     <button class="removeParent">X</button>`;
   var div = document.createElement("div");
   div.setAttribute("class", "row customs");
@@ -147,13 +143,27 @@ function add_shortcut() {
     div,
     customs_element.children[customs_element.childElementCount - 1]
   );
+
+  // If experimental features are already enabled, add the force select
+  const experimentalButton = document.getElementById("experimental");
+  if (experimentalButton && experimentalButton.disabled) {
+    const customValue = div.querySelector('.customValue');
+    const select = document.createElement('select');
+    select.className = 'customForce show';
+    select.innerHTML = `
+      <option value="false">Default behavior</option>
+      <option value="true">Override site keys</option>
+    `;
+    customValue.parentNode.insertBefore(select, customValue.nextSibling);
+  }
 }
 
 function createKeyBindings(item) {
   const action = item.querySelector(".customDo").value;
   const key = item.querySelector(".customKey").keyCode;
   const value = Number(item.querySelector(".customValue").value);
-  const force = item.querySelector(".customForce").value;
+  const forceElement = item.querySelector(".customForce");
+  const force = forceElement ? forceElement.value : "false";
   const predefined = !!item.id; //item.id ? true : false;
 
   keyBindings.push({
@@ -170,6 +180,11 @@ function validate() {
   var valid = true;
   var status = document.getElementById("status");
   var blacklist = document.getElementById("blacklist");
+
+  // Clear any existing timeout for validation errors
+  if (window.validationTimeout) {
+    clearTimeout(window.validationTimeout);
+  }
 
   blacklist.value.split("\n").forEach((match) => {
     match = match.replace(window.VSC.Constants.regStrip, "");
@@ -188,7 +203,15 @@ function validate() {
       } catch (err) {
         status.textContent =
           "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
+        status.classList.add("show", "error");
         valid = false;
+
+        // Auto-hide validation error after 5 seconds
+        window.validationTimeout = setTimeout(function () {
+          status.textContent = "";
+          status.classList.remove("show", "error");
+        }, 5000);
+
         return;
       }
     }
@@ -204,6 +227,8 @@ async function save_options() {
 
   var status = document.getElementById("status");
   status.textContent = "Saving...";
+  status.classList.remove("success", "error"); // Clear any previous state
+  status.classList.add("show");
 
   try {
     keyBindings = [];
@@ -229,7 +254,7 @@ async function save_options() {
     // Clean up legacy keys
     await chrome.storage.sync.remove([
       "resetSpeed",
-      "speedStep", 
+      "speedStep",
       "fastSpeed",
       "rewindTime",
       "advanceTime",
@@ -264,22 +289,26 @@ async function save_options() {
     // Validate that settings were actually saved by reading them back
     await window.VSC.videoSpeedConfig.load();
     const savedSettings = window.VSC.videoSpeedConfig.settings;
-    
+
     // Basic validation - check that keyBindings were saved correctly
     if (!savedSettings.keyBindings || savedSettings.keyBindings.length !== keyBindings.length) {
       throw new Error("Keyboard shortcuts may not have been saved correctly");
     }
 
     status.textContent = "Options saved";
+    status.classList.add("success");
     setTimeout(function () {
       status.textContent = "";
-    }, 1000);
+      status.classList.remove("show", "success");
+    }, 2000);
 
   } catch (error) {
     console.error("Failed to save options:", error);
     status.textContent = "Error saving options: " + error.message;
+    status.classList.add("show", "error");
     setTimeout(function () {
       status.textContent = "";
+      status.classList.remove("show", "error");
     }, 3000);
   }
 }
@@ -291,7 +320,7 @@ async function restore_options() {
     if (!window.VSC.videoSpeedConfig) {
       window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
     }
-    
+
     // Load settings using VideoSpeedConfig
     await window.VSC.videoSpeedConfig.load();
     const storage = window.VSC.videoSpeedConfig.settings;
@@ -307,7 +336,7 @@ async function restore_options() {
 
     // Process key bindings
     const keyBindings = storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
-    
+
     console.log('Debug: storage object:', storage);
     console.log('Debug: keyBindings:', keyBindings);
     console.log('Debug: DEFAULT_SETTINGS:', window.VSC.Constants.DEFAULT_SETTINGS);
@@ -315,7 +344,7 @@ async function restore_options() {
     for (let i in keyBindings) {
       var item = keyBindings[i];
       console.log(`Debug: Processing binding ${i}:`, item);
-      
+
       if (item.predefined) {
         // Handle predefined shortcuts
         if (item["action"] == "display" && typeof item["key"] === "undefined") {
@@ -332,9 +361,9 @@ async function restore_options() {
         const keyInput = document.querySelector("#" + item["action"] + " .customKey");
         const valueInput = document.querySelector("#" + item["action"] + " .customValue");
         const forceInput = document.querySelector("#" + item["action"] + " .customForce");
-        
-        console.log(`Debug: DOM elements for ${item.action}:`, {keyInput, valueInput, forceInput});
-        
+
+        console.log(`Debug: DOM elements for ${item.action}:`, { keyInput, valueInput, forceInput });
+
         if (keyInput) {
           updateCustomShortcutInputText(keyInput, item["key"]);
         }
@@ -362,12 +391,39 @@ async function restore_options() {
           item["key"]
         );
         dom.querySelector(".customValue").value = item["value"];
-        dom.querySelector(".customForce").value = String(item["force"]);
+        // If force value exists in settings but element doesn't exist, create it
+        if (item["force"] !== undefined && !dom.querySelector(".customForce")) {
+          const customValue = dom.querySelector('.customValue');
+          const select = document.createElement('select');
+          select.className = 'customForce'; // Don't add 'show' class initially
+          select.innerHTML = `
+            <option value="false">Default behavior</option>
+            <option value="true">Override site keys</option>
+          `;
+          select.value = String(item["force"]);
+          customValue.parentNode.insertBefore(select, customValue.nextSibling);
+        } else {
+          const forceSelect = dom.querySelector(".customForce");
+          if (forceSelect) {
+            forceSelect.value = String(item["force"]);
+          }
+        }
       }
+    }
+
+    // Check if any keybindings have force property set, if so, show experimental features
+    const hasExperimentalFeatures = keyBindings.some(kb => kb.force !== undefined && kb.force !== false);
+    if (hasExperimentalFeatures) {
+      show_experimental();
     }
   } catch (error) {
     console.error("Failed to restore options:", error);
     document.getElementById("status").textContent = "Error loading options: " + error.message;
+    document.getElementById("status").classList.add("show", "error");
+    setTimeout(function () {
+      document.getElementById("status").textContent = "";
+      document.getElementById("status").classList.remove("show", "error");
+    }, 3000);
   }
 }
 
@@ -375,6 +431,8 @@ async function restore_defaults() {
   try {
     var status = document.getElementById("status");
     status.textContent = "Restoring defaults...";
+    status.classList.remove("success", "error"); // Clear any previous state
+    status.classList.add("show");
 
     // Ensure VideoSpeedConfig singleton is initialized
     if (!window.VSC.videoSpeedConfig) {
@@ -383,7 +441,7 @@ async function restore_defaults() {
 
     // Use VideoSpeedConfig to restore defaults
     await window.VSC.videoSpeedConfig.save(window.VSC.Constants.DEFAULT_SETTINGS);
-    
+
     // Remove any custom shortcuts from the UI
     document
       .querySelectorAll(".removeParent")
@@ -393,28 +451,82 @@ async function restore_defaults() {
     await restore_options();
 
     status.textContent = "Default options restored";
+    status.classList.add("success");
     setTimeout(function () {
       status.textContent = "";
-    }, 1000);
+      status.classList.remove("show", "success");
+    }, 2000);
   } catch (error) {
     console.error("Failed to restore defaults:", error);
     document.getElementById("status").textContent = "Error restoring defaults: " + error.message;
+    document.getElementById("status").classList.add("show", "error");
+    setTimeout(function () {
+      document.getElementById("status").textContent = "";
+      document.getElementById("status").classList.remove("show", "error");
+    }, 3000);
   }
 }
 
 function show_experimental() {
-  const forceElements = document.querySelectorAll(".customForce");
   const button = document.getElementById("experimental");
+  const customRows = document.querySelectorAll('.row.customs');
+  const advancedRows = document.querySelectorAll('.row.advanced-feature');
 
-  if (forceElements.length > 0) {
-    forceElements.forEach((item) => {
-      item.style.display = "inline-block";
-    });
+  // Show advanced feature rows
+  advancedRows.forEach((row) => {
+    row.classList.add('show');
+  });
 
-    // Update button text to indicate the feature is now enabled
-    button.textContent = "Advanced features enabled";
-    button.disabled = true;
-  }
+  // Create the select template
+  const createForceSelect = () => {
+    const select = document.createElement('select');
+    select.className = 'customForce show';
+    select.innerHTML = `
+      <option value="false">Allow event propagation</option>
+      <option value="true">Disable event propagation</option>
+    `;
+    return select;
+  };
+
+  // Add select to each row
+  customRows.forEach((row) => {
+    const existingSelect = row.querySelector('.customForce');
+
+    if (!existingSelect) {
+      // Create new select if it doesn't exist
+      const customValue = row.querySelector('.customValue');
+      const newSelect = createForceSelect();
+
+      // Check if this row has saved force value
+      const rowId = row.id;
+      if (rowId && window.VSC.videoSpeedConfig && window.VSC.videoSpeedConfig.settings.keyBindings) {
+        // For predefined shortcuts
+        const savedBinding = window.VSC.videoSpeedConfig.settings.keyBindings.find(kb => kb.action === rowId);
+        if (savedBinding && savedBinding.force !== undefined) {
+          newSelect.value = String(savedBinding.force);
+        }
+      } else if (!rowId) {
+        // For custom shortcuts, try to find the force value from the current keyBindings array
+        const rowIndex = Array.from(row.parentElement.querySelectorAll('.row.customs:not([id])')).indexOf(row);
+        const customBindings = window.VSC.videoSpeedConfig?.settings.keyBindings?.filter(kb => !kb.predefined) || [];
+        if (customBindings[rowIndex] && customBindings[rowIndex].force !== undefined) {
+          newSelect.value = String(customBindings[rowIndex].force);
+        }
+      }
+
+      // Insert after the customValue input
+      if (customValue) {
+        customValue.parentNode.insertBefore(newSelect, customValue.nextSibling);
+      }
+    } else {
+      // If it already exists, just show it
+      existingSelect.classList.add('show');
+    }
+  });
+
+  // Update button text to indicate the feature is now enabled
+  button.textContent = "Advanced features enabled";
+  button.disabled = true;
 }
 
 // Create debounced save function to prevent rapid saves
@@ -423,18 +535,23 @@ const debouncedSave = debounce(save_options, 300);
 document.addEventListener("DOMContentLoaded", async function () {
   await restore_options();
 
+  // Disable action dropdowns for predefined shortcuts
+  document.querySelectorAll('.row.customs[id] .customDo').forEach(select => {
+    select.disabled = true;
+  });
+
   document.getElementById("save").addEventListener("click", async (e) => {
     e.preventDefault();
     await save_options();
   });
-  
+
   document.getElementById("add").addEventListener("click", add_shortcut);
-  
+
   document.getElementById("restore").addEventListener("click", async (e) => {
     e.preventDefault();
     await restore_defaults();
   });
-  
+
   document.getElementById("experimental").addEventListener("click", show_experimental);
 
   // About and feedback button event listeners

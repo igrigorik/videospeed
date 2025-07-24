@@ -48,12 +48,11 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
       { action: 'mark', key: 77, value: 0, force: false, predefined: true }, // M
       { action: 'jump', key: 74, value: 0, force: false, predefined: true }, // J
     ],
-    blacklist: `
-    www.instagram.com
-    x.com
-    imgur.com
-    teams.microsoft.com
-  `.replace(regStrip, ''),
+    blacklist: `www.instagram.com
+x.com
+imgur.com
+teams.microsoft.com
+meet.google.com`.replace(regStrip, ''),
     defaultLogLevel: 4,
     logLevel: 3,
   };

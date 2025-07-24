@@ -24,10 +24,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (0.10)" style="display: none;" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="slower">
       <select class="customDo">
@@ -35,10 +31,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (0.10)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="faster">
       <select class="customDo">
@@ -46,10 +38,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (0.10)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="rewind">
       <select class="customDo">
@@ -57,10 +45,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (10)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="advance">
       <select class="customDo">
@@ -68,10 +52,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (10)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="reset">
       <select class="customDo">
@@ -79,10 +59,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (1.00)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="fast">
       <select class="customDo">
@@ -90,10 +66,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (1.80)" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="mark">
       <select class="customDo">
@@ -101,10 +73,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
     <div class="row customs" id="jump">
       <select class="customDo">
@@ -112,10 +80,6 @@
       </select>
       <input class="customKey" type="text" value="" placeholder="press a key" />
       <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
-      <select class="customForce">
-        <option value="false">Do not disable website key bindings</option>
-        <option value="true">Disable website key bindings</option>
-      </select>
     </div>
 
     <button id="add">Add New</button>
@@ -140,15 +104,15 @@
         <em>Prevent video players that override VSC speed</em></label>
       <input id="forceLastSavedSpeed" type="checkbox" />
     </div>
-    <div class="row">
+    <div class="row advanced-feature">
       <label for="controllerOpacity">Controller opacity</label>
       <input id="controllerOpacity" type="text" value="" />
     </div>
-    <div class="row">
+    <div class="row advanced-feature">
       <label for="controllerButtonSize">Controller Button Size</label>
       <input id="controllerButtonSize" type="text" value="" />
     </div>
-    <div class="row">
+    <div class="row advanced-feature">
       <label for="logLevel">Console Log Level<br />
         <em>Set verbosity in the browser console</em></label>
       <select id="logLevel">
@@ -160,24 +124,24 @@
         <option value="6">Verbose</option>
       </select>
     </div>
-    <div class="row">
-      <label for="blacklist">Sites on which extension is disabled<br />
-        One per line, <a href="https://www.regexpal.com/">Regex</a> is supported.<br />
-        Be sure to use the literal notation.<br />
-        e.g. <code>/(.+)youtube\.com(\/*)$/gi</code>
+    <div class="row advanced-feature">
+      <label for="blacklist">Disable on sites<br />
+        <em>One host or <a href="https://www.regexpal.com/">Regex</a> per line. Use the literal notation, e.g.
+          <code>/(.+)youtube\.com(\/*)$/gi</code></em>
       </label>
       <textarea id="blacklist" rows="10" cols="50"></textarea>
       </label>
   </section>
 
-  <button id="save">Save</button>
-  <button id="restore">Restore Defaults</button>
-  <button id="experimental">Advanced Features</button>
+  <div class="button-group">
+    <div class="primary-buttons">
+      <button id="save">Save</button>
+      <button id="experimental">Show advanced features</button>
+    </div>
+    <button id="restore">Restore defaults</button>
+  </div>
 
   <div id="status"></div>
-  <br />
-  <br />
-  <hr />
 
   <section>
     <h3>Help & Support</h3>
@@ -185,22 +149,23 @@
       <button id="about" class="secondary">About Video Speed Controller</button>
       <button id="feedback" class="secondary">Send Feedback</button>
     </div>
-  </section>
+    <div id="faq">
+      <h4>The speed controls are not showing up for local videos or Incognito mode?</h4>
+      <p>
+        To enable playback of local media (e.g. File &gt; Open File) or Incognito mode, you need
+        to manually grant additional permissions to the extension.
+      </p>
+      <ul>
+        <li>In a new tab, navigate to <code>chrome://extensions</code></li>
+        <li>
+          Find "Video Speed Controller" extension in the list and enable "Allow
+          access to file URLs" and/or "Allow in Incognito".
+        </li>
+      </ul>
+    </div>
 
-  <div id="faq">
-    <h4>The speed controls are not showing up for local videos or Incognito mode?</h4>
-    <p>
-      To enable playback of local media (e.g. File &gt; Open File) or Incognito mode, you need
-      to manually grant additional permissions to the extension.
-    </p>
-    <ul>
-      <li>In a new tab, navigate to <code>chrome://extensions</code></li>
-      <li>
-        Find "Video Speed Controller" extension in the list and enable "Allow
-        access to file URLs" and/or "Allow in Incognito".
-      </li>
-    </ul>
-  </div>
+
+  </section>
 </body>
 
 </html>
