@@ -1,5 +1,18 @@
 # The science of accelerated playback
 
+| Chrome Extension                                                       | Downloads                                                                        | GitHub Release                                                 |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------------|----------------------------------------------------------------|
+| [![Chrome Web Store][chrome-web-store-version]][chrome-web-store-link] | [![Chrome Web Store Users][chrome-web-store-users-badge]][chrome-web-store-link] | [![GitHub release][github-release-badge]][github-release-link] |
+
+<!-- Badges -->
+[chrome-web-store-version]: https://img.shields.io/chrome-web-store/v/nffaoalbilbmmfgbnbgppjihopabppdk?label=Chrome%20Web%20Store
+[chrome-web-store-users-badge]: https://img.shields.io/chrome-web-store/users/nffaoalbilbmmfgbnbgppjihopabppdk
+[github-release-badge]: https://img.shields.io/github/v/release/igrigorik/videospeed
+
+<!-- Links -->
+[chrome-web-store-link]: https://chrome.google.com/webstore/detail/poe2-trade-butler/nffaoalbilbmmfgbnbgppjihopabppdk
+[github-release-link]: https://github.com/igrigorik/videospeed/releases
+
 **TL;DR: faster playback translates to better engagement and retention.**
 
 The average adult reads prose text at
