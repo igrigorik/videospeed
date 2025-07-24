@@ -176,4 +176,141 @@ runner.test('VideoController should track media elements in config', async () =>
   assert.equal(config.getMediaElements().length, 2);
 });
 
+runner.test('VideoController should initialize speed using adjustSpeed method', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+  config.settings.rememberSpeed = false; // Per-video mode
+  config.settings.speeds = {
+    'https://example.com/test.mp4': 1.75
+  };
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const mockVideo = createMockVideo({
+    currentSrc: 'https://example.com/test.mp4',
+    playbackRate: 1.0
+  });
+  mockDOM.container.appendChild(mockVideo);
+
+  // Track adjustSpeed calls
+  let adjustSpeedCalled = false;
+  let adjustSpeedParams = null;
+  const originalAdjustSpeed = actionHandler.adjustSpeed;
+  actionHandler.adjustSpeed = function (video, value, options) {
+    adjustSpeedCalled = true;
+    adjustSpeedParams = { video, value, options };
+    return originalAdjustSpeed.call(this, video, value, options);
+  };
+
+  const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+  // Should have called adjustSpeed with the stored speed
+  assert.true(adjustSpeedCalled);
+  assert.equal(adjustSpeedParams.value, 1.75);
+  assert.equal(adjustSpeedParams.video, mockVideo);
+  assert.equal(mockVideo.playbackRate, 1.75);
+});
+
+runner.test('VideoController should handle initialization with no stored speed', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+  config.settings.rememberSpeed = false;
+  config.settings.speeds = {}; // No stored speeds
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const mockVideo = createMockVideo({
+    currentSrc: 'https://example.com/new-video.mp4',
+    playbackRate: 1.0
+  });
+  mockDOM.container.appendChild(mockVideo);
+
+  const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+  // Should remain at default speed when no stored speed exists
+  assert.equal(mockVideo.playbackRate, 1.0);
+});
+
+runner.test('VideoController should initialize in global speed mode correctly', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+  config.settings.rememberSpeed = true; // Global mode
+  config.settings.lastSpeed = 2.25;
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const mockVideo = createMockVideo({ playbackRate: 1.0 });
+  mockDOM.container.appendChild(mockVideo);
+
+  const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+  // Should use global lastSpeed
+  assert.equal(mockVideo.playbackRate, 2.25);
+});
+
+runner.test('VideoController should properly setup event handlers', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const mockVideo = createMockVideo();
+  mockDOM.container.appendChild(mockVideo);
+
+  // Track event listeners added
+  const addedListeners = [];
+  const originalAddEventListener = mockVideo.addEventListener;
+  mockVideo.addEventListener = function (type, listener, options) {
+    addedListeners.push({ type, listener, options });
+    return originalAddEventListener.call(this, type, listener, options);
+  };
+
+  const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+  // Should have added media event listeners
+  const listenerTypes = addedListeners.map(l => l.type);
+  assert.true(addedListeners.length > 0); // Should have added some listeners
+
+  // Should have proper vsc structure with speedIndicator
+  assert.exists(mockVideo.vsc);
+  assert.exists(mockVideo.vsc.speedIndicator);
+  // Speed indicator should show current playback rate
+  assert.exists(mockVideo.vsc.speedIndicator.textContent);
+});
+
+runner.test('VideoController should handle media events correctly', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+  config.settings.rememberSpeed = false;
+  config.settings.speeds = { 'https://example.com/video.mp4': 1.5 };
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  const mockVideo = createMockVideo({
+    currentSrc: 'https://example.com/video.mp4',
+    playbackRate: 1.0
+  });
+  mockDOM.container.appendChild(mockVideo);
+
+  // Track adjustSpeed calls during events
+  const adjustSpeedCalls = [];
+  const originalAdjustSpeed = actionHandler.adjustSpeed;
+  actionHandler.adjustSpeed = function (video, value, options) {
+    adjustSpeedCalls.push({ video, value, options });
+    return originalAdjustSpeed.call(this, video, value, options);
+  };
+
+  const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+  // Should have called adjustSpeed during initialization
+  assert.true(adjustSpeedCalls.length > 0);
+  const initCall = adjustSpeedCalls.find(call => call.value === 1.5);
+  assert.exists(initCall);
+});
+
 export { runner as videoControllerTestRunner };

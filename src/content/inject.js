@@ -350,7 +350,7 @@ window.addEventListener('VSC_MESSAGE', (event) => {
           const targetSpeed = message.payload.speed;
           videos.forEach((video) => {
             if (video.vsc) {
-              extension.actionHandler.setSpeed(video, targetSpeed);
+              extension.actionHandler.adjustSpeed(video, targetSpeed);
             } else {
               video.playbackRate = targetSpeed;
             }
@@ -362,10 +362,11 @@ window.addEventListener('VSC_MESSAGE', (event) => {
         if (message.payload && typeof message.payload.delta === 'number') {
           const delta = message.payload.delta;
           videos.forEach((video) => {
-            const newSpeed = Math.min(Math.max(video.playbackRate + delta, 0.07), 16);
             if (video.vsc) {
-              extension.actionHandler.setSpeed(video, newSpeed);
+              extension.actionHandler.adjustSpeed(video, delta, { relative: true });
             } else {
+              // Fallback for videos without controller
+              const newSpeed = Math.min(Math.max(video.playbackRate + delta, 0.07), 16);
               video.playbackRate = newSpeed;
             }
           });

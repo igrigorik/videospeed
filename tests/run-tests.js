@@ -139,11 +139,13 @@ async function runTests() {
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
-      'unit/utils/blacklist-regex.test.js'
+      'unit/utils/blacklist-regex.test.js',
+      'unit/utils/event-manager.test.js'
     ];
   } else if (testType === 'integration') {
     testFiles = [
-      'integration/module-integration.test.js'
+      'integration/module-integration.test.js',
+      'integration/ui-to-storage-flow.test.js'
     ];
   } else {
     // Run all tests
@@ -159,7 +161,9 @@ async function runTests() {
       'unit/content/inject.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
-      'integration/module-integration.test.js'
+      'unit/utils/event-manager.test.js',
+      'integration/module-integration.test.js',
+      'integration/ui-to-storage-flow.test.js'
     ];
   }
 

@@ -214,7 +214,7 @@ class ShadowDOMManager {
   static updateSpeedDisplay(shadow, speed) {
     const speedIndicator = this.getSpeedIndicator(shadow);
     if (speedIndicator) {
-      speedIndicator.textContent = speed.toFixed(2);
+      speedIndicator.textContent = window.VSC.Constants.formatSpeed(speed);
     }
   }
 

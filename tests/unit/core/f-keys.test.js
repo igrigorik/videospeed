@@ -145,7 +145,8 @@ runner.test('EventManager should handle F-keys correctly', async () => {
     classList: {
       contains: (className) => false  // Mock classList for 'vsc-cancelled' check
     },
-    vsc: { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } }
+    vsc: { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } },
+    dispatchEvent: (event) => { /* Mock dispatchEvent for synthetic events */ }
   };
   config.addMediaElement(mockVideo);
 

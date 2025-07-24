@@ -3,13 +3,14 @@
  */
 
 import { installChromeMock, cleanupChromeMock } from '../../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
+import { SimpleTestRunner, assert, createMockDOM } from '../../helpers/test-utils.js';
 import { loadObserverModules } from '../../helpers/module-loader.js';
 
 // Load all required modules
 await loadObserverModules();
 
 const runner = new SimpleTestRunner();
+let mockDOM;
 
 // Test constants - values guaranteed to be below the minimum controller size limits
 const SMALL_AUDIO_SIZE = {
@@ -24,10 +25,19 @@ const SMALL_VIDEO_SIZE = {
 
 runner.beforeEach(() => {
   installChromeMock();
+  mockDOM = createMockDOM();
+
+  // Clear any media elements from previous tests
+  if (window.VSC && window.VSC.videoSpeedConfig) {
+    window.VSC.videoSpeedConfig.mediaTags = [];
+  }
 });
 
 runner.afterEach(() => {
   cleanupChromeMock();
+  if (mockDOM) {
+    mockDOM.cleanup();
+  }
 });
 
 function createMockAudio(options = {}) {
@@ -65,6 +75,63 @@ function createMockAudio(options = {}) {
     value: true,
     configurable: true,
   });
+
+  // Mock parentElement needed for controller insertion
+  Object.defineProperty(audio, 'parentElement', {
+    get() {
+      return audio.parentNode;
+    },
+    configurable: true,
+  });
+
+  // Add writable media element properties
+  audio.playbackRate = options.playbackRate || 1.0;
+  audio.currentTime = options.currentTime || 0;
+  audio.volume = options.volume || 1.0;
+  audio.muted = options.muted || false;
+  audio.src = options.src || 'https://example.com/audio.mp3';
+
+  // Define read-only properties
+  Object.defineProperty(audio, 'duration', {
+    value: options.duration || 100,
+    writable: false,
+    configurable: true,
+  });
+
+  Object.defineProperty(audio, 'paused', {
+    value: options.paused || false,
+    writable: false,
+    configurable: true,
+  });
+
+  // Add event handling for dispatchEvent
+  const eventListeners = new Map();
+  audio.addEventListener = (type, listener) => {
+    if (!eventListeners.has(type)) {
+      eventListeners.set(type, []);
+    }
+    eventListeners.get(type).push(listener);
+  };
+
+  audio.removeEventListener = (type, listener) => {
+    if (eventListeners.has(type)) {
+      const listeners = eventListeners.get(type);
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
+  };
+
+  audio.dispatchEvent = (event) => {
+    if (eventListeners.has(event.type)) {
+      eventListeners.get(event.type).forEach((listener) => {
+        event.target = audio;
+        listener(event);
+      });
+    }
+    return true;
+  };
 
   return audio;
 }
@@ -121,7 +188,7 @@ runner.test('VideoController should start visible for small audio elements', asy
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
-  document.body.appendChild(smallAudio);
+  mockDOM.container.appendChild(smallAudio);
 
   // Use MediaElementObserver to determine if controller should start hidden
   const siteHandler = new window.VSC.BaseSiteHandler();
@@ -147,7 +214,7 @@ runner.test('VideoController should start visible for small audio elements', asy
 
   // Cleanup
   controller.remove();
-  document.body.removeChild(smallAudio);
+  mockDOM.container.removeChild(smallAudio);
 });
 
 runner.test('VideoController should accept all video sizes', async () => {
@@ -190,8 +257,13 @@ runner.test('VideoController should accept all video sizes', async () => {
 });
 
 runner.test('Display toggle should work with audio controllers', async () => {
+  // Force a fresh config instance
+  window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+
+  // Ensure we start with clean state
+  config.mediaTags = [];
 
   // Enable audio support
   config.settings.audioBoolean = true;
@@ -200,7 +272,7 @@ runner.test('Display toggle should work with audio controllers', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
-  document.body.appendChild(smallAudio);
+  mockDOM.container.appendChild(smallAudio);
 
   // Use MediaElementObserver to determine if controller should start hidden
   const siteHandler = new window.VSC.BaseSiteHandler();
@@ -209,8 +281,19 @@ runner.test('Display toggle should work with audio controllers', async () => {
 
   const controller = new window.VSC.VideoController(smallAudio, null, config, actionHandler, shouldStartHidden);
 
+  // Verify controller was created properly
+  assert.exists(controller, 'Controller should exist');
+  assert.exists(controller.div, 'Controller div should exist');
+  assert.exists(smallAudio.vsc, 'Audio should have vsc controller reference');
+  assert.equal(smallAudio.vsc, controller, 'Audio vsc should point to controller');
+
   // Verify starts visible (size checks removed)
   assert.false(controller.div.classList.contains('vsc-hidden'), 'Should start visible');
+
+  // Verify audio is tracked in config
+  const mediaElements = config.getMediaElements();
+  assert.true(mediaElements.includes(smallAudio), 'Audio should be tracked in config');
+  assert.equal(mediaElements.length, 1, 'Should have exactly one media element');
 
   // Toggle display using action handler
   actionHandler.runAction('display', 0, null);
@@ -227,7 +310,7 @@ runner.test('Display toggle should work with audio controllers', async () => {
 
   // Cleanup
   controller.remove();
-  document.body.removeChild(smallAudio);
+  mockDOM.container.removeChild(smallAudio);
 });
 
 export default runner; 

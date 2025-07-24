@@ -222,7 +222,7 @@ class DebugHelper {
       videos.forEach((video, index) => {
         if (video.vsc) {
           console.log(`Applying speed ${testSpeed} to media #${index + 1} via action handler`);
-          window.videoSpeedExtension.actionHandler.setSpeed(video, testSpeed);
+          window.videoSpeedExtension.actionHandler.adjustSpeed(video, testSpeed);
         } else {
           console.log(`Applying speed ${testSpeed} to media #${index + 1} directly`);
           video.playbackRate = testSpeed;
@@ -234,7 +234,7 @@ class DebugHelper {
         console.log('Resetting speed to 1.0x');
         videos.forEach((video) => {
           if (video.vsc) {
-            window.videoSpeedExtension.actionHandler.setSpeed(video, 1.0);
+            window.videoSpeedExtension.actionHandler.adjustSpeed(video, 1.0);
           } else {
             video.playbackRate = 1.0;
           }

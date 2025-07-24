@@ -59,6 +59,15 @@ meet.google.com`.replace(regStrip, ''),
 
   window.VSC.Constants.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
 
+  /**
+   * Format speed value to 2 decimal places
+   * @param {number} speed - Speed value
+   * @returns {string} Formatted speed
+   */
+  const formatSpeed = (speed) => speed.toFixed(2);
+
+  window.VSC.Constants.formatSpeed = formatSpeed;
+
   const LOG_LEVELS = {
     NONE: 1,
     ERROR: 2,

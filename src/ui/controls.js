@@ -90,22 +90,11 @@ class ControlsManager {
 
         const delta = Math.sign(event.deltaY);
         const step = 0.1;
+        const speedDelta = delta < 0 ? step : -step;
 
-        let newSpeed = video.playbackRate + (delta < 0 ? step : -step);
-        newSpeed = Math.min(
-          Math.max(newSpeed, window.VSC.Constants.SPEED_LIMITS.MIN),
-          window.VSC.Constants.SPEED_LIMITS.MAX
-        );
+        this.actionHandler.adjustSpeed(video, speedDelta, { relative: true });
 
-        video.playbackRate = newSpeed;
-
-        // Update visual speed display
-        const speedIndicator = shadow.querySelector('.draggable');
-        if (speedIndicator) {
-          speedIndicator.textContent = newSpeed.toFixed(2);
-        }
-
-        window.VSC.logger.debug(`Wheel control: speed changed to ${newSpeed.toFixed(2)}`);
+        window.VSC.logger.debug(`Wheel control: adjusting speed by ${speedDelta}`);
       },
       { passive: false }
     );

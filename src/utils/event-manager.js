@@ -166,67 +166,36 @@ class EventManager {
    */
   handleRateChange(event) {
     if (this.coolDown) {
-      window.VSC.logger.info('Speed event propagation blocked');
+      window.VSC.logger.debug('Rate change event blocked by cooldown');
       event.stopImmediatePropagation();
+      return;
     }
 
     // Get the actual video element (handle shadow DOM)
-    const video = event.composedPath()[0];
+    const video = event.composedPath ? event.composedPath()[0] : event.target;
 
-    // Handle forced last saved speed
-    if (this.config.settings.forceLastSavedSpeed) {
-      if (event.detail && event.detail.origin === 'videoSpeed') {
-        video.playbackRate = event.detail.speed;
-        this.updateSpeedFromEvent(video);
-      } else {
-        video.playbackRate = this.config.settings.lastSpeed;
-      }
-      event.stopImmediatePropagation();
-    } else {
-      this.updateSpeedFromEvent(video);
-    }
-  }
-
-  /**
-   * Update speed indicators and storage when rate changes
-   * @param {HTMLMediaElement} video - Video element
-   * @private
-   */
-  updateSpeedFromEvent(video) {
-    // Check if video has a controller attached
+    // Skip if no VSC controller attached
     if (!video.vsc) {
       return;
     }
 
-    const speedIndicator = video.vsc.speedIndicator;
-    const src = video.currentSrc;
-    const speed = Number(video.playbackRate.toFixed(2));
-
-    window.VSC.logger.info(`Playback rate changed to ${speed}`);
-
-    // Update controller display
-    window.VSC.logger.debug('Updating controller with new speed');
-    speedIndicator.textContent = speed.toFixed(2);
-
-    // Store speed for this source
-    this.config.settings.speeds[src] = speed;
-
-    // Store as last speed for remember feature
-    window.VSC.logger.debug('Storing lastSpeed in settings for the rememberSpeed feature');
-    this.config.settings.lastSpeed = speed;
-
-    // Save to Chrome storage if available
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-      window.VSC.logger.debug('Syncing chrome settings for lastSpeed');
-      chrome.storage.sync.set({ lastSpeed: speed }, () => {
-        window.VSC.logger.debug(`Speed setting saved: ${speed}`);
-      });
-    } else {
-      window.VSC.logger.debug('Chrome storage not available, skipping speed sync');
+    // Check if this is our own event
+    if (event.detail && event.detail.origin === 'videoSpeed') {
+      // This is our change, don't process it again
+      window.VSC.logger.debug('Ignoring extension-originated rate change');
+      return;
     }
 
-    // Show controller briefly if hidden
-    this.actionHandler.runAction('blink', null, null);
+    // External change - use adjustSpeed with external source
+    window.VSC.logger.debug('External rate change detected');
+    if (this.actionHandler) {
+      this.actionHandler.adjustSpeed(video, video.playbackRate, {
+        source: 'external',
+      });
+    }
+
+    // Always stop propagation to prevent loops
+    event.stopImmediatePropagation();
   }
 
   /**
