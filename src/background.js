@@ -26,6 +26,18 @@ async function updateIcon(tabId, hasActiveControllers) {
       }
     });
 
+    // Check for chrome.runtime.lastError after the API call
+    if (chrome.runtime.lastError) {
+      if (chrome.runtime.lastError.message?.includes('No tab with id')) {
+        // Clean up stale tab tracking
+        tabControllers.delete(tabId);
+        console.log(`Cleaned up tracking for closed tab ${tabId}`);
+        return;
+      }
+      console.error('Failed to update icon:', chrome.runtime.lastError.message);
+      return;
+    }
+
     console.log(`Icon updated for tab ${tabId}: ${hasActiveControllers ? 'active (red)' : 'inactive (gray)'}`);
   } catch (error) {
     console.error('Failed to update icon:', error);
