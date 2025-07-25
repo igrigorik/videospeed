@@ -290,21 +290,6 @@ async function save_options() {
     var logLevel = parseInt(document.getElementById("logLevel").value);
     var blacklist = document.getElementById("blacklist").value;
 
-    // Clean up legacy keys
-    await chrome.storage.sync.remove([
-      "resetSpeed",
-      "speedStep",
-      "fastSpeed",
-      "rewindTime",
-      "advanceTime",
-      "resetKeyCode",
-      "slowerKeyCode",
-      "fasterKeyCode",
-      "rewindKeyCode",
-      "advanceKeyCode",
-      "fastKeyCode"
-    ]);
-
     // Ensure VideoSpeedConfig singleton is initialized
     if (!window.VSC.videoSpeedConfig) {
       window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
