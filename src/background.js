@@ -26,21 +26,16 @@ async function updateIcon(tabId, hasActiveControllers) {
       }
     });
 
-    // Check for chrome.runtime.lastError after the API call
-    if (chrome.runtime.lastError) {
-      if (chrome.runtime.lastError.message?.includes('No tab with id')) {
-        // Clean up stale tab tracking
-        tabControllers.delete(tabId);
-        console.log(`Cleaned up tracking for closed tab ${tabId}`);
-        return;
-      }
-      console.error('Failed to update icon:', chrome.runtime.lastError.message);
-      return;
-    }
-
     console.log(`Icon updated for tab ${tabId}: ${hasActiveControllers ? 'active (red)' : 'inactive (gray)'}`);
   } catch (error) {
-    console.error('Failed to update icon:', error);
+    if (error.message.includes('No tab with id')) {
+      // This can happen if the tab is closed before the icon is updated.
+      // We can safely ignore this error and clean up our tracking.
+      tabControllers.delete(tabId);
+      console.error(`Attempted to update icon for a closed tab (${tabId}). Cleaned up tracking.`);
+    } else {
+      console.error(`Failed to update icon for tab ${tabId}:`, error);
+    }
   }
 }
 
@@ -57,7 +52,7 @@ async function updateTabIndicators(tabId, hasActiveControllers) {
 /**
  * Handle controller lifecycle messages from content scripts
  */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (!sender.tab) return;
 
   const tabId = sender.tab.id;
@@ -70,7 +65,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       tabControllers.get(tabId).add(message.controllerId || 'default');
-      updateTabIndicators(tabId, true);
+      await updateTabIndicators(tabId, true);
 
       console.log(`Controller created in tab ${tabId}. Total: ${tabControllers.get(tabId).size}`);
       break;
@@ -81,7 +76,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tabControllers.get(tabId).delete(message.controllerId || 'default');
 
         const hasControllers = tabControllers.get(tabId).size > 0;
-        updateTabIndicators(tabId, hasControllers);
+        await updateTabIndicators(tabId, hasControllers);
 
         // Clean up empty sets
         if (!hasControllers) {
@@ -106,12 +101,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 /**
  * Handle tab updates (navigation, refresh, etc.)
  */
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Clear controller tracking when page is refreshed/navigated
   if (changeInfo.status === 'loading' && tab.url) {
     if (tabControllers.has(tabId)) {
       tabControllers.delete(tabId);
-      updateTabIndicators(tabId, false);
+      await updateTabIndicators(tabId, false);
       console.log(`Tab ${tabId} navigated, cleared controller tracking`);
     }
   }

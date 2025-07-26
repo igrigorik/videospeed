@@ -23,8 +23,8 @@ if (!window.VSC.VideoSpeedConfig) {
         const isInjectedContext = typeof chrome === 'undefined' || !chrome.storage;
         const storage = isInjectedContext
           ? await window.VSC.StorageManager.waitForInjectedSettings(
-              window.VSC.Constants.DEFAULT_SETTINGS
-            )
+            window.VSC.Constants.DEFAULT_SETTINGS
+          )
           : await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
 
         // Handle key bindings migration/initialization

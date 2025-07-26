@@ -18,8 +18,8 @@ window.VSC.DomUtils.escapeStringRegExp = function (str) {
 
 /**
  * Check if current page is blacklisted
- * @param {string} blacklist - Blacklist string from settings
- * @returns {boolean} True if page is blacklisted
+ * @param {string} blacklist - Newline separated list of patterns
+ * @returns {boolean} Whether current page is blacklisted
  */
 window.VSC.DomUtils.isBlacklisted = function (blacklist) {
   let blacklisted = false;
@@ -50,7 +50,24 @@ window.VSC.DomUtils.isBlacklisted = function (blacklist) {
         return;
       }
     } else {
-      regexp = new RegExp(window.VSC.DomUtils.escapeStringRegExp(match));
+      // For plain strings, check if it looks like a domain pattern
+      const escapedMatch = window.VSC.DomUtils.escapeStringRegExp(match);
+
+      // Check if the pattern looks like a domain (contains dots but no slashes)
+      const looksLikeDomain = match.includes('.') && !match.includes('/');
+
+      if (looksLikeDomain) {
+        // Create a regex that matches the domain more precisely
+        // This will match:
+        // - After protocol (e.g., https://x.com)
+        // - As part of the URL structure (e.g., https://www.x.com)
+        // - But NOT partial matches (e.g., x.com does NOT match netflix.com)
+        // The pattern ensures domain boundaries are respected
+        regexp = new RegExp(`(^|\\.|//)${escapedMatch}(\\/|:|$)`);
+      } else {
+        // For non-domain patterns, keep the original behavior
+        regexp = new RegExp(escapedMatch);
+      }
     }
 
     if (regexp.test(location.href)) {
