@@ -150,6 +150,7 @@ class ShadowDOMManager {
       { action: 'slower', text: '−', class: '' },
       { action: 'faster', text: '+', class: '' },
       { action: 'advance', text: '»', class: 'rw' },
+      { action: 'reset', text: '↺', class: '' },
       { action: 'display', text: '×', class: 'hideButton' },
     ];
 
