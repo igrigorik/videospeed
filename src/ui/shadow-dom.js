@@ -48,6 +48,7 @@ class ShadowDOMManager {
         cursor: default;
         z-index: 9999999;
         white-space: nowrap;
+        ${positionConfig.left ? '' : 'display: flex; align-items: center; transform: translateX(-100%);'}
       }
       
       #controller:hover {
@@ -55,12 +56,13 @@ class ShadowDOMManager {
       }
       
       #controller:hover>.draggable {
-        margin-right: 0.8em;
+        ${positionConfig.left ? 'margin-right: 0.8em;' : 'margin-left: 0.8em;'}
       }
       
       #controls {
         display: none;
         white-space: nowrap;
+        ${positionConfig.left ? '' : 'order: -1;'}
       }
       
       #controller.dragging {
@@ -127,8 +129,7 @@ class ShadowDOMManager {
       
       button.hideButton {
         opacity: 0.65;
-        margin-left: 8px;
-        margin-right: 2px;
+        ${positionConfig.left ? 'margin-left: 8px; margin-right: 2px;' : 'margin-right: 8px; margin-left: 2px;'}
       }
     `;
     
@@ -139,14 +140,6 @@ class ShadowDOMManager {
     const controller = document.createElement('div');
     controller.id = 'controller';
     controller.style.cssText = `top:${top}; left:${left}; opacity:${opacity};`;
-
-    // Create draggable speed indicator
-    const draggable = document.createElement('span');
-    draggable.setAttribute('data-action', 'drag');
-    draggable.className = 'draggable';
-    draggable.style.cssText = `font-size: ${buttonSize}px;`;
-    draggable.textContent = speed;
-    controller.appendChild(draggable);
 
     // Create controls span
     const controls = document.createElement('span');
@@ -162,17 +155,62 @@ class ShadowDOMManager {
       { action: 'display', text: '×', class: 'hideButton' },
     ];
 
-    buttons.forEach((btnConfig) => {
-      const button = document.createElement('button');
-      button.setAttribute('data-action', btnConfig.action);
-      if (btnConfig.class) {
-        button.className = btnConfig.class;
-      }
-      button.textContent = btnConfig.text;
-      controls.appendChild(button);
-    });
+    // Create draggable speed indicator
+    const draggable = document.createElement('span');
+    draggable.setAttribute('data-action', 'drag');
+    draggable.className = 'draggable';
+    draggable.style.cssText = `font-size: ${buttonSize}px;`;
+    draggable.textContent = speed;
 
-    controller.appendChild(controls);
+    // For right positions, mirror the layout: controls appear to the left of speed indicator
+    // For left positions, keep original: speed indicator first, then controls
+    if (positionConfig.left) {
+      // Left positions: speed indicator + controls (original behavior)
+      controller.appendChild(draggable);
+      
+      buttons.forEach((btnConfig) => {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', btnConfig.action);
+        if (btnConfig.class) {
+          button.className = btnConfig.class;
+        }
+        button.textContent = btnConfig.text;
+        controls.appendChild(button);
+      });
+      
+      controller.appendChild(controls);
+    } else {
+      // Right positions: controls + speed indicator 
+      // Keep inner controls in same order, just move X button to the front
+      
+      // First add the X button to the front
+      const displayButton = buttons.find(btn => btn.action === 'display');
+      if (displayButton) {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', displayButton.action);
+        if (displayButton.class) {
+          button.className = displayButton.class;
+        }
+        button.textContent = displayButton.text;
+        controls.appendChild(button);
+      }
+      
+      // Then add the inner controls in their original order
+      const innerButtons = buttons.filter(btn => btn.action !== 'display');
+      innerButtons.forEach((btnConfig) => {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', btnConfig.action);
+        if (btnConfig.class) {
+          button.className = btnConfig.class;
+        }
+        button.textContent = btnConfig.text;
+        controls.appendChild(button);
+      });
+      
+      // Add controls first, then speed indicator so speed shows on the right
+      controller.appendChild(controls);
+      controller.appendChild(draggable);
+    }
     shadow.appendChild(controller);
 
     window.VSC.logger.debug('Shadow DOM created for video controller');
@@ -288,9 +326,9 @@ class ShadowDOMManager {
       // Left positions
       left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
     } else {
-      // Right positions - need to account for controller width
-      const rightOffset = rect.right - (offsetRect?.left || 0) - 200; // 200px estimated controller width
-      left = `${Math.max(rightOffset, 0)}px`;
+      // Right positions - position at the right edge, transform will move it left
+      const rightEdge = rect.right - (offsetRect?.left || 0);
+      left = `${Math.max(rightEdge, 0)}px`;
     }
 
     return { top, left };
