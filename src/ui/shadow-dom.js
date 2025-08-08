@@ -44,11 +44,13 @@ class ShadowDOMManager {
         color: white;
         border-radius: 6px;
         padding: 4px;
-        margin: 10px 10px 10px 15px;
         cursor: default;
         z-index: 9999999;
         white-space: nowrap;
-        ${positionConfig.left ? '' : 'display: flex; align-items: center; transform: translateX(-100%);'}
+        ${positionConfig.left 
+          ? 'margin: 10px 10px 10px 15px;' 
+          : 'transform: translateX(-100%); margin: 10px 15px 10px 10px;'
+        }
       }
       
       #controller:hover {
@@ -62,7 +64,6 @@ class ShadowDOMManager {
       #controls {
         display: none;
         white-space: nowrap;
-        ${positionConfig.left ? '' : 'order: -1;'}
       }
       
       #controller.dragging {
@@ -326,9 +327,9 @@ class ShadowDOMManager {
       // Left positions
       left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
     } else {
-      // Right positions - position at the right edge, transform will move it left
+      // Right positions - position with same padding as left (15px)
       const rightEdge = rect.right - (offsetRect?.left || 0);
-      left = `${Math.max(rightEdge, 0)}px`;
+      left = `${Math.max(rightEdge - 15, 0)}px`; // Same 15px padding as left positions
     }
 
     return { top, left };
