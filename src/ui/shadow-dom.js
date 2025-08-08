@@ -264,9 +264,24 @@ class ShadowDOMManager {
       top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
     } else {
       // Bottom positions - need to account for controller height and video controls
-      // Leave extra space (80px) to avoid overlapping with video's native controls
-      const bottomOffset = rect.bottom - (offsetRect?.top || 0) - 80; // Increased from 50px to 80px
-      top = `${Math.max(bottomOffset, 0)}px`;
+      let bottomOffset = 80; // Default offset
+      
+      // YouTube-specific bottom positioning to avoid native controls
+      if (location.hostname === 'www.youtube.com') {
+        // YouTube's control bar is typically around 40-50px, but we need extra space
+        // for our controller height (~30px) plus some margin
+        bottomOffset = 120; // Increased offset for YouTube
+        
+        // Try to detect if YouTube controls are visible and adjust accordingly
+        const ytpControls = document.querySelector('.ytp-chrome-bottom');
+        if (ytpControls) {
+          const controlsHeight = ytpControls.offsetHeight || 40;
+          bottomOffset = Math.max(bottomOffset, controlsHeight + 50); // Controls height + controller + margin
+        }
+      }
+      
+      const calculatedBottom = rect.bottom - (offsetRect?.top || 0) - bottomOffset;
+      top = `${Math.max(calculatedBottom, 0)}px`;
     }
     
     if (positionConfig.left) {

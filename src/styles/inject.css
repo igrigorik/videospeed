@@ -66,6 +66,18 @@
   top: 60px;
 }
 
+/* YouTube bottom-positioned controllers - avoid overlapping with native controls */
+.html5-video-player .vsc-position-bottom-left,
+.html5-video-player .vsc-position-bottom-right {
+  transform: translateY(10px);
+}
+
+/* When YouTube controls are hidden, reduce the offset */
+.ytp-autohide .vsc-position-bottom-left,
+.ytp-autohide .vsc-position-bottom-right {
+  transform: translateY(-10px); /* Reduced from -20px */
+}
+
 /* Facebook player */
 #facebook .vsc-controller {
   position: relative;
