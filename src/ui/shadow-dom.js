@@ -163,10 +163,7 @@ class ShadowDOMManager {
     draggable.style.cssText = `font-size: ${buttonSize}px;`;
     draggable.textContent = speed;
 
-    // For right positions, mirror the layout: controls appear to the left of speed indicator
-    // For left positions, keep original: speed indicator first, then controls
     if (positionConfig.left) {
-      // Left positions: speed indicator + controls (original behavior)
       controller.appendChild(draggable);
       
       buttons.forEach((btnConfig) => {
@@ -181,10 +178,6 @@ class ShadowDOMManager {
       
       controller.appendChild(controls);
     } else {
-      // Right positions: controls + speed indicator 
-      // Keep inner controls in same order, just move X button to the front
-      
-      // First add the X button to the front
       const displayButton = buttons.find(btn => btn.action === 'display');
       if (displayButton) {
         const button = document.createElement('button');
@@ -196,7 +189,6 @@ class ShadowDOMManager {
         controls.appendChild(button);
       }
       
-      // Then add the inner controls in their original order
       const innerButtons = buttons.filter(btn => btn.action !== 'display');
       innerButtons.forEach((btnConfig) => {
         const button = document.createElement('button');
@@ -208,7 +200,6 @@ class ShadowDOMManager {
         controls.appendChild(button);
       });
       
-      // Add controls first, then speed indicator so speed shows on the right
       controller.appendChild(controls);
       controller.appendChild(draggable);
     }
@@ -273,10 +264,8 @@ class ShadowDOMManager {
    * @returns {Object} Position object with top and left properties
    */
   static calculatePosition(video, position = 'top-left') {
-    // For YouTube, try to use the player container instead of just the video element
     let targetElement = video;
     if (location.hostname === 'www.youtube.com') {
-      // Look for the YouTube player container that includes black bars
       const playerContainer = video.closest('.ytp-player-content.ytp-iv-player-content') || 
                              video.closest('.ytp-player-content') ||
                              video.closest('#movie_player') ||
@@ -288,9 +277,6 @@ class ShadowDOMManager {
 
     const rect = targetElement.getBoundingClientRect();
 
-    // getBoundingClientRect is relative to the viewport; style coordinates
-    // are relative to offsetParent, so we adjust for that here. offsetParent
-    // can be null if the video has `display: none` or is not yet in the DOM.
     const offsetRect = video.offsetParent?.getBoundingClientRect();
     
     const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
@@ -299,23 +285,17 @@ class ShadowDOMManager {
     let top, left;
     
     if (positionConfig.top) {
-      // Top positions
       top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
     } else {
-      // Bottom positions - need to account for controller height and video controls
-      let bottomOffset = 80; // Default offset
+      let bottomOffset = 80;
       
-      // YouTube-specific bottom positioning to avoid native controls
       if (location.hostname === 'www.youtube.com') {
-        // YouTube's control bar is typically around 40-50px, but we need extra space
-        // for our controller height (~30px) plus some margin
-        bottomOffset = 120; // Increased offset for YouTube
+        bottomOffset = 120;
         
-        // Try to detect if YouTube controls are visible and adjust accordingly
         const ytpControls = document.querySelector('.ytp-chrome-bottom');
         if (ytpControls) {
           const controlsHeight = ytpControls.offsetHeight || 40;
-          bottomOffset = Math.max(bottomOffset, controlsHeight + 50); // Controls height + controller + margin
+          bottomOffset = Math.max(bottomOffset, controlsHeight + 50);
         }
       }
       
@@ -324,12 +304,10 @@ class ShadowDOMManager {
     }
     
     if (positionConfig.left) {
-      // Left positions
       left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
     } else {
-      // Right positions - position with same padding as left (15px)
       const rightEdge = rect.right - (offsetRect?.left || 0);
-      left = `${Math.max(rightEdge - 15, 0)}px`; // Same 15px padding as left positions
+      left = `${Math.max(rightEdge - 15, 0)}px`;
     }
 
     return { top, left };
