@@ -11,6 +11,7 @@ if (!window.VSC.VideoSpeedConfig) {
     constructor() {
       this.settings = { ...window.VSC.Constants.DEFAULT_SETTINGS };
       this.mediaElements = [];
+      this._savingInProgress = false; // Add save lock
     }
 
     /**
@@ -47,6 +48,9 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.startHidden = Boolean(storage.startHidden);
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
+        this.settings.controllerPosition = String(
+          storage.controllerPosition || window.VSC.Constants.DEFAULT_SETTINGS.controllerPosition
+        );
         this.settings.blacklist = String(storage.blacklist);
         this.settings.logLevel = Number(
           storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel
@@ -72,6 +76,14 @@ if (!window.VSC.VideoSpeedConfig) {
      * @returns {Promise<void>}
      */
     async save(newSettings = {}) {
+      // Prevent concurrent saves
+      if (this._savingInProgress) {
+        window.VSC.logger.debug('Save already in progress, skipping duplicate save request');
+        return;
+      }
+      
+      this._savingInProgress = true;
+      
       try {
         this.settings = { ...this.settings, ...newSettings };
         await window.VSC.StorageManager.set(this.settings);
@@ -84,6 +96,8 @@ if (!window.VSC.VideoSpeedConfig) {
         window.VSC.logger.info('Settings saved successfully');
       } catch (error) {
         window.VSC.logger.error(`Failed to save settings: ${error.message}`);
+      } finally {
+        this._savingInProgress = false;
       }
     }
 

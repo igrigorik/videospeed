@@ -100,7 +100,10 @@ class VideoController {
 
     const document = this.video.ownerDocument;
     const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
+    
+    // Get position based on user preference
+    const userPosition = this.config.settings.controllerPosition || 'top-left';
+    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
 
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
@@ -109,6 +112,9 @@ class VideoController {
 
     // Apply all CSS classes at once to prevent race condition flash
     const cssClasses = ['vsc-controller'];
+
+    // Add position-specific class
+    cssClasses.push(`vsc-position-${userPosition}`);
 
     // Only hide controller if video has no source AND is not ready/functional
     // This prevents hiding controllers for live streams or dynamically loaded videos
@@ -160,6 +166,7 @@ class VideoController {
       speed: speed,
       opacity: this.config.settings.controllerOpacity,
       buttonSize: this.config.settings.controllerButtonSize,
+      position: userPosition, // Pass position to shadow DOM
     });
 
     // Set up control events
@@ -239,9 +246,50 @@ class VideoController {
     this.video.addEventListener('loadstart', this.handleLoadStart);
     this.video.addEventListener('canplay', this.handleCanPlay);
 
+    // Add resize handler to update controller position (throttled)
+    this.handleResize = this.throttle(this.updateControllerPosition.bind(this), 100);
+    window.addEventListener('resize', this.handleResize);
+
     window.VSC.logger.debug(
-      'Added comprehensive media event handlers: play, seeked, loadstart, canplay'
+      'Added comprehensive media event handlers: play, seeked, loadstart, canplay, resize'
     );
+  }
+
+  /**
+   * Update controller position based on current video bounds and user preference
+   * @private
+   */
+  updateControllerPosition() {
+    if (!this.div) return;
+
+    const userPosition = this.config.settings.controllerPosition || 'top-left';
+    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
+
+    // Update the wrapper element position
+    this.div.style.top = position.top;
+    this.div.style.left = position.left;
+
+    window.VSC.logger.debug(`Controller position updated to ${position.top}, ${position.left} for ${userPosition}`);
+  }
+
+  /**
+   * Throttle function to limit how often a function can be called
+   * @param {Function} func - Function to throttle
+   * @param {number} limit - Minimum time between calls in milliseconds
+   * @returns {Function} Throttled function
+   * @private
+   */
+  throttle(func, limit) {
+    let inThrottle;
+    return function() {
+      const args = arguments;
+      const context = this;
+      if (!inThrottle) {
+        func.apply(context, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
   }
 
   /**
@@ -294,6 +342,9 @@ class VideoController {
     }
     if (this.handleCanPlay) {
       this.video.removeEventListener('canplay', this.handleCanPlay);
+    }
+    if (this.handleResize) {
+      window.removeEventListener('resize', this.handleResize);
     }
 
     // Disconnect mutation observer

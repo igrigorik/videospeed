@@ -14,11 +14,24 @@ if (!window.VSC.StorageManager) {
     // Listen for injected settings from content script
     static _setupSettingsListener() {
       if (typeof window !== 'undefined' && !this._listenerSetup) {
-        window.addEventListener('VSC_USER_SETTINGS', (event) => {
-          window.VSC.logger.debug('Received user settings from content script');
-          this._injectedSettings = event.detail;
-        });
-        this._listenerSetup = true;
+        try {
+          window.addEventListener('VSC_USER_SETTINGS', (event) => {
+            try {
+              window.VSC.logger.debug('Received user settings from content script:', event.detail);
+              window.VSC.logger.debug('Previous injected settings:', this._injectedSettings);
+              this._injectedSettings = event.detail || {};
+              window.VSC.logger.debug('Updated injected settings to:', this._injectedSettings);
+              if (this._injectedSettings.controllerPosition) {
+                window.VSC.logger.debug('controllerPosition in updated settings:', this._injectedSettings.controllerPosition);
+              }
+            } catch (eventError) {
+              console.error('Error processing VSC_USER_SETTINGS event:', eventError);
+            }
+          });
+          this._listenerSetup = true;
+        } catch (setupError) {
+          console.error('Error setting up settings listener:', setupError);
+        }
       }
     }
     /**
@@ -33,26 +46,21 @@ if (!window.VSC.StorageManager) {
       // Check if Chrome APIs are available (content script context)
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
         return new Promise((resolve) => {
-          chrome.storage.sync.get(defaults, (storage) => {
-            window.VSC.logger.debug('Retrieved settings from storage');
-            resolve(storage);
+          chrome.storage.sync.get(defaults, (result) => {
+            window.VSC.logger.debug('Settings loaded from Chrome storage:', result);
+            resolve(result);
           });
         });
       } else {
-        // Fallback for injected page context - use injected settings if available
-        if (this._injectedSettings) {
-          window.VSC.logger.debug('Using injected user settings');
-          window.VSC.logger.debug('Using injected user settings from content script');
-          // Merge injected settings with defaults
-          return Promise.resolve({ ...defaults, ...this._injectedSettings });
-        } else {
-          window.VSC.logger.debug('Chrome storage not available, using default settings');
-          return Promise.resolve(defaults);
-        }
+        // Fallback for injected page context - wait for settings from content script
+        window.VSC.logger.debug(
+          'Chrome storage not available, waiting for injected settings...'
+        );
+        const settings = await this.waitForInjectedSettings(defaults);
+        window.VSC.logger.debug('Settings received from content script:', settings);
+        return settings;
       }
-    }
-
-    /**
+    }    /**
      * Wait for injected settings to become available
      * @param {Object} defaults - Default values
      * @returns {Promise<Object>} Settings when available

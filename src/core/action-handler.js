@@ -427,10 +427,30 @@ class ActionHandler {
     // Always update lastSpeed for UI consistency
     this.config.settings.lastSpeed = speed;
 
-    // 5. Save to storage
-    this.config.save({
-      lastSpeed: this.config.settings.lastSpeed,
-    });
+    // 5. Save only the lastSpeed to storage, don't merge with potentially stale settings
+    try {
+      // Use direct storage call to avoid merging with stale settings
+      window.VSC.StorageManager.set({
+        lastSpeed: speed,
+      }).catch(error => {
+        window.VSC.logger.error('Failed to save lastSpeed:', error);
+      });
+      
+      // Also update per-video speeds if not in global mode
+      if (!this.config.settings.rememberSpeed && videoSrc) {
+        const updatedSpeeds = { ...this.config.settings.speeds };
+        updatedSpeeds[videoSrc] = speed;
+        this.config.settings.speeds = updatedSpeeds;
+        
+        window.VSC.StorageManager.set({
+          speeds: updatedSpeeds,
+        }).catch(error => {
+          window.VSC.logger.error('Failed to save per-video speeds:', error);
+        });
+      }
+    } catch (error) {
+      window.VSC.logger.error('Failed to save speed change:', error);
+    }
 
     // 6. Show controller briefly if hidden
     if (video.vsc?.div) {

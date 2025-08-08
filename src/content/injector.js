@@ -111,20 +111,41 @@ function setupMessageBridge() {
   injectUserSettings();
 
   // Listen for messages from popup (in content script context)
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // Forward message to injected page context
     if (message && message.type && message.type.startsWith('VSC_')) {
+      
+      // Handle settings update messages specially
+      if (message.type === 'VSC_SETTINGS_UPDATED') {
+        // Re-inject settings when they change
+        await injectUserSettings();
+      }
+      
       // Dispatch custom event to page context
-      window.dispatchEvent(
-        new CustomEvent('VSC_MESSAGE', {
-          detail: message,
-        })
-      );
+      try {
+        window.dispatchEvent(
+          new CustomEvent('VSC_MESSAGE', {
+            detail: message,
+          })
+        );
+      } catch (error) {
+        console.error('Failed to dispatch VSC_MESSAGE:', error);
+      }
 
       sendResponse({ success: true });
       return true;
     }
   });
+
+  // Listen for Chrome storage changes and update injected settings
+  if (chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'sync') {
+        // Re-inject updated settings when storage changes with a delay
+        setTimeout(() => injectUserSettings(), 200);
+      }
+    });
+  }
 
   // Listen for save settings requests from injected page context
   window.addEventListener('VSC_SAVE_SETTINGS', async (event) => {
@@ -198,16 +219,26 @@ async function injectUserSettings() {
     // Get user settings from Chrome storage (available in content script context)
     const userSettings = await new Promise((resolve) => {
       chrome.storage.sync.get(null, (settings) => {
-        resolve(settings);
+        if (chrome.runtime.lastError) {
+          console.error('Chrome storage error:', chrome.runtime.lastError);
+          resolve({});
+        } else {
+          resolve(settings || {});
+        }
       });
     });
 
     // Inject settings into page context via custom event
-    window.dispatchEvent(
-      new CustomEvent('VSC_USER_SETTINGS', {
-        detail: userSettings,
-      })
-    );
+    try {
+      window.dispatchEvent(
+        new CustomEvent('VSC_USER_SETTINGS', {
+          detail: userSettings,
+        })
+      );
+    } catch (eventError) {
+      console.error('Failed to dispatch VSC_USER_SETTINGS event:', eventError);
+    }
+    
   } catch (error) {
     console.error('❌ Failed to inject user settings:', error);
   }

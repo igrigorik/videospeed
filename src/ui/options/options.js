@@ -287,6 +287,7 @@ async function save_options() {
     var startHidden = document.getElementById("startHidden").checked;
     var controllerOpacity = Number(document.getElementById("controllerOpacity").value);
     var controllerButtonSize = Number(document.getElementById("controllerButtonSize").value);
+    var controllerPosition = document.getElementById("controllerPosition").value;
     var logLevel = parseInt(document.getElementById("logLevel").value);
     var blacklist = document.getElementById("blacklist").value;
 
@@ -303,12 +304,25 @@ async function save_options() {
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
+      controllerPosition: controllerPosition,
       logLevel: logLevel,
       keyBindings: keyBindings,
       blacklist: blacklist.replace(window.VSC.Constants.regStrip, "")
     };
 
-    await window.VSC.videoSpeedConfig.save(settingsToSave);
+    // Save using Chrome storage API
+    await new Promise((resolve, reject) => {
+      chrome.storage.sync.set(settingsToSave, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    // Add a small delay to ensure Chrome storage sync has completed
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Validate that settings were actually saved by reading them back
     await window.VSC.videoSpeedConfig.load();
@@ -319,12 +333,12 @@ async function save_options() {
       throw new Error("Keyboard shortcuts may not have been saved correctly");
     }
 
-    status.textContent = "Options saved";
+    status.textContent = "Options saved - refresh video pages to see changes";
     status.classList.add("success");
     setTimeout(function () {
       status.textContent = "";
       status.classList.remove("show", "success");
-    }, 2000);
+    }, 4000);
 
   } catch (error) {
     console.error("Failed to save options:", error);
@@ -355,6 +369,7 @@ async function restore_options() {
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;
     document.getElementById("controllerButtonSize").value = storage.controllerButtonSize;
+    document.getElementById("controllerPosition").value = storage.controllerPosition || 'top-left';
     document.getElementById("logLevel").value = storage.logLevel;
     document.getElementById("blacklist").value = storage.blacklist;
 

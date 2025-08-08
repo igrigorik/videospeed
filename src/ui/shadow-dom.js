@@ -13,13 +13,19 @@ class ShadowDOMManager {
    * @returns {ShadowRoot} Created shadow root
    */
   static createShadowDOM(wrapper, options = {}) {
-    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
+    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14, position = 'top-left' } = options;
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
 
     // Create style element with embedded CSS
     const style = document.createElement('style');
-    style.textContent = `
+    
+    // Get position configuration
+    const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
+                          window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
+    
+    // Base CSS with position-specific adjustments
+    const baseCSS = `
       * {
         line-height: 1.8em;
         font-family: sans-serif;
@@ -54,7 +60,7 @@ class ShadowDOMManager {
       
       #controls {
         display: none;
-        vertical-align: middle;
+        white-space: nowrap;
       }
       
       #controller.dragging {
@@ -76,6 +82,7 @@ class ShadowDOMManager {
         text-align: center;
         vertical-align: middle;
         box-sizing: border-box;
+        ${!positionConfig?.left ? 'text-align: right;' : ''}
       }
       
       .draggable:active {
@@ -124,6 +131,8 @@ class ShadowDOMManager {
         margin-right: 2px;
       }
     `;
+    
+    style.textContent = baseCSS;
     shadow.appendChild(style);
 
     // Create controller div
@@ -219,19 +228,42 @@ class ShadowDOMManager {
   }
 
   /**
-   * Calculate position for controller based on video element
+   * Calculate position for controller based on video element and user preference
    * @param {HTMLVideoElement} video - Video element
+   * @param {string} position - Position preference ('top-left', 'top-right', etc.)
    * @returns {Object} Position object with top and left properties
    */
-  static calculatePosition(video) {
+  static calculatePosition(video, position = 'top-left') {
     const rect = video.getBoundingClientRect();
 
     // getBoundingClientRect is relative to the viewport; style coordinates
     // are relative to offsetParent, so we adjust for that here. offsetParent
     // can be null if the video has `display: none` or is not yet in the DOM.
     const offsetRect = video.offsetParent?.getBoundingClientRect();
-    const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
-    const left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
+    
+    const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
+                          window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
+    
+    let top, left;
+    
+    if (positionConfig.top) {
+      // Top positions
+      top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
+    } else {
+      // Bottom positions - need to account for controller height and video controls
+      // Leave extra space (80px) to avoid overlapping with video's native controls
+      const bottomOffset = rect.bottom - (offsetRect?.top || 0) - 80; // Increased from 50px to 80px
+      top = `${Math.max(bottomOffset, 0)}px`;
+    }
+    
+    if (positionConfig.left) {
+      // Left positions
+      left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
+    } else {
+      // Right positions - need to account for controller width
+      const rightOffset = rect.right - (offsetRect?.left || 0) - 200; // 200px estimated controller width
+      left = `${Math.max(rightOffset, 0)}px`;
+    }
 
     return { top, left };
   }

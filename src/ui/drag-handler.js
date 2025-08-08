@@ -23,17 +23,20 @@ class DragHandler {
 
     const initialMouseXY = [e.clientX, e.clientY];
     const initialControllerXY = [
-      parseInt(shadowController.style.left) || 0,
-      parseInt(shadowController.style.top) || 0,
+      parseInt(shadowController.style.left) || parseInt(controller.style.left) || 0,
+      parseInt(shadowController.style.top) || parseInt(controller.style.top) || 0,
     ];
 
     const startDragging = (e) => {
-      const style = shadowController.style;
       const dx = e.clientX - initialMouseXY[0];
       const dy = e.clientY - initialMouseXY[1];
 
-      style.left = `${initialControllerXY[0] + dx}px`;
-      style.top = `${initialControllerXY[1] + dy}px`;
+      // Update both shadow controller and wrapper positions
+      controller.style.left = `${initialControllerXY[0] + dx}px`;
+      controller.style.top = `${initialControllerXY[1] + dy}px`;
+      
+      shadowController.style.left = '0px';
+      shadowController.style.top = '0px';
     };
 
     const stopDragging = () => {

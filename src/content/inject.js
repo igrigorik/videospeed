@@ -388,7 +388,37 @@ window.addEventListener('VSC_MESSAGE', (event) => {
           extension.actionHandler.runAction('display', null, null);
         }
         break;
+
+      case 'VSC_SETTINGS_UPDATED':
+        // Handle settings update from options page
+        window.VSC.logger.info('Settings updated, reloading configuration...');
+        if (extension.config) {
+          extension.config.load().then(() => {
+            window.VSC.logger.info('Configuration reloaded with new settings');
+            
+            // If controller position changed, we need to recreate controllers
+            if (message.payload && message.payload.controllerPosition) {
+              window.VSC.logger.info(`Controller position changed to: ${message.payload.controllerPosition}`);
+              // Note: Controllers will be recreated on next video load/page refresh
+            }
+          }).catch((error) => {
+            window.VSC.logger.error('Failed to reload settings:', error);
+          });
+        }
+        break;
     }
+  }
+});
+
+// Listen for settings changes from injected context (when content script updates storage)
+window.addEventListener('VSC_USER_SETTINGS', (event) => {
+  window.VSC.logger.debug('Received updated user settings');
+  if (extension.config) {
+    extension.config.load().then(() => {
+      window.VSC.logger.debug('Configuration updated from user settings event');
+    }).catch((error) => {
+      window.VSC.logger.error('Failed to update configuration from user settings:', error);
+    });
   }
 });
 
