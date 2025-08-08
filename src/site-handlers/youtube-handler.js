@@ -70,7 +70,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    * @returns {Array<string>} CSS selectors
    */
   getVideoContainerSelectors() {
-    return ['.html5-video-player', '#movie_player', '.ytp-player-content'];
+    return ['.html5-video-player', '#movie_player', '.ytp-player-content.ytp-iv-player-content', '.ytp-player-content'];
   }
 
   /**

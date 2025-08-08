@@ -234,7 +234,20 @@ class ShadowDOMManager {
    * @returns {Object} Position object with top and left properties
    */
   static calculatePosition(video, position = 'top-left') {
-    const rect = video.getBoundingClientRect();
+    // For YouTube, try to use the player container instead of just the video element
+    let targetElement = video;
+    if (location.hostname === 'www.youtube.com') {
+      // Look for the YouTube player container that includes black bars
+      const playerContainer = video.closest('.ytp-player-content.ytp-iv-player-content') || 
+                             video.closest('.ytp-player-content') ||
+                             video.closest('#movie_player') ||
+                             video.closest('.html5-video-player');
+      if (playerContainer) {
+        targetElement = playerContainer;
+      }
+    }
+
+    const rect = targetElement.getBoundingClientRect();
 
     // getBoundingClientRect is relative to the viewport; style coordinates
     // are relative to offsetParent, so we adjust for that here. offsetParent
