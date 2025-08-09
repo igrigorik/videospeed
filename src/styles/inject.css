@@ -66,16 +66,10 @@
   top: 60px;
 }
 
-/* YouTube bottom-positioned controllers - avoid overlapping with native controls */
+/* Keep JS-calculated bottom stacking authoritative; avoid CSS transforms that shift position */
 .html5-video-player .vsc-position-bottom-left,
 .html5-video-player .vsc-position-bottom-right {
-  transform: translateY(10px);
-}
-
-/* When YouTube controls are hidden, reduce the offset */
-.ytp-autohide .vsc-position-bottom-left,
-.ytp-autohide .vsc-position-bottom-right {
-  transform: translateY(-10px); /* Reduced from -20px */
+  max-width: 95%;
 }
 
 /* Facebook player */

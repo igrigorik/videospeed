@@ -7,6 +7,136 @@ window.VSC = window.VSC || {};
 
 class ShadowDOMManager {
   /**
+   * Detect the visible height of the page/player controls that sit at the bottom of the video.
+   * Falls back to heuristics when exact height can't be measured.
+   * @param {HTMLVideoElement} video
+   * @returns {number} height in pixels
+   */
+  static detectNativeControlsHeight(video, targetElement) {
+    try {
+      // Site-specific: YouTube custom controls
+      if (location.hostname === 'www.youtube.com') {
+        const ytpControls = document.querySelector('.ytp-chrome-bottom');
+        if (ytpControls && ytpControls.offsetHeight) {
+          let h = ytpControls.offsetHeight;
+          // Include progress bar height if present for better separation
+          const progress = document.querySelector('.ytp-progress-bar-container');
+          if (progress && progress.offsetHeight) {
+            h = Math.max(h, ytpControls.getBoundingClientRect().bottom - progress.getBoundingClientRect().top);
+          }
+          // When autohide is active, controls are hidden; keep a small baseline (progress bar)
+          const player = document.querySelector('.html5-video-player');
+          if (player && player.classList.contains('ytp-autohide')) {
+            const progressH = progress?.offsetHeight || 4;
+            return Math.max(progressH + 6, 10);
+          }
+          return h;
+        }
+      }
+
+      // Standard native controls
+  if (video && video.controls) {
+        // Try to read pseudo-element height (Chrome/WebKit only)
+        const pseudoCandidates = [
+          '::-webkit-media-controls-enclosure',
+          '::-webkit-media-controls-panel',
+          '::-webkit-media-controls'
+        ];
+
+        for (const pseudo of pseudoCandidates) {
+          const style = window.getComputedStyle(video, pseudo);
+          if (style) {
+            const h = parseFloat(style.height);
+            if (!Number.isNaN(h) && h > 0) {
+              return h;
+            }
+          }
+        }
+
+        // Some platforms report min-height more reliably
+        for (const pseudo of pseudoCandidates) {
+          const style = window.getComputedStyle(video, pseudo);
+          if (style) {
+            const h2 = parseFloat(style.minHeight || style.getPropertyValue('min-height'));
+            if (!Number.isNaN(h2) && h2 > 0) {
+              return h2;
+            }
+          }
+        }
+
+        // Heuristic default for native controls when visible
+        return 36; // typical desktop native controls bar height
+      }
+    } catch (_) {
+      // ignore and use fallback
+    }
+
+    // Generic overlay detection for custom players (e.g., Substack)
+    const overlay = this.detectBottomOverlayHeight(video, targetElement || video);
+    if (overlay > 0) {
+      return overlay;
+    }
+
+    // Default minimal offset when no native controls are visible
+    return 0;
+  }
+
+  /**
+   * Detect any overlaying controls near the bottom of the player by sampling elementsFromPoint.
+   * @param {HTMLVideoElement} video
+   * @param {HTMLElement} targetElement - container used for positioning
+   * @returns {number} overlay height in pixels
+   */
+  static detectBottomOverlayHeight(video, targetElement) {
+    try {
+      const rect = targetElement.getBoundingClientRect();
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const x = Math.min(Math.max(rect.left + rect.width / 2, 0), vw - 1);
+
+      // Skip if API missing
+      if (typeof document.elementsFromPoint !== 'function') {
+        return 0;
+      }
+
+      const scanDepth = Math.min(120, Math.floor(rect.height / 3));
+      for (let dy = 1; dy <= scanDepth; dy += 2) {
+        const y = rect.bottom - dy;
+        if (y < rect.top) break;
+        const stack = document.elementsFromPoint(x, y) || [];
+        const found = stack.find((el) => {
+          if (!el || el === video) return false;
+          if (el.closest && el.closest('.vsc-controller')) return false;
+          // Must overlap horizontally with the video area
+          const br = el.getBoundingClientRect();
+          const horizontallyOverlaps = !(br.right < rect.left || br.left > rect.right);
+          const verticallyOverlaps = br.top < rect.bottom && br.bottom > rect.top;
+          // Exclude body/html/document roots
+          const isRoot = el === document.body || el === document.documentElement;
+          return horizontallyOverlaps && verticallyOverlaps && !isRoot;
+        });
+
+        if (found) {
+          const fr = found.getBoundingClientRect();
+          const overlapTop = Math.max(fr.top, rect.top);
+          let height = Math.max(0, rect.bottom - overlapTop);
+          // Cap overlay height to reasonable values (avoid taking half the player)
+          const capPx = 160;
+          const capPct = rect.height * 0.4;
+          height = Math.min(height, capPx, capPct);
+
+          // Ignore tiny overlays (like thin progress lines) under threshold
+          if (height >= 6) {
+            return height; // first significant overlay near the bottom
+          }
+        }
+      }
+      // No overlay found
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+  /**
    * Create shadow DOM for video controller
    * @param {HTMLElement} wrapper - Wrapper element
    * @param {Object} options - Configuration options
@@ -25,7 +155,7 @@ class ShadowDOMManager {
                           window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
     
     // Base CSS with position-specific adjustments
-    const baseCSS = `
+  const baseCSS = `
       * {
         line-height: 1.8em;
         font-family: sans-serif;
@@ -49,7 +179,7 @@ class ShadowDOMManager {
         white-space: nowrap;
         ${positionConfig.left 
           ? 'margin: 10px 10px 10px 15px;' 
-          : 'transform: translateX(-100%); margin: 10px 15px 10px 10px;'
+          : 'transform: translateX(-100%); margin: 10px 0 10px 10px;'
         }
       }
       
@@ -263,7 +393,7 @@ class ShadowDOMManager {
    * @param {string} position - Position preference ('top-left', 'top-right', etc.)
    * @returns {Object} Position object with top and left properties
    */
-  static calculatePosition(video, position = 'top-left') {
+  static calculatePosition(video, position = 'top-left', baseRectOverride = null) {
     let targetElement = video;
     if (location.hostname === 'www.youtube.com') {
       const playerContainer = video.closest('.ytp-player-content.ytp-iv-player-content') || 
@@ -275,9 +405,10 @@ class ShadowDOMManager {
       }
     }
 
-    const rect = targetElement.getBoundingClientRect();
+  const rect = targetElement.getBoundingClientRect();
 
-    const offsetRect = video.offsetParent?.getBoundingClientRect();
+  // Allow caller to specify the coordinate base (e.g., controller's offsetParent)
+  const offsetRect = baseRectOverride || video.offsetParent?.getBoundingClientRect();
     
     const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
                           window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
@@ -285,20 +416,47 @@ class ShadowDOMManager {
     let top, left;
     
     if (positionConfig.top) {
-      top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
+  top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
     } else {
-      let bottomOffset = 80;
-      
-      if (location.hostname === 'www.youtube.com') {
-        bottomOffset = 120;
-        
-        const ytpControls = document.querySelector('.ytp-chrome-bottom');
-        if (ytpControls) {
-          const controlsHeight = ytpControls.offsetHeight || 40;
-          bottomOffset = Math.max(bottomOffset, controlsHeight + 50);
+      // Determine dynamic offset so our controller stacks above the native/player controls
+      const overlayHeight = this.detectBottomOverlayHeight(video, targetElement);
+      const nativeHeuristic = this.detectNativeControlsHeight(video, targetElement); // px
+      let nativeControlsHeight = Math.max(overlayHeight, nativeHeuristic);
+
+      // Measure our controller box if present to place exactly; otherwise use heuristics
+      let controllerHeight = 0;
+      let controllerMarginTop = 10; // default from CSS
+      try {
+        const wrapper = video?.vsc?.div;
+        const controller = wrapper?.shadowRoot?.querySelector('#controller');
+        if (controller) {
+          const box = controller.getBoundingClientRect();
+          controllerHeight = Math.ceil(box.height);
+          const cs = window.getComputedStyle(controller);
+          const mt = parseFloat(cs.marginTop || '10');
+          if (!Number.isNaN(mt)) controllerMarginTop = mt;
+        } else {
+          // Approximate when not yet rendered
+          const defaultBtn = window.VSC.Constants?.DEFAULT_SETTINGS?.controllerButtonSize || 14;
+          controllerHeight = Math.round(defaultBtn * 1.4 + 8); // 1.4em + padding
         }
+      } catch (_) {
+        // Ignore and keep heuristics
+        const defaultBtn = window.VSC.Constants?.DEFAULT_SETTINGS?.controllerButtonSize || 14;
+        controllerHeight = Math.round(defaultBtn * 1.4 + 8);
       }
-      
+
+  // Ensure clearer separation on YouTube
+      const extraSitePad = location.hostname === 'www.youtube.com' ? 10 : 8;
+      const padding = extraSitePad; // little padding between native controls and our controller
+      let bottomOffset = Math.max(0, nativeControlsHeight + padding + controllerMarginTop + controllerHeight);
+
+      // Keep the controller within the video box; if offset is too large, cap it
+      const maxUsableOffset = Math.max(0, rect.height - Math.min(controllerHeight + 10, rect.height * 0.25));
+      if (bottomOffset > maxUsableOffset) {
+        bottomOffset = maxUsableOffset;
+      }
+
       const calculatedBottom = rect.bottom - (offsetRect?.top || 0) - bottomOffset;
       top = `${Math.max(calculatedBottom, 0)}px`;
     }
@@ -307,6 +465,7 @@ class ShadowDOMManager {
       left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
     } else {
       const rightEdge = rect.right - (offsetRect?.left || 0);
+      // Position wrapper 15px inside; the controller uses translateX(-100%) and margin-right:15
       left = `${Math.max(rightEdge - 15, 0)}px`;
     }
 

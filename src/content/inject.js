@@ -468,19 +468,47 @@ window.addEventListener('VSC_MESSAGE', (event) => {
 window.addEventListener('VSC_USER_SETTINGS', (event) => {
   window.VSC.logger.debug('Received updated user settings');
   if (extension.config) {
-    const prevPosition = extension.config.settings?.controllerPosition;
-    extension.config.load().then(() => {
-      window.VSC.logger.debug('Configuration updated from user settings event');
-      const newPosition = extension.config.settings?.controllerPosition;
-      // If this event reflects a position change, recreate controllers to apply it immediately
-      const incomingPosition = event?.detail?.controllerPosition;
-      if (incomingPosition && newPosition !== prevPosition) {
-        window.VSC.logger.info(`Controller position updated via injected settings: ${prevPosition} -> ${newPosition}. Recreating controllers...`);
+    const prevPosition = extension._lastAppliedControllerPosition || extension.config.settings?.controllerPosition || 'top-left';
+    const incomingPosition = event?.detail?.controllerPosition;
+
+    // Fast-path: if controller position changed, apply immediately in-place
+    if (incomingPosition && incomingPosition !== prevPosition) {
+      try {
+        // Update config state so future calculations use the new position
+        extension.config.settings.controllerPosition = incomingPosition;
+
+        // Update each existing controller's class and position without full teardown
+        const videos = extension.config.getMediaElements();
+        videos.forEach((video) => {
+          if (!video?.vsc?.div) return;
+          const wrapper = video.vsc.div;
+          // Swap position class
+          const posClassPrefix = 'vsc-position-';
+          wrapper.classList.forEach((cls) => {
+            if (cls.startsWith(posClassPrefix)) wrapper.classList.remove(cls);
+          });
+          wrapper.classList.add(`${posClassPrefix}${incomingPosition}`);
+          // Recalculate position now
+          try { video.vsc.updateControllerPosition(); } catch (_) {}
+        });
+
+        extension._lastAppliedControllerPosition = incomingPosition;
+        window.VSC.logger.info(`Applied controller position in place: ${prevPosition} -> ${incomingPosition}`);
+      } catch (applyError) {
+        window.VSC.logger.warn('In-place position update failed, recreating controllers...', applyError?.message);
         extension.recreateAllControllers();
       }
-    }).catch((error) => {
-      window.VSC.logger.error('Failed to update configuration from user settings:', error);
-    });
+      return; // Done
+    }
+
+    // Fallback: reload settings to apply other changes
+    extension.config.load()
+      .then(() => {
+        window.VSC.logger.debug('Configuration updated from user settings event');
+      })
+      .catch((error) => {
+        window.VSC.logger.error('Failed to update configuration from user settings:', error);
+      });
   }
 });
 

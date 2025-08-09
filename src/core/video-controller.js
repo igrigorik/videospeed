@@ -112,20 +112,18 @@ class VideoController {
   // This avoids showing a target speed before it has been applied
   const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
     
-    // Get position based on user preference
-    const userPosition = this.config.settings.controllerPosition || 'top-left';
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
+  // Get position based on user preference
+  const userPosition = this.config.settings.controllerPosition || 'top-left';
+  const baseRect = (this.video.offsetParent && this.video.offsetParent.getBoundingClientRect && this.video.offsetParent.getBoundingClientRect()) || null;
+  const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition, baseRect);
 
   window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
     // Create wrapper element
     const wrapper = document.createElement('div');
 
-    // Apply all CSS classes at once to prevent race condition flash
-    const cssClasses = ['vsc-controller'];
-
-    // Add position-specific class
-    cssClasses.push(`vsc-position-${userPosition}`);
+  // Apply all CSS classes at once to prevent race condition flash
+  const cssClasses = ['vsc-controller', `vsc-position-${userPosition}`];
 
     // Only hide controller if video has no source AND is not ready/functional
     // This prevents hiding controllers for live streams or dynamically loaded videos
@@ -231,6 +229,21 @@ class VideoController {
     }
 
     window.VSC.logger.debug(`Controller inserted using ${positioning.insertionMethod} method`);
+
+    // After insertion, re-calc position now that sizes are known (ensures bottom stacking accuracy)
+    try {
+      this.updateControllerPosition();
+      // Also schedule a microtask + next frame to catch late style calculations
+      queueMicrotask(() => {
+        this.updateControllerPosition();
+        const raf = typeof requestAnimationFrame === 'function'
+          ? requestAnimationFrame
+          : (cb) => setTimeout(cb, 16);
+        raf(() => this.updateControllerPosition());
+      });
+    } catch (_) {
+      // non-fatal
+    }
   }
 
   /**
@@ -279,8 +292,9 @@ class VideoController {
   updateControllerPosition() {
     if (!this.div) return;
 
-    const userPosition = this.config.settings.controllerPosition || 'top-left';
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
+  const userPosition = this.config.settings.controllerPosition || 'top-left';
+  const baseRect = (this.div?.offsetParent && this.div.offsetParent.getBoundingClientRect && this.div.offsetParent.getBoundingClientRect()) || (this.video.offsetParent && this.video.offsetParent.getBoundingClientRect && this.video.offsetParent.getBoundingClientRect()) || null;
+  const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition, baseRect);
 
     // Update the wrapper element position
     this.div.style.top = position.top;
