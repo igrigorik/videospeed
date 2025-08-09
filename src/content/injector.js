@@ -110,6 +110,10 @@ function setupMessageBridge() {
   // Fetch and inject user settings into page context
   injectUserSettings();
 
+  // Re-inject shortly after startup to catch any propagation delays from storage writes
+  setTimeout(() => injectUserSettings(), 300);
+  setTimeout(() => injectUserSettings(), 1000);
+
   // Listen for messages from popup (in content script context)
   chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // Forward message to injected page context
@@ -142,7 +146,9 @@ function setupMessageBridge() {
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'sync') {
         // Re-inject updated settings when storage changes with a delay
-        setTimeout(() => injectUserSettings(), 200);
+  setTimeout(() => injectUserSettings(), 200);
+  // And a second pass to ensure all keys are synced
+  setTimeout(() => injectUserSettings(), 800);
       }
     });
   }

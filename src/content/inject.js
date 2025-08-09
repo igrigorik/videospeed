@@ -11,6 +11,8 @@ class VideoSpeedExtension {
     this.mutationObserver = null;
     this.mediaObserver = null;
     this.initialized = false;
+  // Track last applied controller position to react to changes without full reload
+  this._lastAppliedControllerPosition = null;
   }
 
   /**
@@ -35,6 +37,9 @@ class VideoSpeedExtension {
       // Load configuration
       this.config = window.VSC.videoSpeedConfig;
       await this.config.load();
+
+  // Track the controller position we've applied to current controllers
+  this._lastAppliedControllerPosition = this.config.settings?.controllerPosition || 'top-left';
 
       // Check if extension is enabled
       if (!this.config.settings.enabled) {
@@ -69,6 +74,21 @@ class VideoSpeedExtension {
 
       this.logger.info('Video Speed Controller initialized successfully');
       this.initialized = true;
+
+      // Follow-up verification shortly after init to catch late-arriving settings
+      setTimeout(async () => {
+        try {
+          const prev = this._lastAppliedControllerPosition;
+          await this.config.load();
+          const now = this.config.settings?.controllerPosition || 'top-left';
+          if (now !== prev) {
+            this.logger.info(`Controller position updated post-init: ${prev} -> ${now}. Recreating controllers...`);
+            this.recreateAllControllers();
+          }
+        } catch (e) {
+          this.logger.debug('Post-init settings check failed:', e?.message);
+        }
+      }, 500);
     } catch (error) {
       console.error(`❌ Failed to initialize Video Speed Controller: ${error.message}`);
       console.error('📋 Full error details:', error);
@@ -333,6 +353,38 @@ class VideoSpeedExtension {
       this.logger.error(`Failed to cleanup: ${error.message}`);
     }
   }
+
+  /**
+   * Recreate all controllers to apply layout-affecting changes (like position)
+   * Safe to call multiple times; no-ops if not initialized yet
+   */
+  recreateAllControllers() {
+    try {
+      const videos = this.config?.getMediaElements?.() || [];
+      if (!videos.length) {
+        return; // Nothing to do
+      }
+
+      // Remove existing controllers
+      videos.forEach((video) => {
+        if (video?.vsc) {
+          video.vsc.remove();
+        }
+      });
+
+      // Reattach controllers with current configuration
+      videos.forEach((video) => {
+        const parent = video.parentElement || video.parentNode;
+        this.onVideoFound(video, parent);
+      });
+
+      // Update our applied position tracker
+      this._lastAppliedControllerPosition = this.config.settings?.controllerPosition || 'top-left';
+      this.logger.info(`Recreated controllers with position: ${this._lastAppliedControllerPosition}`);
+    } catch (error) {
+      this.logger.error(`Failed to recreate controllers: ${error.message}`);
+    }
+  }
 }
 
 // Message handler for popup communication via bridge
@@ -393,13 +445,15 @@ window.addEventListener('VSC_MESSAGE', (event) => {
         // Handle settings update from options page
         window.VSC.logger.info('Settings updated, reloading configuration...');
         if (extension.config) {
+          const prevPosition = extension.config.settings?.controllerPosition;
           extension.config.load().then(() => {
             window.VSC.logger.info('Configuration reloaded with new settings');
-            
-            // If controller position changed, we need to recreate controllers
-            if (message.payload && message.payload.controllerPosition) {
-              window.VSC.logger.info(`Controller position changed to: ${message.payload.controllerPosition}`);
-              // Note: Controllers will be recreated on next video load/page refresh
+
+            // If controller position changed, recreate controllers immediately
+            const newPosition = extension.config.settings?.controllerPosition;
+            if (message.payload && message.payload.controllerPosition && newPosition !== prevPosition) {
+              window.VSC.logger.info(`Controller position changed: ${prevPosition} -> ${newPosition}. Recreating controllers...`);
+              extension.recreateAllControllers();
             }
           }).catch((error) => {
             window.VSC.logger.error('Failed to reload settings:', error);
@@ -414,8 +468,16 @@ window.addEventListener('VSC_MESSAGE', (event) => {
 window.addEventListener('VSC_USER_SETTINGS', (event) => {
   window.VSC.logger.debug('Received updated user settings');
   if (extension.config) {
+    const prevPosition = extension.config.settings?.controllerPosition;
     extension.config.load().then(() => {
       window.VSC.logger.debug('Configuration updated from user settings event');
+      const newPosition = extension.config.settings?.controllerPosition;
+      // If this event reflects a position change, recreate controllers to apply it immediately
+      const incomingPosition = event?.detail?.controllerPosition;
+      if (incomingPosition && newPosition !== prevPosition) {
+        window.VSC.logger.info(`Controller position updated via injected settings: ${prevPosition} -> ${newPosition}. Recreating controllers...`);
+        extension.recreateAllControllers();
+      }
     }).catch((error) => {
       window.VSC.logger.error('Failed to update configuration from user settings:', error);
     });
