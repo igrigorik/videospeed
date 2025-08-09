@@ -186,6 +186,19 @@ class EventManager {
       return;
     }
 
+    // the speed is too low, propably a bug
+    // however it shouldn't happen
+    /*
+     * this solves a bug where a weird event gets dispatched that
+     * has detail that like this
+     * {origin: "videoSpeed", speed: "0.07", source: "external"}
+     * that wasn't getting caught by the other conditions
+     */
+    if (event.detail && Number(event.detail.speed) < 0.1) {
+      window.VSC.logger.debug('Ignoring too low rate change');
+      return;
+    }
+
     // External change - use adjustSpeed with external source
     window.VSC.logger.debug('External rate change detected');
     if (this.actionHandler) {
