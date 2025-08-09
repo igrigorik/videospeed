@@ -57,12 +57,17 @@ class VideoController {
   initializeSpeed() {
     const targetSpeed = this.getTargetSpeed();
 
-    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
+    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed} (current: ${this.video.playbackRate})`);
 
-    // Use adjustSpeed for initial speed setting to ensure consistency
-    if (this.actionHandler && targetSpeed !== this.video.playbackRate) {
+    // Always set speed if we have an action handler, regardless of current playback rate
+    // This ensures the speed is properly initialized and the UI stays in sync
+    if (this.actionHandler) {
       window.VSC.logger.debug('Setting initial speed via adjustSpeed');
       this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
+    } else {
+      // Fallback: set playback rate directly if no action handler
+      window.VSC.logger.debug('No action handler, setting playbackRate directly');
+      this.video.playbackRate = targetSpeed;
     }
   }
 
@@ -99,13 +104,16 @@ class VideoController {
     window.VSC.logger.debug('initializeControls Begin');
 
     const document = this.video.ownerDocument;
-    const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
+    
+    // Use the target speed for UI initialization, not current playback rate
+    const targetSpeed = this.getTargetSpeed();
+    const speed = window.VSC.Constants.formatSpeed(targetSpeed);
     
     // Get position based on user preference
     const userPosition = this.config.settings.controllerPosition || 'top-left';
     const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
 
-    window.VSC.logger.debug(`Speed variable set to: ${speed}`);
+    window.VSC.logger.debug(`Speed variable set to: ${speed} (target: ${targetSpeed}, current: ${this.video.playbackRate})`);
 
     // Create wrapper element
     const wrapper = document.createElement('div');
