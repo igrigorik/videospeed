@@ -28,6 +28,10 @@ class VideoController {
     // Attach controller to video element first (needed for adjustSpeed)
     target.vsc = this;
 
+  // Internal enforcement timer for stubborn players that reset playbackRate
+  this._enforceTimer = null;
+  this._enforceUntil = 0;
+
     // Initialize speed
     this.initializeSpeed();
 
@@ -57,12 +61,17 @@ class VideoController {
   initializeSpeed() {
     const targetSpeed = this.getTargetSpeed();
 
-    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
+    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed} (current: ${this.video.playbackRate})`);
 
-    // Use adjustSpeed for initial speed setting to ensure consistency
-    if (this.actionHandler && targetSpeed !== this.video.playbackRate) {
+    // Always set speed if we have an action handler, regardless of current playback rate
+    // This ensures the speed is properly initialized and the UI stays in sync
+    if (this.actionHandler) {
       window.VSC.logger.debug('Setting initial speed via adjustSpeed');
       this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
+    } else {
+      // Fallback: set playback rate directly if no action handler
+      window.VSC.logger.debug('No action handler, setting playbackRate directly');
+      this.video.playbackRate = targetSpeed;
     }
   }
 
@@ -99,13 +108,15 @@ class VideoController {
     window.VSC.logger.debug('initializeControls Begin');
 
     const document = this.video.ownerDocument;
-    const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
+  // For the UI indicator, reflect the actual current playback rate
+  // This avoids showing a target speed before it has been applied
+  const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
     
     // Get position based on user preference
     const userPosition = this.config.settings.controllerPosition || 'top-left';
     const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
 
-    window.VSC.logger.debug(`Speed variable set to: ${speed}`);
+  window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
     // Create wrapper element
     const wrapper = document.createElement('div');
@@ -232,6 +243,12 @@ class VideoController {
 
       window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
       this.actionHandler.adjustSpeed(event.target, targetSpeed, { source: 'internal' });
+
+      // Some players (e.g., YouTube) keep resetting speed around src/load/playing
+      // Briefly enforce preferred speed after key lifecycle events
+      if (event.type === 'loadstart' || event.type === 'canplay' || event.type === 'play') {
+        this.enforceSpeedFor(1500);
+      }
     };
 
     // Bind event handlers
@@ -309,6 +326,16 @@ class VideoController {
             controller.classList.add('vsc-nosource');
           } else {
             controller.classList.remove('vsc-nosource');
+            // When a reused video element gets a new source, restore the preferred speed
+            try {
+              const targetSpeed = this.getTargetSpeed(this.video);
+              window.VSC.logger.debug(`Src changed: restoring speed to ${targetSpeed}`);
+              this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
+              // And briefly enforce it to override player resets
+              this.enforceSpeedFor(1500);
+            } catch (e) {
+              window.VSC.logger.warn('Failed to restore speed on src change:', e.message);
+            }
           }
         }
       });
@@ -352,6 +379,12 @@ class VideoController {
       this.targetObserver.disconnect();
     }
 
+    // Clear enforcement timer
+    if (this._enforceTimer) {
+      clearInterval(this._enforceTimer);
+      this._enforceTimer = null;
+    }
+
     // Remove from tracking
     this.config.removeMediaElement(this.video);
 
@@ -366,6 +399,38 @@ class VideoController {
       videoSrc: this.video.currentSrc || this.video.src,
       tagName: this.video.tagName,
     });
+  }
+
+  /**
+   * Briefly enforce preferred speed to counter player resets
+   * @param {number} durationMs - Duration to enforce in milliseconds
+   * @private
+   */
+  enforceSpeedFor(durationMs = 1200) {
+    const now = Date.now();
+    this._enforceUntil = now + durationMs;
+
+    if (this._enforceTimer) {
+      // Timer already running; it will read updated _enforceUntil
+      return;
+    }
+
+    this._enforceTimer = setInterval(() => {
+      if (Date.now() > this._enforceUntil) {
+        clearInterval(this._enforceTimer);
+        this._enforceTimer = null;
+        return;
+      }
+
+      try {
+        const targetSpeed = this.getTargetSpeed(this.video);
+        if (Math.abs((this.video.playbackRate || 0) - targetSpeed) > 0.01) {
+          this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
+        }
+      } catch (e) {
+        // Swallow errors during enforcement window
+      }
+    }, 200);
   }
 
   /**
