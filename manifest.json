@@ -1,7 +1,7 @@
 {
   "name": "Video Speed Controller",
   "short_name": "videospeed",
-  "version": "0.9.2",
+  "version": "0.9.4",
   "manifest_version": 3,
   "minimum_chrome_version": "89",
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
@@ -17,7 +17,7 @@
     "tabs"
   ],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "dist/background.js"
   },
   "options_ui": {
     "page": "src/ui/options/options.html",
@@ -48,22 +48,15 @@
         "src/styles/inject.css"
       ],
       "js": [
-        "src/content/injector.js"
+        "dist/content.js"
       ]
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "src/styles/inject.css",
-        "src/styles/shadow.css",
-        "src/module-loader.js",
-        "src/core/*.js",
-        "src/utils/*.js",
-        "src/ui/*.js",
-        "src/observers/*.js",
-        "src/site-handlers/*.js",
-        "src/content/*.js"
+        "dist/inject.js",
+        "src/styles/shadow.css"
       ],
       "matches": [
         "http://*/*",

@@ -1,4 +1,4 @@
-// Message type constants - namespaced for defensive messaging
+// Message type constants
 const MessageTypes = {
   SET_SPEED: 'VSC_SET_SPEED',
   ADJUST_SPEED: 'VSC_ADJUST_SPEED',

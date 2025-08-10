@@ -117,10 +117,10 @@ export async function waitForExtension(page, timeout = 15000) {
     // First check if content script is injected
     const hasContentScript = await page.evaluate(() => {
       return !!(
-        window.VideoSpeedExtension ||
-        window.videoSpeedExtension ||
+        window.VSC_controller ||
+        window.VSC ||
         document.querySelector('.vsc-controller') ||
-        document.querySelector('#vsc-test-indicator')
+        document.querySelector('video')?.vsc
       );
     });
 
@@ -133,35 +133,31 @@ export async function waitForExtension(page, timeout = 15000) {
     await page.waitForFunction(
       () => {
         // Check multiple indicators that extension is loaded
-        const hasExtension = !!window.VideoSpeedExtension;
-        const hasExtensionInstance = !!window.videoSpeedExtension;
+        const hasVSC = !!window.VSC;
+        const hasVSCController = !!window.VSC_controller;
         const hasController = !!document.querySelector('.vsc-controller');
         const hasVideoController = !!document.querySelector('video')?.vsc;
-        const hasTestIndicator = !!document.querySelector('#vsc-test-indicator');
 
         // Debug logging in browser
         if (
-          hasExtension ||
-          hasExtensionInstance ||
+          hasVSC ||
+          hasVSCController ||
           hasController ||
-          hasVideoController ||
-          hasTestIndicator
+          hasVideoController
         ) {
           console.log('Extension detected:', {
-            hasExtension,
-            hasExtensionInstance,
+            hasVSC,
+            hasVSCController,
             hasController,
             hasVideoController,
-            hasTestIndicator,
           });
         }
 
         return (
-          hasExtension ||
-          hasExtensionInstance ||
+          hasVSC ||
+          hasVSCController ||
           hasController ||
-          hasVideoController ||
-          hasTestIndicator
+          hasVideoController
         );
       },
       { timeout, polling: 1000 }
@@ -176,7 +172,7 @@ export async function waitForExtension(page, timeout = 15000) {
     const debugInfo = await page.evaluate(() => {
       return {
         hasVideoSpeedExtension: !!window.VideoSpeedExtension,
-        hasVideoSpeedExtensionInstance: !!window.videoSpeedExtension,
+        hasVideoSpeedExtensionInstance: !!window.VSC_controller,
         hasController: !!document.querySelector('.vsc-controller'),
         hasVideoElement: !!document.querySelector('video'),
         videoHasVsc: !!document.querySelector('video')?.vsc,

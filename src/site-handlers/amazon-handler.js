@@ -1,6 +1,5 @@
 /**
  * Amazon Prime Video handler
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

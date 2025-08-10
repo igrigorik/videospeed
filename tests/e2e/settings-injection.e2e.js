@@ -38,7 +38,7 @@ export default async function runSettingsInjectionE2ETests() {
     // Wait for the extension to be fully initialized and listening for settings
     await page.waitForFunction(
       () => {
-        return !!(window.VSC?.StorageManager && window.videoSpeedExtension?.initialized);
+        return !!(window.VSC?.StorageManager && window.VSC_controller?.initialized);
       },
       { timeout: 10000 }
     );
@@ -60,21 +60,14 @@ export default async function runSettingsInjectionE2ETests() {
           lastSpeed: 1.9,
         };
 
-        // Dispatch the settings event to simulate content script injection
-        window.dispatchEvent(
-          new CustomEvent('VSC_USER_SETTINGS', {
-            detail: mockSettings,
-          })
-        );
+        // Update the global settings cache that StorageManager uses
+        window.VSC_settings = mockSettings;
       });
-
-      // Wait for settings to be processed and reload the config
-      await sleep(1000);
 
       // Force reload the config to apply injected settings
       await page.evaluate(() => {
-        if (window.videoSpeedExtension?.config) {
-          return window.videoSpeedExtension.config.load();
+        if (window.VSC_controller?.config) {
+          return window.VSC_controller.config.load();
         }
       });
 
@@ -91,7 +84,7 @@ export default async function runSettingsInjectionE2ETests() {
           keyBindingsCount: config?.settings?.keyBindings?.length || 0,
           fasterIncrement: fasterBinding?.value,
           resetPreferredSpeed: resetBinding?.value,
-          injectedSettingsAvailable: !!window.VSC?.StorageManager?._injectedSettings,
+          injectedSettingsAvailable: !!window.VSC_settings,
         };
       });
 
@@ -161,8 +154,8 @@ export default async function runSettingsInjectionE2ETests() {
     await runTest('Settings should persist through extension reload', async () => {
       // Test that settings remain available after reloading extension config
       await page.evaluate(() => {
-        if (window.videoSpeedExtension) {
-          return window.videoSpeedExtension.config.load();
+        if (window.VSC_controller) {
+          return window.VSC_controller.config.load();
         }
       });
 

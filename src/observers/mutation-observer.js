@@ -1,6 +1,5 @@
 /**
  * DOM mutation observer for detecting video elements
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

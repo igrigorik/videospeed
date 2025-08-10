@@ -1,6 +1,5 @@
 /**
  * Facebook-specific handler
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

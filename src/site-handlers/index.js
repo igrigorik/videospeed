@@ -1,6 +1,5 @@
 /**
  * Site handler factory and manager
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

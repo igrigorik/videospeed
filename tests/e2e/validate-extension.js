@@ -34,7 +34,14 @@ function validateExtension() {
   test('inject.css exists', existsSync(join(extensionRoot, 'src/styles/inject.css')));
   test('shadow.css exists', existsSync(join(extensionRoot, 'src/styles/shadow.css')));
 
-  // Check source structure
+  // Check bundled files
+  test('dist/content.js exists', existsSync(join(extensionRoot, 'dist/content.js')));
+  test('dist/inject.js exists', existsSync(join(extensionRoot, 'dist/inject.js')));
+  test('dist/background.js exists', existsSync(join(extensionRoot, 'dist/background.js')));
+  test('dist/popup.js exists', existsSync(join(extensionRoot, 'dist/popup.js')));
+  test('dist/options.js exists', existsSync(join(extensionRoot, 'dist/options.js')));
+
+  // Check source structure (still needed for unit tests)
   test('src/content/inject.js exists', existsSync(join(extensionRoot, 'src/content/inject.js')));
   test('src/core/ directory exists', existsSync(join(extensionRoot, 'src/core')));
   test('src/utils/ directory exists', existsSync(join(extensionRoot, 'src/utils')));
@@ -55,7 +62,10 @@ function validateExtension() {
       'Content scripts defined',
       manifest.content_scripts && manifest.content_scripts.length > 0
     );
-    test('Content script has ES6 module type', manifest.content_scripts[0].type === 'module');
+    test('Content script uses bundled file',
+      manifest.content_scripts[0].js &&
+      manifest.content_scripts[0].js[0] === 'dist/content.js'
+    );
     test(
       'Required permissions present',
       manifest.permissions && manifest.permissions.includes('storage')
@@ -63,7 +73,7 @@ function validateExtension() {
     test(
       'Content script matches all sites',
       manifest.content_scripts[0].matches &&
-        manifest.content_scripts[0].matches.includes('https://*/*')
+      manifest.content_scripts[0].matches.includes('https://*/*')
     );
   } catch (error) {
     test('Manifest.json is valid JSON', false, error.message);
@@ -73,11 +83,20 @@ function validateExtension() {
   try {
     const injectScript = readFileSync(join(extensionRoot, 'src/content/inject.js'), 'utf8');
 
-    test('Inject script uses ES6 imports', injectScript.includes('import'));
-    test('Inject script imports VideoSpeedExtension', injectScript.includes('VideoSpeedExtension'));
+    test('Inject script exports VSC_controller', injectScript.includes('window.VSC_controller'));
     test('Inject script initializes extension', injectScript.includes('initialize'));
   } catch (error) {
     test('Inject script readable', false, error.message);
+  }
+
+  // Verify no references to deleted files
+  try {
+    const manifest = JSON.parse(readFileSync(join(extensionRoot, 'manifest.json'), 'utf8'));
+    const manifestStr = JSON.stringify(manifest);
+    test('No reference to injector.js', !manifestStr.includes('injector.js'));
+    test('No reference to module-loader.js', !manifestStr.includes('module-loader.js'));
+  } catch (error) {
+    test('Manifest clean of old files', false, error.message);
   }
 
   // Check for test files

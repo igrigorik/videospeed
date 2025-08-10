@@ -1,6 +1,5 @@
 /**
  * Shadow DOM creation and management
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

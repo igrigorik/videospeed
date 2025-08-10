@@ -4,20 +4,23 @@
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "type": "module",
   "scripts": {
-    "test": "node tests/run-tests.js",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "prebuild": "rm -rf dist",
+    "test": "npm run build && npm run test:unit",
     "test:unit": "node tests/run-tests.js unit",
     "test:integration": "node tests/run-tests.js integration",
-    "test:e2e": "node tests/e2e/run-e2e.js",
+    "test:e2e": "npm run build && node tests/e2e/run-e2e.js",
     "test:browser": "echo 'Open tests/fixtures/test-page.html in browser'",
     "serve": "python3 -m http.server 8000",
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write src/**/*.js tests/**/*.js",
-    "build": "npm run lint:fix && npm run format && npm run test",
-    "zip": "rm -rf dist && mkdir -p dist/videospeed && cp -r manifest.json src *.md dist/videospeed/ && cd dist && zip -r videospeed.zip videospeed && cd .. && echo 'Extension packaged at dist/videospeed.zip'"
+    "zip": "npm run build && rm -rf dist/videospeed.zip && mkdir -p dist/videospeed && cp -r manifest.json dist/*.js src/styles src/assets src/ui/popup src/ui/options *.md dist/videospeed/ && cd dist && zip -r videospeed.zip videospeed && cd .. && echo 'Extension packaged at dist/videospeed.zip'"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",
+    "esbuild": "^0.24.0",
     "eslint": "^8.57.0",
     "globals": "^13.24.0",
     "jsdom": "^23.0.0",

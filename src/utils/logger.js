@@ -1,11 +1,9 @@
 /**
  * Logging utility for Video Speed Controller
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};
 
-// Skip loading if already loaded to prevent redeclaration errors
 if (!window.VSC.logger) {
   class Logger {
     constructor() {
@@ -105,6 +103,4 @@ if (!window.VSC.logger) {
 
   // Create singleton instance
   window.VSC.logger = new Logger();
-} // End conditional loading check
-
-// Global variables available for both browser and testing
+}

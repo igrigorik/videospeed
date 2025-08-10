@@ -112,8 +112,8 @@ export default async function runBasicE2ETests() {
         }
 
         // Reset the extension's stored reset key binding to default
-        if (window.videoSpeedExtension && window.videoSpeedExtension.config) {
-          window.videoSpeedExtension.config.setKeyBinding('reset', 1.0);
+        if (window.VSC_controller && window.VSC_controller.config) {
+          window.VSC_controller.config.setKeyBinding('reset', 1.0);
         }
       });
       await sleep(200);

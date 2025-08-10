@@ -55,16 +55,11 @@ runner.test('VideoSpeedConfig should save settings to storage', async () => {
 });
 
 runner.test('VideoSpeedConfig should handle key bindings', async () => {
-  // Clear any injected settings for clean test
-  window.VSC.StorageManager._injectedSettings = null;
-
   // Create fresh config instance
   const config = new window.VSC.VideoSpeedConfig();
 
-  // Force load with defaults only
-  const storage = await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
-  config.settings.keyBindings = [];
-  await config.initializeDefaultKeyBindings(storage);
+  // Load settings with defaults
+  await config.load();
 
   const fasterValue = config.getKeyBinding('faster');
   assert.equal(fasterValue, 0.1);

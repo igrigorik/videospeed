@@ -1,6 +1,5 @@
 /**
  * Event management system for Video Speed Controller
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

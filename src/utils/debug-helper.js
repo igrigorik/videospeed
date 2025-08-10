@@ -81,8 +81,8 @@ class DebugHelper {
       });
 
       // Check if would be detected by VSC
-      if (window.VSC.MediaElementObserver && window.videoSpeedExtension?.mediaObserver) {
-        const observer = window.videoSpeedExtension.mediaObserver;
+      if (window.VSC.MediaElementObserver && window.VSC_controller?.mediaObserver) {
+        const observer = window.VSC_controller.mediaObserver;
         console.log('VSC would detect:', observer.isValidMediaElement(media));
         console.log('VSC would start hidden:', observer.shouldStartHidden(media));
       }
@@ -212,7 +212,7 @@ class DebugHelper {
     });
 
     // Test simulated popup messages directly
-    if (window.videoSpeedExtension && window.videoSpeedExtension.actionHandler) {
+    if (window.VSC_controller && window.VSC_controller.actionHandler) {
       console.log('✅ Action handler available, testing speed controls...');
 
       // Test speed adjustment
@@ -222,7 +222,7 @@ class DebugHelper {
       videos.forEach((video, index) => {
         if (video.vsc) {
           console.log(`Applying speed ${testSpeed} to media #${index + 1} via action handler`);
-          window.videoSpeedExtension.actionHandler.adjustSpeed(video, testSpeed);
+          window.VSC_controller.actionHandler.adjustSpeed(video, testSpeed);
         } else {
           console.log(`Applying speed ${testSpeed} to media #${index + 1} directly`);
           video.playbackRate = testSpeed;
@@ -234,7 +234,7 @@ class DebugHelper {
         console.log('Resetting speed to 1.0x');
         videos.forEach((video) => {
           if (video.vsc) {
-            window.videoSpeedExtension.actionHandler.adjustSpeed(video, 1.0);
+            window.VSC_controller.actionHandler.adjustSpeed(video, 1.0);
           } else {
             video.playbackRate = 1.0;
           }

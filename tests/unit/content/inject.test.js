@@ -86,12 +86,16 @@ function createVideoWithoutParentElement() {
 }
 
 runner.test('onVideoFound should handle video elements without parentElement', async () => {
-  // Create extension instance
-  extension = new window.VideoSpeedExtension();
+  // Use the global VSC_controller instance
+  extension = window.VSC_controller;
+
+  // Ensure extension is initialized
+  if (!extension) {
+    assert.true(false, 'VSC_controller should be available on window');
+    return;
+  }
 
   try {
-    await extension.initialize();
-
     // Create a video element without parentElement but with parentNode
     const { video, parentNode } = createVideoWithoutParentElement();
 
@@ -112,12 +116,16 @@ runner.test('onVideoFound should handle video elements without parentElement', a
 });
 
 runner.test('onVideoFound should prefer parentElement when available', async () => {
-  // Create extension instance
-  extension = new window.VideoSpeedExtension();
+  // Use the global VSC_controller instance
+  extension = window.VSC_controller;
+
+  // Ensure extension is initialized
+  if (!extension) {
+    assert.true(false, 'VSC_controller should be available on window');
+    return;
+  }
 
   try {
-    await extension.initialize();
-
     // Create a normal video element with both parentElement and parentNode
     const video = createMockVideo();
     const parentElement = document.createElement('div');
@@ -158,18 +166,13 @@ runner.test('onVideoFound should prefer parentElement when available', async () 
 });
 
 runner.test('onVideoFound should handle video with neither parentElement nor parentNode', async () => {
-  // Verify VideoSpeedExtension is available
-  assert.exists(window.VideoSpeedExtension, 'VideoSpeedExtension class should be available on window');
-  
-  // Create extension instance
-  extension = new window.VideoSpeedExtension();
-  
-  // Verify extension was created
-  assert.exists(extension, 'Extension instance should be created');
+  // Use the global VSC_controller instance
+  extension = window.VSC_controller;
+
+  // Verify extension is available
+  assert.exists(extension, 'VSC_controller should be available on window');
 
   try {
-    await extension.initialize();
-
     // Create a video element with no parent references
     const video = createMockVideo();
     const fallbackParent = document.createElement('div');

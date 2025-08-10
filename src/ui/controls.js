@@ -1,6 +1,5 @@
 /**
  * Control button interactions and event handling
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

@@ -1,6 +1,5 @@
 /**
  * Base class for site-specific handlers
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

@@ -1,6 +1,5 @@
 /**
  * Media element observer for finding and tracking video/audio elements
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};

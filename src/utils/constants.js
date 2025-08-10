@@ -1,21 +1,11 @@
 /**
  * Constants and default values for Video Speed Controller
- * Modular architecture using global variables
  */
-
-// Initialize global namespace for content script
 
 window.VSC = window.VSC || {};
 window.VSC.Constants = {};
 
-// Skip loading if already loaded to prevent redeclaration errors
 if (!window.VSC.Constants.DEFAULT_SETTINGS) {
-  // Add debug info to DOM for inspection
-  const debugDiv = document.createElement('div');
-  debugDiv.id = 'vsc-constants-loaded';
-  debugDiv.style.display = 'none';
-  debugDiv.textContent = `Constants loaded at ${new Date().toISOString()}`;
-  document.head.appendChild(debugDiv);
 
   // Define constants directly first for ES6 exports
   const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
@@ -112,6 +102,4 @@ meet.google.com`.replace(regStrip, ''),
   window.VSC.Constants.SPEED_LIMITS = SPEED_LIMITS;
   window.VSC.Constants.CONTROLLER_SIZE_LIMITS = CONTROLLER_SIZE_LIMITS;
   window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES = CUSTOM_ACTIONS_NO_VALUES;
-} // End conditional loading check
-
-// Global variables available for both browser and testing
+}

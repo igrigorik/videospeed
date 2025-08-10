@@ -1,6 +1,5 @@
 /**
  * Drag functionality for video controller
- * Modular architecture using global variables
  */
 
 window.VSC = window.VSC || {};
