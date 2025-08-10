@@ -197,6 +197,11 @@ class ActionHandler {
    * @param {number} target - Target speed
    */
   resetSpeed(video, target) {
+    // Show controller for visual feedback (will be shown by adjustSpeed but we can show it early)
+    if (video.vsc?.div && this.eventManager) {
+      this.eventManager.showController(video.vsc.div);
+    }
+
     if (video.playbackRate === target) {
       if (video.playbackRate === this.config.getKeyBinding('reset')) {
         if (target !== 1.0) {
@@ -330,6 +335,11 @@ class ActionHandler {
     if (typeof value !== 'number' || isNaN(value)) {
       window.VSC.logger.warn('adjustSpeed called with invalid value:', value);
       return;
+    }
+
+    // Show controller for visual feedback when speed is changed
+    if (video.vsc?.div && this.eventManager) {
+      this.eventManager.showController(video.vsc.div);
     }
 
     // Calculate target speed
