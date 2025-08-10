@@ -72,12 +72,12 @@ export function setupMessageBridge() {
 
   // Listen for messages from popup/background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // Forward to page context
-    window.postMessage({
-      source: 'vsc-content',
-      action: 'runtime-message',
-      data: request
-    }, '*');
+    // Forward to page context using CustomEvent (matching what inject.js expects)
+    window.dispatchEvent(
+      new CustomEvent('VSC_MESSAGE', {
+        detail: request
+      })
+    );
 
     // Handle responses if needed
     if (request.action === 'get-status') {
