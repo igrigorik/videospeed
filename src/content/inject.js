@@ -288,6 +288,29 @@ class VideoSpeedExtension {
         this.actionHandler,
         shouldStartHidden
       );
+
+      if (this.config.settings.controllerHover) {
+        const controllerDiv = video.vsc.div;
+        controllerDiv.style.opacity = '0';
+        controllerDiv.style.transition = 'opacity 0.2s ease-in-out';
+
+        let timeout;
+        const show = () => {
+          clearTimeout(timeout);
+          controllerDiv.style.opacity = '1';
+        };
+        const hide = () => {
+          timeout = setTimeout(() => {
+            controllerDiv.style.opacity = '0';
+          }, 200);
+        };
+
+        parent.addEventListener('mouseenter', show);
+        controllerDiv.addEventListener('mouseenter', show);
+
+        parent.addEventListener('mouseleave', hide);
+        controllerDiv.addEventListener('mouseleave', hide);
+      }
     } catch (error) {
       console.error('💥 Failed to attach controller to video:', error);
       this.logger.error(`Failed to attach controller to video: ${error.message}`);

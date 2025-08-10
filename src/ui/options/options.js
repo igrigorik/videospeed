@@ -283,6 +283,7 @@ async function save_options() {
 
     var rememberSpeed = document.getElementById("rememberSpeed").checked;
     var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
+    var controllerHover = document.getElementById("controllerHover").checked;
     var audioBoolean = document.getElementById("audioBoolean").checked;
     var startHidden = document.getElementById("startHidden").checked;
     var controllerOpacity = Number(document.getElementById("controllerOpacity").value);
@@ -300,6 +301,7 @@ async function save_options() {
     const settingsToSave = {
       rememberSpeed: rememberSpeed,
       forceLastSavedSpeed: forceLastSavedSpeed,
+      controllerHover: controllerHover,
       audioBoolean: audioBoolean,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
@@ -310,16 +312,7 @@ async function save_options() {
       blacklist: blacklist.replace(window.VSC.Constants.regStrip, "")
     };
 
-    // Save using Chrome storage API
-    await new Promise((resolve, reject) => {
-      chrome.storage.sync.set(settingsToSave, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve();
-        }
-      });
-    });
+    await window.VSC.videoSpeedConfig.save(settingsToSave);
 
     // Add a small delay to ensure Chrome storage sync has completed
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -365,6 +358,7 @@ async function restore_options() {
 
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
+    document.getElementById("controllerHover").checked = storage.controllerHover;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;
