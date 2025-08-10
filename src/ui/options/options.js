@@ -1,3 +1,16 @@
+/**
+ * Options page - depends on core VSC modules
+ * Import required dependencies that are normally bundled in inject context
+ */
+
+// Core utilities and constants - must load first
+import '../../utils/constants.js';
+import '../../utils/logger.js';
+
+// Storage and settings - depends on utils  
+import '../../core/storage-manager.js';
+import '../../core/settings.js';
+
 // Initialize global namespace for options page
 window.VSC = window.VSC || {};
 
