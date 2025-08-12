@@ -279,7 +279,7 @@ async function save_options() {
 
   var status = document.getElementById("status");
   status.textContent = "Saving...";
-  status.classList.remove("success", "error"); // Clear any previous state
+  status.classList.remove("success", "error");
   status.classList.add("show");
 
   try {
@@ -321,16 +321,8 @@ async function save_options() {
       blacklist: blacklist.replace(window.VSC.Constants.regStrip, "")
     };
 
+    // Save with optimistic UI (like old version)
     await window.VSC.videoSpeedConfig.save(settingsToSave);
-
-    // Validate that settings were actually saved by reading them back
-    await window.VSC.videoSpeedConfig.load();
-    const savedSettings = window.VSC.videoSpeedConfig.settings;
-
-    // Basic validation - check that keyBindings were saved correctly
-    if (!savedSettings.keyBindings || savedSettings.keyBindings.length !== keyBindings.length) {
-      throw new Error("Keyboard shortcuts may not have been saved correctly");
-    }
 
     status.textContent = "Options saved";
     status.classList.add("success");
@@ -340,6 +332,7 @@ async function save_options() {
     }, 2000);
 
   } catch (error) {
+    // Only show error for actual storage failures
     console.error("Failed to save options:", error);
     status.textContent = "Error saving options: " + error.message;
     status.classList.add("show", "error");
@@ -468,23 +461,26 @@ async function restore_defaults() {
   try {
     var status = document.getElementById("status");
     status.textContent = "Restoring defaults...";
-    status.classList.remove("success", "error"); // Clear any previous state
+    status.classList.remove("success", "error");
     status.classList.add("show");
+
+    // Clear all storage
+    await window.VSC.StorageManager.clear();
 
     // Ensure VideoSpeedConfig singleton is initialized
     if (!window.VSC.videoSpeedConfig) {
       window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
     }
 
-    // Use VideoSpeedConfig to restore defaults
+    // Then save fresh defaults
     await window.VSC.videoSpeedConfig.save(window.VSC.Constants.DEFAULT_SETTINGS);
 
-    // Remove any custom shortcuts from the UI
+    // Remove custom shortcuts from UI
     document
       .querySelectorAll(".removeParent")
       .forEach((button) => button.click());
 
-    // Reload the options
+    // Reload the options page
     await restore_options();
 
     status.textContent = "Default options restored";
@@ -495,11 +491,11 @@ async function restore_defaults() {
     }, 2000);
   } catch (error) {
     console.error("Failed to restore defaults:", error);
-    document.getElementById("status").textContent = "Error restoring defaults: " + error.message;
-    document.getElementById("status").classList.add("show", "error");
+    status.textContent = "Error restoring defaults: " + error.message;
+    status.classList.add("show", "error");
     setTimeout(function () {
-      document.getElementById("status").textContent = "";
-      document.getElementById("status").classList.remove("show", "error");
+      status.textContent = "";
+      status.classList.remove("show", "error");
     }, 3000);
   }
 }
@@ -570,6 +566,12 @@ function show_experimental() {
 const debouncedSave = debounce(save_options, 300);
 
 document.addEventListener("DOMContentLoaded", async function () {
+  // Optional: Set up storage error monitoring for debugging/telemetry
+  window.VSC.StorageManager.onError((error, data) => {
+    // Log to console for debugging, could also send telemetry
+    console.warn('Storage operation failed:', error.message, data);
+  });
+
   await restore_options();
 
   // Disable action dropdowns for predefined shortcuts

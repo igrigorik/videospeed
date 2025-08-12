@@ -7,6 +7,16 @@ window.VSC = window.VSC || {};
 
 if (!window.VSC.StorageManager) {
   class StorageManager {
+    static errorCallback = null;
+
+    /**
+     * Register error callback for monitoring storage failures
+     * @param {Function} callback - Callback function for errors
+     */
+    static onError(callback) {
+      this.errorCallback = callback;
+    }
+
     /**
      * Get settings from Chrome storage or pre-injected settings
      * @param {Object} defaults - Default values
@@ -57,8 +67,20 @@ if (!window.VSC.StorageManager) {
     static async set(data) {
       // Check if Chrome APIs are available (content script context)
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           chrome.storage.sync.set(data, () => {
+            if (chrome.runtime.lastError) {
+              const error = new Error(`Storage failed: ${chrome.runtime.lastError.message}`);
+              console.error('Chrome storage save failed:', chrome.runtime.lastError);
+
+              // Call error callback if registered (for monitoring/telemetry)
+              if (this.errorCallback) {
+                this.errorCallback(error, data);
+              }
+
+              reject(error);
+              return;
+            }
             window.VSC.logger.debug('Settings saved to chrome.storage');
             resolve();
           });
@@ -88,8 +110,20 @@ if (!window.VSC.StorageManager) {
      */
     static async remove(keys) {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           chrome.storage.sync.remove(keys, () => {
+            if (chrome.runtime.lastError) {
+              const error = new Error(`Storage remove failed: ${chrome.runtime.lastError.message}`);
+              console.error('Chrome storage remove failed:', chrome.runtime.lastError);
+
+              // Call error callback if registered (for monitoring/telemetry)
+              if (this.errorCallback) {
+                this.errorCallback(error, { removedKeys: keys });
+              }
+
+              reject(error);
+              return;
+            }
             window.VSC.logger.debug('Keys removed from storage');
             resolve();
           });
@@ -109,8 +143,20 @@ if (!window.VSC.StorageManager) {
      */
     static async clear() {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           chrome.storage.sync.clear(() => {
+            if (chrome.runtime.lastError) {
+              const error = new Error(`Storage clear failed: ${chrome.runtime.lastError.message}`);
+              console.error('Chrome storage clear failed:', chrome.runtime.lastError);
+
+              // Call error callback if registered (for monitoring/telemetry)
+              if (this.errorCallback) {
+                this.errorCallback(error, { operation: 'clear' });
+              }
+
+              reject(error);
+              return;
+            }
             window.VSC.logger.debug('Storage cleared');
             resolve();
           });
