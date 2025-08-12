@@ -155,19 +155,23 @@ window.VSC.DomUtils.findVideoParent = function (element) {
 window.VSC.DomUtils.initializeWhenReady = function (document, callback) {
   window.VSC.logger.debug('Begin initializeWhenReady');
 
-  window.onload = () => {
+  const handleWindowLoad = () => {
     callback(window.document);
   };
+
+  window.addEventListener('load', handleWindowLoad, { once: true });
 
   if (document) {
     if (document.readyState === 'complete') {
       callback(document);
     } else {
-      document.onreadystatechange = () => {
+      const handleReadyStateChange = () => {
         if (document.readyState === 'complete') {
+          document.removeEventListener('readystatechange', handleReadyStateChange);
           callback(document);
         }
       };
+      document.addEventListener('readystatechange', handleReadyStateChange);
     }
   }
 
