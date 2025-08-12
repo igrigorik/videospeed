@@ -5,10 +5,10 @@
 
 import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../../helpers/chrome-mock.js';
 import { SimpleTestRunner, assert, wait } from '../../helpers/test-utils.js';
-import { loadMinimalModules } from '../../helpers/module-loader.js';
+import { loadCoreModules } from '../../helpers/module-loader.js';
 
 // Load all required modules
-await loadMinimalModules();
+await loadCoreModules();
 
 const runner = new SimpleTestRunner();
 
@@ -69,16 +69,14 @@ runner.test('VideoSpeedConfig should handle key bindings', async () => {
   assert.equal(updatedValue, 0.2);
 });
 
-runner.test('VideoSpeedConfig should track media elements', () => {
+runner.test('VideoSpeedConfig should have state manager available', () => {
   const config = window.VSC.videoSpeedConfig;
-  const mockVideo = document.createElement('video');
 
-  config.addMediaElement(mockVideo);
-  assert.equal(config.getMediaElements().length, 1);
-  assert.equal(config.getMediaElements()[0], mockVideo);
-
-  config.removeMediaElement(mockVideo);
-  assert.equal(config.getMediaElements().length, 0);
+  // Verify state manager is available (media tracking moved there)
+  assert.exists(window.VSC.stateManager, 'State manager should be available');
+  assert.equal(typeof window.VSC.stateManager.getAllMediaElements, 'function', 'State manager should have getAllMediaElements method');
+  assert.equal(typeof window.VSC.stateManager.registerController, 'function', 'State manager should have registerController method');
+  assert.equal(typeof window.VSC.stateManager.removeController, 'function', 'State manager should have removeController method');
 });
 
 runner.test('VideoSpeedConfig should handle invalid key binding requests gracefully', () => {

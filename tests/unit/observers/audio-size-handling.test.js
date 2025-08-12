@@ -262,8 +262,10 @@ runner.test('Display toggle should work with audio controllers', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
 
-  // Ensure we start with clean state
-  config.mediaTags = [];
+  // Clear state manager
+  if (window.VSC && window.VSC.stateManager) {
+    window.VSC.stateManager.controllers.clear();
+  }
 
   // Enable audio support
   config.settings.audioBoolean = true;
@@ -279,7 +281,7 @@ runner.test('Display toggle should work with audio controllers', async () => {
   const observer = new window.VSC.MediaElementObserver(config, siteHandler);
   const shouldStartHidden = observer.shouldStartHidden(smallAudio);
 
-  const controller = new window.VSC.VideoController(smallAudio, null, config, actionHandler, shouldStartHidden);
+  const controller = new window.VSC.VideoController(smallAudio, mockDOM.container, config, actionHandler, shouldStartHidden);
 
   // Verify controller was created properly
   assert.exists(controller, 'Controller should exist');
@@ -290,9 +292,9 @@ runner.test('Display toggle should work with audio controllers', async () => {
   // Verify starts visible (size checks removed)
   assert.false(controller.div.classList.contains('vsc-hidden'), 'Should start visible');
 
-  // Verify audio is tracked in config
-  const mediaElements = config.getMediaElements();
-  assert.true(mediaElements.includes(smallAudio), 'Audio should be tracked in config');
+  // Verify audio is tracked in state manager
+  const mediaElements = window.VSC.stateManager.getAllMediaElements();
+  assert.true(mediaElements.includes(smallAudio), 'Audio should be tracked in state manager');
   assert.equal(mediaElements.length, 1, 'Should have exactly one media element');
 
   // Toggle display using action handler

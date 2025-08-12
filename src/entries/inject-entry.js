@@ -15,6 +15,9 @@ import '../utils/event-manager.js';
 import '../core/storage-manager.js';
 import '../core/settings.js';
 
+// State management - depends on utils and logger
+import '../core/state-manager.js';
+
 // Observers - depends on utils and settings
 import '../observers/media-observer.js';
 import '../observers/mutation-observer.js';

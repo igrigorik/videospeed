@@ -20,7 +20,10 @@ class ActionHandler {
   runAction(action, value, e) {
     window.VSC.logger.debug(`runAction Begin: ${action}`);
 
-    const mediaTags = this.config.getMediaElements();
+    // Use state manager for complete media discovery (includes shadow DOM)
+    const mediaTags = window.VSC.stateManager ?
+      window.VSC.stateManager.getControlledElements() :
+      []; // No fallback - state manager should always be available
 
     // Get the controller that was used if called from a button press event
     let targetController = null;
@@ -304,8 +307,9 @@ class ActionHandler {
    * @private
    */
   isAudioController(controller) {
-    // Find associated media element
-    const mediaElements = this.config.getMediaElements();
+    // Find associated media element using state manager
+    const mediaElements = window.VSC.stateManager ?
+      window.VSC.stateManager.getControlledElements() : [];
     for (const media of mediaElements) {
       if (media.vsc && media.vsc.div === controller) {
         return media.tagName === 'AUDIO';

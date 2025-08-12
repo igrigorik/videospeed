@@ -18,11 +18,42 @@ runner.beforeEach(() => {
   resetMockStorage();
   mockDOM = createMockDOM();
 
+  // Clear state manager for tests
+  if (window.VSC && window.VSC.stateManager) {
+    window.VSC.stateManager.controllers.clear();
+  }
+
   // Initialize site handler manager for tests
   if (window.VSC && window.VSC.siteHandlerManager) {
     window.VSC.siteHandlerManager.initialize(document);
   }
 });
+
+/**
+ * Helper function to create a test video with a controller
+ * This replaces the old pattern of config.addMediaElement()
+ */
+function createTestVideoWithController(config, actionHandler, videoOptions = {}) {
+  const mockVideo = createMockVideo(videoOptions);
+
+  // Ensure the video has a proper parent element for DOM operations
+  if (!mockVideo.parentElement) {
+    const parentDiv = document.createElement('div');
+    document.body.appendChild(parentDiv);
+    parentDiv.appendChild(mockVideo);
+  }
+
+  // Store initial playback rate to preserve test expectations
+  const initialPlaybackRate = mockVideo.playbackRate;
+
+  // Create a proper VideoController for this video
+  const controller = new window.VSC.VideoController(mockVideo, mockVideo.parentElement, config, actionHandler);
+
+  // Restore initial playback rate for test consistency
+  mockVideo.playbackRate = initialPlaybackRate;
+
+  return mockVideo;
+}
 
 runner.afterEach(() => {
   cleanupChromeMock();
@@ -38,9 +69,7 @@ runner.test('ActionHandler should set video speed', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo();
-  mockVideo.vsc = { speedIndicator: { textContent: '1.00' } };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler);
 
   actionHandler.adjustSpeed(mockVideo, 2.0);
 
@@ -56,12 +85,7 @@ runner.test('ActionHandler should handle faster action', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ playbackRate: 1.0 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   actionHandler.runAction('faster', 0.1);
 
@@ -75,15 +99,9 @@ runner.test('ActionHandler should handle slower action', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ playbackRate: 1.0 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   actionHandler.runAction('slower', 0.1);
-
   assert.equal(mockVideo.playbackRate, 0.9);
 });
 
@@ -94,12 +112,7 @@ runner.test('ActionHandler should respect speed limits', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ playbackRate: 16.0 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '16.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 16.0 });
 
   // Should not exceed maximum speed
   actionHandler.runAction('faster', 1.0);
@@ -118,15 +131,9 @@ runner.test('ActionHandler should handle pause action', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ paused: false });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { paused: false });
 
   actionHandler.runAction('pause');
-
   assert.true(mockVideo.paused);
 });
 
@@ -137,13 +144,7 @@ runner.test('ActionHandler should handle mute action', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ muted: false });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
-
+  const mockVideo = createTestVideoWithController(config, actionHandler, { muted: false });
   actionHandler.runAction('muted');
 
   assert.true(mockVideo.muted);
@@ -156,13 +157,7 @@ runner.test('ActionHandler should handle volume actions', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ volume: 0.5 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
-
+  const mockVideo = createTestVideoWithController(config, actionHandler, { volume: 0.5 });
   actionHandler.runAction('louder', 0.1);
   assert.equal(mockVideo.volume, 0.6);
 
@@ -177,12 +172,7 @@ runner.test('ActionHandler should handle seek actions', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ currentTime: 50 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 50 });
 
   actionHandler.runAction('advance', 10);
   assert.equal(mockVideo.currentTime, 60);
@@ -198,12 +188,7 @@ runner.test('ActionHandler should handle mark and jump actions', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const mockVideo = createMockVideo({ currentTime: 30 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 30 });
 
   // Set mark
   actionHandler.runAction('mark');
@@ -225,13 +210,9 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
   const eventManager = new window.VSC.EventManager(config, actionHandler);
   actionHandler.eventManager = eventManager;
 
-  const mockVideo = createMockVideo({ currentTime: 25 });
-  mockVideo.vsc = {
-    div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' },
-    mark: undefined
-  };
-  config.addMediaElement(mockVideo);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 25 });
+  // Set initial mark to undefined for test
+  mockVideo.vsc.mark = undefined;
 
   // Verify mark key binding exists (M = 77)
   const markBinding = config.settings.keyBindings.find(kb => kb.action === 'mark');
@@ -274,17 +255,8 @@ runner.test('ActionHandler should toggle display visibility', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const video = document.createElement('video');
-  const controller = document.createElement('div');
-  controller.className = 'vsc-controller';
-
-  // Mock the video controller structure
-  video.vsc = {
-    div: controller,
-    speedIndicator: document.createElement('span')
-  };
-
-  config.addMediaElement(video);
+  const video = createTestVideoWithController(config, actionHandler);
+  const controller = video.vsc.div;
 
   // Initially controller should not be hidden
   assert.false(controller.classList.contains('vsc-hidden'));
@@ -325,7 +297,6 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
   level2Shadow.appendChild(mockVideo);
 
   document.body.appendChild(host);
-  config.addMediaElement(mockVideo);
 
   // Create a proper mock speedIndicator that behaves like a real DOM element
   const mockSpeedIndicator = {
@@ -342,6 +313,16 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
     // Add remove method to prevent errors during cleanup
     remove: () => { }
   };
+
+  // Register with state manager for runAction to find it
+  window.VSC.stateManager.controllers.set('shadow-dom-test', {
+    id: 'shadow-dom-test',
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc || 'test-video',
+    tagName: 'VIDEO',
+    created: Date.now(),
+    isActive: true
+  });
 
   // Test speed change on shadow DOM video
   actionHandler.runAction('faster', 0.2);
@@ -369,7 +350,6 @@ runner.test('adjustSpeed should handle absolute speed changes', async () => {
     div: mockDOM.container,
     speedIndicator: { textContent: '1.00' }
   };
-  config.addMediaElement(mockVideo);
 
   // Test absolute speed change
   actionHandler.adjustSpeed(mockVideo, 1.5);
@@ -397,7 +377,6 @@ runner.test('adjustSpeed should handle relative speed changes', async () => {
     div: mockDOM.container,
     speedIndicator: { textContent: '1.00' }
   };
-  config.addMediaElement(mockVideo);
 
   // Test relative speed increase
   actionHandler.adjustSpeed(mockVideo, 0.5, { relative: true });
@@ -429,7 +408,6 @@ runner.test('adjustSpeed should handle external changes with force mode', async 
     div: mockDOM.container,
     speedIndicator: { textContent: '1.00' }
   };
-  config.addMediaElement(mockVideo);
 
   // Set initial user preference
   config.settings.lastSpeed = 1.5;
@@ -493,9 +471,7 @@ runner.test('adjustSpeed should validate input properly', async () => {
   assert.equal(mockVideo.playbackRate, initialSpeed); // Should not change
 
   // Test with invalid value types
-  const validVideo = createMockVideo({ playbackRate: 1.0 });
-  validVideo.vsc = { div: {}, speedIndicator: { textContent: '1.00' } };
-  config.addMediaElement(validVideo);
+  const validVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   // String value
   actionHandler.adjustSpeed(validVideo, "1.5");
@@ -529,7 +505,6 @@ runner.test('_commitSpeedChange should only save global speed to storage', async
     div: mockDOM.container,
     speedIndicator: { textContent: '1.00' }
   };
-  config.addMediaElement(mockVideo);
 
   // Track what gets saved
   let savedData = null;
@@ -555,15 +530,9 @@ runner.test('do not persist video speed to storage', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  // Create two different videos
-  const video1 = createMockVideo({ currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createMockVideo({ currentSrc: 'https://example.com/video2.mp4' });
-
-  video1.vsc = { speedIndicator: { textContent: '1.00' } };
-  video2.vsc = { speedIndicator: { textContent: '1.00' } };
-
-  config.addMediaElement(video1);
-  config.addMediaElement(video2);
+  // Create two different videos with controllers
+  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
+  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
 
   // Track saves to verify behavior
   const savedCalls = [];
@@ -603,14 +572,8 @@ runner.test('rememberSpeed: true should only store global speed', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const video1 = createMockVideo({ currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createMockVideo({ currentSrc: 'https://example.com/video2.mp4' });
-
-  video1.vsc = { speedIndicator: { textContent: '1.00' } };
-  video2.vsc = { speedIndicator: { textContent: '1.00' } };
-
-  config.addMediaElement(video1);
-  config.addMediaElement(video2);
+  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
+  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
 
   // Change speeds on different videos
   await actionHandler.adjustSpeed(video1, 1.5);
@@ -628,9 +591,7 @@ runner.test('speed limits should be enforced correctly', async () => {
   await config.load();
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
-  const video = createMockVideo({ playbackRate: 1.0 });
-  video.vsc = { speedIndicator: { textContent: '1.00' } };
-  config.addMediaElement(video);
+  const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   // Test minimum speed limit
   await actionHandler.adjustSpeed(video, 0.01); // Below minimum
@@ -651,9 +612,7 @@ runner.test('adjustSpeed should handle complex relative mode scenarios', async (
   await config.load();
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
-  const video = createMockVideo({ playbackRate: 2.0 });
-  video.vsc = { speedIndicator: { textContent: '2.00' } };
-  config.addMediaElement(video);
+  const video = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
 
   // Test relative from various starting points
   actionHandler.adjustSpeed(video, 0.25, { relative: true });
@@ -681,9 +640,7 @@ runner.test('adjustSpeed should handle multiple source types comprehensively', a
   config.settings.lastSpeed = 1.25;
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
-  const video = createMockVideo({ playbackRate: 1.0 });
-  video.vsc = { speedIndicator: { textContent: '1.00' } };
-  config.addMediaElement(video);
+  const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   // Test default source (should be 'internal')
   actionHandler.adjustSpeed(video, 1.5);
@@ -713,17 +670,9 @@ runner.test('adjustSpeed should work correctly with multiple videos', async () =
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
   // Create multiple videos with different sources
-  const video1 = createMockVideo({ currentSrc: 'https://site1.com/video1.mp4' });
-  const video2 = createMockVideo({ currentSrc: 'https://site2.com/video2.mp4' });
-  const video3 = createMockVideo({ currentSrc: 'https://site1.com/video3.mp4' });
-
-  video1.vsc = { speedIndicator: { textContent: '1.00' } };
-  video2.vsc = { speedIndicator: { textContent: '1.00' } };
-  video3.vsc = { speedIndicator: { textContent: '1.00' } };
-
-  config.addMediaElement(video1);
-  config.addMediaElement(video2);
-  config.addMediaElement(video3);
+  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video1.mp4' });
+  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site2.com/video2.mp4' });
+  const video3 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video3.mp4' });
 
   // Set different speeds for each video
   actionHandler.adjustSpeed(video1, 1.5);
@@ -754,14 +703,8 @@ runner.test('adjustSpeed should handle global mode with multiple videos', async 
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
-  const video1 = createMockVideo({ currentSrc: 'https://site1.com/video1.mp4' });
-  const video2 = createMockVideo({ currentSrc: 'https://site2.com/video2.mp4' });
-
-  video1.vsc = { speedIndicator: { textContent: '1.00' } };
-  video2.vsc = { speedIndicator: { textContent: '1.00' } };
-
-  config.addMediaElement(video1);
-  config.addMediaElement(video2);
+  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video1.mp4' });
+  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site2.com/video2.mp4' });
 
   // Change speed on first video
   actionHandler.adjustSpeed(video1, 1.8);
@@ -794,14 +737,20 @@ runner.test('adjustSpeed should handle edge cases and error conditions', async (
   // Test with video missing speedIndicator
   const videoNoIndicator = createMockVideo({ playbackRate: 1.0 });
   videoNoIndicator.vsc = {}; // No speedIndicator
-  config.addMediaElement(videoNoIndicator);
+  // Manually register with state manager for this edge case test
+  window.VSC.stateManager.controllers.set('test-no-indicator', {
+    id: 'test-no-indicator',
+    element: videoNoIndicator,
+    videoSrc: 'test-video',
+    tagName: 'VIDEO',
+    created: Date.now(),
+    isActive: true
+  });
   actionHandler.adjustSpeed(videoNoIndicator, 1.5); // Should work but skip UI update
   assert.equal(videoNoIndicator.playbackRate, 1.5);
 
   // Test with very small incremental changes
-  const video = createMockVideo({ playbackRate: 1.0 });
-  video.vsc = { speedIndicator: { textContent: '1.00' } };
-  config.addMediaElement(video);
+  const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   actionHandler.adjustSpeed(video, 0.001, { relative: true });
   assert.equal(video.playbackRate, 1.0); // Should round to 2 decimals (1.00)
@@ -822,17 +771,9 @@ runner.test('adjustSpeed should handle complex force mode scenarios', async () =
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
-  const video1 = createMockVideo({ currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createMockVideo({ currentSrc: 'https://example.com/video2.mp4' });
-  const video3 = createMockVideo({ currentSrc: 'https://example.com/video3.mp4' }); // No stored speed
-
-  video1.vsc = { speedIndicator: { textContent: '1.00' } };
-  video2.vsc = { speedIndicator: { textContent: '1.00' } };
-  video3.vsc = { speedIndicator: { textContent: '1.00' } };
-
-  config.addMediaElement(video1);
-  config.addMediaElement(video2);
-  config.addMediaElement(video3);
+  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
+  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
+  const video3 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video3.mp4' }); // No stored speed
 
   // External changes should be blocked and restored to preferred speeds
   actionHandler.adjustSpeed(video1, 3.0, { source: 'external' });

@@ -8,7 +8,6 @@ if (!window.VSC.VideoSpeedConfig) {
   class VideoSpeedConfig {
     constructor() {
       this.settings = { ...window.VSC.Constants.DEFAULT_SETTINGS };
-      this.mediaElements = [];
     }
 
     /**
@@ -112,8 +111,6 @@ if (!window.VSC.VideoSpeedConfig) {
       }
     }
 
-
-
     /**
      * Ensure display binding exists in key bindings
      * @param {Object} storage - Storage object  
@@ -129,35 +126,6 @@ if (!window.VSC.VideoSpeedConfig) {
           predefined: true,
         });
       }
-    }
-
-    /**
-     * Add a media element to tracking
-     * @param {HTMLMediaElement} element - Media element to track
-     */
-    addMediaElement(element) {
-      if (!this.mediaElements.includes(element)) {
-        this.mediaElements.push(element);
-      }
-    }
-
-    /**
-     * Remove a media element from tracking
-     * @param {HTMLMediaElement} element - Media element to remove
-     */
-    removeMediaElement(element) {
-      const index = this.mediaElements.indexOf(element);
-      if (index !== -1) {
-        this.mediaElements.splice(index, 1);
-      }
-    }
-
-    /**
-     * Get all tracked media elements
-     * @returns {Array<HTMLMediaElement>} Array of media elements
-     */
-    getMediaElements() {
-      return this.mediaElements;
     }
   }
 

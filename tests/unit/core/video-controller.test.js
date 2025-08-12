@@ -18,6 +18,11 @@ runner.beforeEach(() => {
   resetMockStorage();
   mockDOM = createMockDOM();
 
+  // Clear state manager for tests
+  if (window.VSC && window.VSC.stateManager) {
+    window.VSC.stateManager.controllers.clear();
+  }
+
   // Initialize site handler manager for tests
   if (window.VSC && window.VSC.siteHandlerManager) {
     window.VSC.siteHandlerManager.initialize(document);
@@ -145,17 +150,17 @@ runner.test('VideoController should clean up properly when removed', async () =>
 
   // Verify setup
   assert.exists(mockVideo.vsc);
-  assert.equal(config.getMediaElements().length, 1);
+  assert.equal(window.VSC.stateManager.controllers.size, 1);
 
   // Remove controller
   controller.remove();
 
   // Verify cleanup
   assert.equal(mockVideo.vsc, undefined);
-  assert.equal(config.getMediaElements().length, 0);
+  assert.equal(window.VSC.stateManager.controllers.size, 0);
 });
 
-runner.test('VideoController should track media elements in config', async () => {
+runner.test('VideoController should register with state manager', async () => {
   const config = new window.VSC.VideoSpeedConfig();
   await config.load();
 
@@ -167,13 +172,13 @@ runner.test('VideoController should track media elements in config', async () =>
   mockDOM.container.appendChild(mockVideo1);
   mockDOM.container.appendChild(mockVideo2);
 
-  assert.equal(config.getMediaElements().length, 0);
+  assert.equal(window.VSC.stateManager.controllers.size, 0);
 
-  new window.VSC.VideoController(mockVideo1, null, config, actionHandler);
-  assert.equal(config.getMediaElements().length, 1);
+  new window.VSC.VideoController(mockVideo1, mockDOM.container, config, actionHandler);
+  assert.equal(window.VSC.stateManager.controllers.size, 1);
 
-  new window.VSC.VideoController(mockVideo2, null, config, actionHandler);
-  assert.equal(config.getMediaElements().length, 2);
+  new window.VSC.VideoController(mockVideo2, mockDOM.container, config, actionHandler);
+  assert.equal(window.VSC.stateManager.controllers.size, 2);
 });
 
 runner.test('VideoController should initialize speed using adjustSpeed method', async () => {

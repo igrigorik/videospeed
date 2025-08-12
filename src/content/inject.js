@@ -319,7 +319,8 @@ class VideoSpeedExtension {
 
     // Handle namespaced VSC message types
     if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
-      const videos = document.querySelectorAll('video, audio');
+      // Use state manager for complete media element discovery (includes shadow DOM)
+      const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
 
       switch (message.type) {
         case window.VSC.Constants.MESSAGE_TYPES.SET_SPEED:
@@ -332,6 +333,9 @@ class VideoSpeedExtension {
                 video.playbackRate = targetSpeed;
               }
             });
+
+            // Log the successful operation
+            window.VSC.logger?.debug(`Set speed to ${targetSpeed} on ${videos.length} media elements`);
           }
           break;
 
@@ -347,6 +351,8 @@ class VideoSpeedExtension {
                 video.playbackRate = newSpeed;
               }
             });
+
+            window.VSC.logger?.debug(`Adjusted speed by ${delta} on ${videos.length} media elements`);
           }
           break;
 
@@ -358,6 +364,8 @@ class VideoSpeedExtension {
               video.playbackRate = 1.0;
             }
           });
+
+          window.VSC.logger?.debug(`Reset speed on ${videos.length} media elements`);
           break;
 
         case window.VSC.Constants.MESSAGE_TYPES.TOGGLE_DISPLAY:

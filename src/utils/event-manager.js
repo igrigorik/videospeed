@@ -87,7 +87,9 @@ class EventManager {
     }
 
     // Ignore keydown event if no media elements are present
-    if (!this.config.getMediaElements().length) {
+    const mediaElements = window.VSC.stateManager ?
+      window.VSC.stateManager.getControlledElements() : [];
+    if (!mediaElements.length) {
       return false;
     }
 

@@ -22,9 +22,6 @@ class VideoController {
     // Generate unique controller ID for badge tracking
     this.controllerId = this.generateControllerId(target);
 
-    // Add to tracked media elements
-    config.addMediaElement(target);
-
     // Attach controller to video element first (needed for adjustSpeed)
     target.vsc = this;
 
@@ -42,12 +39,11 @@ class VideoController {
 
     window.VSC.logger.info('VideoController initialized for video element');
 
-    // Dispatch controller created event for badge management
-    this.dispatchControllerEvent('VSC_CONTROLLER_CREATED', {
-      controllerId: this.controllerId,
-      videoSrc: this.video.currentSrc || this.video.src,
-      tagName: this.video.tagName,
-    });
+    if (window.VSC.stateManager) {
+      window.VSC.stateManager.registerController(this);
+    } else {
+      window.VSC.logger.error('StateManager not available during VideoController initialization');
+    }
   }
 
   /**
@@ -301,20 +297,15 @@ class VideoController {
       this.targetObserver.disconnect();
     }
 
-    // Remove from tracking
-    this.config.removeMediaElement(this.video);
+    // Remove from state manager
+    if (window.VSC.stateManager) {
+      window.VSC.stateManager.removeController(this.controllerId);
+    }
 
     // Remove reference from video element
     delete this.video.vsc;
 
     window.VSC.logger.debug('VideoController removed successfully');
-
-    // Dispatch controller removed event for badge management
-    this.dispatchControllerEvent('VSC_CONTROLLER_REMOVED', {
-      controllerId: this.controllerId,
-      videoSrc: this.video.currentSrc || this.video.src,
-      tagName: this.video.tagName,
-    });
   }
 
   /**
@@ -402,24 +393,6 @@ class VideoController {
       // Video became invisible and controller is visible
       this.div.classList.add('vsc-hidden');
       window.VSC.logger.debug('Hiding controller - video became invisible');
-    }
-  }
-
-  /**
-   * Dispatch controller lifecycle events for badge management
-   * @param {string} eventType - Event type (VSC_CONTROLLER_CREATED or VSC_CONTROLLER_REMOVED)
-   * @param {Object} detail - Event detail data
-   * @private
-   */
-  dispatchControllerEvent(eventType, detail) {
-    try {
-      const event = new CustomEvent(eventType, { detail });
-      window.dispatchEvent(event);
-      window.VSC.logger.debug(
-        `Dispatched ${eventType} event for controller ${detail.controllerId}`
-      );
-    } catch (error) {
-      window.VSC.logger.error(`Failed to dispatch ${eventType} event:`, error);
     }
   }
 }

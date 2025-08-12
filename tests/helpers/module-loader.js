@@ -18,6 +18,9 @@ export async function loadCoreModules() {
   await import('../../src/core/storage-manager.js');
   await import('../../src/core/settings.js');
 
+  // State management
+  await import('../../src/core/state-manager.js');
+
   // Site handlers
   await import('../../src/site-handlers/base-handler.js');
   await import('../../src/site-handlers/netflix-handler.js');

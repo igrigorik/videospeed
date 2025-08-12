@@ -145,7 +145,8 @@ async function runTests() {
   } else if (testType === 'integration') {
     testFiles = [
       'integration/module-integration.test.js',
-      'integration/ui-to-storage-flow.test.js'
+      'integration/ui-to-storage-flow.test.js',
+      'integration/state-manager-integration.test.js'
     ];
   } else {
     // Run all tests
@@ -163,7 +164,8 @@ async function runTests() {
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'integration/module-integration.test.js',
-      'integration/ui-to-storage-flow.test.js'
+      'integration/ui-to-storage-flow.test.js',
+      'integration/state-manager-integration.test.js'
     ];
   }
 

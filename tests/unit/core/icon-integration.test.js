@@ -55,65 +55,44 @@ function createMockVideo(options = {}) {
   return video;
 }
 
-runner.test('VideoController should dispatch CONTROLLER_CREATED event', async () => {
-  let eventReceived = false;
-  let eventDetail = null;
-
-  // Listen for the controller created event
-  const eventListener = (event) => {
-    if (event.type === 'VSC_CONTROLLER_CREATED') {
-      eventReceived = true;
-      eventDetail = event.detail;
-    }
-  };
-
-  window.addEventListener('VSC_CONTROLLER_CREATED', eventListener);
-
+runner.test('VideoController should register with state manager', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+
+  // Clear state manager
+  window.VSC.stateManager.controllers.clear();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockVideo = createMockVideo();
   document.body.appendChild(mockVideo);
 
-  // Create controller - should dispatch event
+  // Create controller - should register with state manager
   const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
-  // Verify event was dispatched
-  assert.true(eventReceived, 'VSC_CONTROLLER_CREATED event should be dispatched');
-  assert.exists(eventDetail, 'Event should have detail data');
-  assert.exists(eventDetail.controllerId, 'Event should include controllerId');
-  assert.equal(eventDetail.videoSrc, 'https://example.com/video.mp4', 'Event should include video source');
-  assert.equal(eventDetail.tagName, 'VIDEO', 'Event should include tag name');
+  // Verify controller is registered with state manager
+  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be registered with state manager');
+  assert.true(window.VSC.stateManager.controllers.has(controller.controllerId), 'Controller ID should be in state manager');
 
   // Verify controller has ID
   assert.exists(controller.controllerId, 'Controller should have an ID');
-  assert.equal(eventDetail.controllerId, controller.controllerId, 'Event controllerId should match controller ID');
+
+  // Verify state manager has correct info
+  const controllerInfo = window.VSC.stateManager.controllers.get(controller.controllerId);
+  assert.exists(controllerInfo, 'Controller info should exist in state manager');
+  assert.equal(controllerInfo.element, mockVideo, 'State manager should reference correct video element');
+  assert.equal(controllerInfo.tagName, 'VIDEO', 'State manager should store tag name');
 
   // Cleanup
-  window.removeEventListener('VSC_CONTROLLER_CREATED', eventListener);
+  controller.remove();
   document.body.removeChild(mockVideo);
 });
 
-runner.test('VideoController should dispatch CONTROLLER_REMOVED event', async () => {
-  let createdEventReceived = false;
-  let removedEventReceived = false;
-  let removedEventDetail = null;
-
-  // Listen for both events
-  const createdListener = () => { createdEventReceived = true; };
-  const removedListener = (event) => {
-    if (event.type === 'VSC_CONTROLLER_REMOVED') {
-      removedEventReceived = true;
-      removedEventDetail = event.detail;
-    }
-  };
-
-  window.addEventListener('VSC_CONTROLLER_CREATED', createdListener);
-  window.addEventListener('VSC_CONTROLLER_REMOVED', removedListener);
-
+runner.test('VideoController should unregister from state manager on removal', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+
+  // Clear state manager
+  window.VSC.stateManager.controllers.clear();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockVideo = createMockVideo();
@@ -123,24 +102,19 @@ runner.test('VideoController should dispatch CONTROLLER_REMOVED event', async ()
   const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
   const controllerId = controller.controllerId;
 
-  assert.true(createdEventReceived, 'Controller should be created first');
+  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be registered');
 
-  // Remove controller - should dispatch removed event
+  // Remove controller - should unregister from state manager
   controller.remove();
 
-  // Verify removal event was dispatched
-  assert.true(removedEventReceived, 'VSC_CONTROLLER_REMOVED event should be dispatched');
-  assert.exists(removedEventDetail, 'Removed event should have detail data');
-  assert.equal(removedEventDetail.controllerId, controllerId, 'Removed event should include correct controllerId');
-  assert.equal(removedEventDetail.videoSrc, 'https://example.com/video.mp4', 'Removed event should include video source');
-  assert.equal(removedEventDetail.tagName, 'VIDEO', 'Removed event should include tag name');
+  // Verify controller was unregistered from state manager
+  assert.equal(window.VSC.stateManager.controllers.size, 0, 'Controller should be unregistered from state manager');
+  assert.false(window.VSC.stateManager.controllers.has(controllerId), 'Controller ID should be removed from state manager');
 
   // Verify controller is properly cleaned up
   assert.equal(mockVideo.vsc, undefined, 'Video should no longer have vsc reference');
 
   // Cleanup
-  window.removeEventListener('VSC_CONTROLLER_CREATED', createdListener);
-  window.removeEventListener('VSC_CONTROLLER_REMOVED', removedListener);
   document.body.removeChild(mockVideo);
 });
 
@@ -176,22 +150,13 @@ runner.test('Controllers should have unique IDs', async () => {
   document.body.removeChild(video2);
 });
 
-runner.test('Audio controllers should dispatch events too', async () => {
-  let eventReceived = false;
-  let eventDetail = null;
-
-  const eventListener = (event) => {
-    if (event.type === 'VSC_CONTROLLER_CREATED') {
-      eventReceived = true;
-      eventDetail = event.detail;
-    }
-  };
-
-  window.addEventListener('VSC_CONTROLLER_CREATED', eventListener);
-
+runner.test('Audio controllers should register with state manager too', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.audioBoolean = true; // Enable audio support
+
+  // Clear state manager
+  window.VSC.stateManager.controllers.clear();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockAudio = document.createElement('audio');
@@ -209,16 +174,18 @@ runner.test('Audio controllers should dispatch events too', async () => {
 
   document.body.appendChild(mockAudio);
 
-  // Create audio controller - should dispatch event even if small
+  // Create audio controller - should register with state manager even if small
   const controller = new window.VSC.VideoController(mockAudio, null, config, actionHandler);
 
-  // Verify event was dispatched
-  assert.true(eventReceived, 'VSC_CONTROLLER_CREATED event should be dispatched for audio');
-  assert.equal(eventDetail.tagName, 'AUDIO', 'Event should indicate AUDIO tag');
+  // Verify controller is registered with state manager
+  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Audio controller should be registered with state manager');
   assert.exists(controller.controllerId, 'Audio controller should have an ID');
 
+  // Verify state manager has correct info for audio
+  const controllerInfo = window.VSC.stateManager.controllers.get(controller.controllerId);
+  assert.equal(controllerInfo.tagName, 'AUDIO', 'State manager should store AUDIO tag name');
+
   // Cleanup
-  window.removeEventListener('VSC_CONTROLLER_CREATED', eventListener);
   controller.remove();
   document.body.removeChild(mockAudio);
 });

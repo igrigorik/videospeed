@@ -48,27 +48,32 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   const tabId = sender.tab.id;
 
   switch (message.type) {
-    case 'VSC_CONTROLLER_CREATED':
-      // Mark tab as having controllers and update icon
-      if (!tabsWithControllers.has(tabId)) {
-        tabsWithControllers.add(tabId);
-        await updateIcon(tabId, true);
-        console.log(`Controller created in tab ${tabId} - icon activated`);
+    case 'VSC_STATE_UPDATE':
+      // Unified state update from page context
+      const currentlyHasControllers = tabsWithControllers.has(tabId);
+      const shouldHaveControllers = message.hasActiveControllers;
+
+      // Only update icon if state actually changed
+      if (currentlyHasControllers !== shouldHaveControllers) {
+        if (shouldHaveControllers) {
+          tabsWithControllers.add(tabId);
+        } else {
+          tabsWithControllers.delete(tabId);
+        }
+        await updateIcon(tabId, shouldHaveControllers);
+        console.log(
+          `Tab ${tabId} state updated: ${shouldHaveControllers ? 'active' : 'inactive'} ` +
+          `(${message.controllerCount || 0} controllers)`
+        );
       }
       break;
 
-    case 'VSC_CONTROLLER_REMOVED':
-      // For now, keep the tab marked as having controllers since we don't track individual ones
-      // The icon will reset when the tab navigates or refreshes
-      console.log(`Controller removed from tab ${tabId} - keeping icon active until navigation`);
-      break;
-
-    case 'VSC_QUERY_ACTIVE_CONTROLLERS':
-      // Respond with whether this tab has active controllers
-      const hasControllers = tabsWithControllers.has(tabId);
+    case 'VSC_QUERY_STATE':
+      // Unified state query
+      const tabHasControllers = tabsWithControllers.has(tabId);
       sendResponse({
-        hasActiveControllers: hasControllers,
-        controllerCount: hasControllers ? 1 : 0 // Legacy compatibility
+        hasActiveControllers: tabHasControllers,
+        controllerCount: tabHasControllers ? 1 : 0
       });
       return true; // Keep message channel open for async response
   }

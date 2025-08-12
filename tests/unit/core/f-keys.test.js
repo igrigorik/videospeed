@@ -22,6 +22,11 @@ const runner = new SimpleTestRunner();
 runner.beforeEach(() => {
   installChromeMock();
   resetMockStorage();
+
+  // Clear state manager for tests
+  if (window.VSC && window.VSC.stateManager) {
+    window.VSC.stateManager.controllers.clear();
+  }
 });
 
 runner.afterEach(() => {
@@ -135,7 +140,7 @@ runner.test('EventManager should handle F-keys correctly', async () => {
     predefined: false
   }];
 
-  // Mock video element
+  // Create a proper test video with controller
   const mockVideo = {
     playbackRate: 1.0,
     paused: false,
@@ -145,10 +150,26 @@ runner.test('EventManager should handle F-keys correctly', async () => {
     classList: {
       contains: (className) => false  // Mock classList for 'vsc-cancelled' check
     },
-    vsc: { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } },
-    dispatchEvent: (event) => { /* Mock dispatchEvent for synthetic events */ }
+    dispatchEvent: (event) => { /* Mock dispatchEvent for synthetic events */ },
+    // Add DOM-related properties for controller creation
+    tagName: 'VIDEO',
+    currentSrc: 'test-video.mp4',
+    src: 'test-video.mp4',
+    // Crucial: isConnected must be true for state manager to find it
+    isConnected: true
   };
-  config.addMediaElement(mockVideo);
+
+  // Manually register with state manager for this specific test
+  const mockControllerId = 'test-f-keys-controller';
+  mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
+  window.VSC.stateManager.controllers.set(mockControllerId, {
+    id: mockControllerId,
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc,
+    tagName: mockVideo.tagName,
+    created: Date.now(),
+    isActive: true
+  });
 
   // Create a proper mock target element
   const mockTarget = {
