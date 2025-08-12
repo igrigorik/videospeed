@@ -25,20 +25,6 @@ export async function injectScript(scriptPath) {
 }
 
 /**
- * Inject CSS files into the page
- * CSS is kept separate to avoid CSP issues
- */
-export function injectCSS() {
-  // inject.css is already injected via manifest
-  // Only inject shadow.css as a link element for shadow DOM access
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = chrome.runtime.getURL('src/styles/shadow.css');
-  link.id = 'vsc-shadow-css';
-  (document.head || document.documentElement).appendChild(link);
-}
-
-/**
  * Set up message bridge between content script and page context
  * Handles bi-directional communication for popup and settings updates
  */

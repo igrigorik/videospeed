@@ -16,7 +16,7 @@ class ShadowDOMManager {
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
 
-    // Create style element with embedded CSS
+    // Create style element with embedded CSS for immediate styling
     const style = document.createElement('style');
     style.textContent = `
       * {

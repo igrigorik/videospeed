@@ -3,15 +3,12 @@
  * This runs in the content script context with access to chrome.* APIs
  */
 
-import { injectScript, injectCSS, setupMessageBridge } from '../content/injection-bridge.js';
+import { injectScript, setupMessageBridge } from '../content/injection-bridge.js';
 
 async function init() {
   try {
     // Get settings from chrome.storage - these will be injected for page context
     const settings = await chrome.storage.sync.get(null);
-
-    // Inject CSS (shadow.css as link element for shadow DOM access)
-    injectCSS();
 
     // Bridge settings to page context via DOM (only synchronous path between Chrome's isolated worlds)
     // Script elements with type="application/json" are inert, avoiding site interference and CSP issues

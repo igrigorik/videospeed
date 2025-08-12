@@ -55,8 +55,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "dist/inject.js",
-        "src/styles/shadow.css"
+        "dist/inject.js"
       ],
       "matches": [
         "http://*/*",
