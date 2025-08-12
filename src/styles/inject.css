@@ -123,7 +123,7 @@ section[role="tabpanel"][aria-label="Video Player"] {
 
 /* ChatGPT audio controller positioning */
 /* https://chatgpt.com */
-body.vsc-domain-chatgpt-com .vsc-controller {
+:root[style*='--vsc-domain: "chatgpt.com"'] .vsc-controller {
   position: relative !important;
   top: 0px !important;
   left: 35px !important;

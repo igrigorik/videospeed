@@ -138,6 +138,7 @@ async function runTests() {
       'unit/observers/mutation-observer.test.js',
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
+      'unit/content/hydration-fix.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js'
@@ -160,6 +161,7 @@ async function runTests() {
       'unit/observers/mutation-observer.test.js',
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
+      'unit/content/hydration-fix.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
