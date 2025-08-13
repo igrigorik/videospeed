@@ -216,22 +216,24 @@ class ActionHandler {
       this.eventManager.showController(video.vsc.div);
     }
 
+    const resetBindingValue = this.config.getKeyBinding('reset');
+    const fastBindingValue = this.config.getKeyBinding('fast');
+
     if (video.playbackRate === target) {
-      if (video.playbackRate === this.config.getKeyBinding('reset')) {
+      if (video.playbackRate === resetBindingValue) {
         if (target !== 1.0) {
           window.VSC.logger.info('Resetting playback speed to 1.0');
           this.adjustSpeed(video, 1.0);
         } else {
           window.VSC.logger.info('Toggling playback speed to "fast" speed');
-          this.adjustSpeed(video, this.config.getKeyBinding('fast'));
+          this.adjustSpeed(video, fastBindingValue);
         }
       } else {
         window.VSC.logger.info('Toggling playback speed to "reset" speed');
-        this.adjustSpeed(video, this.config.getKeyBinding('reset'));
+        this.adjustSpeed(video, resetBindingValue);
       }
     } else {
-      window.VSC.logger.info('Toggling playback speed to "reset" speed');
-      this.config.setKeyBinding('reset', video.playbackRate);
+      window.VSC.logger.info(`Resetting playback speed to ${target}`);
       this.adjustSpeed(video, target);
     }
   }

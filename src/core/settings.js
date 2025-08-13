@@ -96,16 +96,28 @@ if (!window.VSC.VideoSpeedConfig) {
     }
 
     /**
-     * Set a key binding value
+     * Set a key binding value with validation
      * @param {string} action - Action name
      * @param {*} value - Value to set
      */
     setKeyBinding(action, value) {
       try {
         const binding = this.settings.keyBindings.find((item) => item.action === action);
-        if (binding) {
-          binding.value = value;
+        if (!binding) {
+          window.VSC.logger.warn(`No key binding found for action: ${action}`);
+          return;
         }
+
+        // Validate speed-related values to prevent corruption
+        if (['reset', 'fast', 'slower', 'faster'].includes(action)) {
+          if (typeof value !== 'number' || isNaN(value)) {
+            window.VSC.logger.warn(`Invalid numeric value for ${action}: ${value}`);
+            return;
+          }
+        }
+
+        binding.value = value;
+        window.VSC.logger.debug(`Updated key binding ${action} to ${value}`);
       } catch (e) {
         window.VSC.logger.error(`Failed to set key binding for ${action}: ${e.message}`);
       }
