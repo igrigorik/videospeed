@@ -8,6 +8,12 @@
   opacity: 0 !important;
 }
 
+.vsc-show {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
 .vsc-manual:not(.vsc-hidden) {
   visibility: visible !important;
   opacity: 1 !important;

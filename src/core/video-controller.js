@@ -128,24 +128,13 @@ class VideoController {
     wrapper.className = cssClasses.join(' ');
 
     // Set positioning styles with calculated position
-    // Use inline styles without !important so CSS rules can override
-    let styleText = `
+    // Only use positioning styles - rely on CSS classes for visibility
+    const styleText = `
       position: absolute !important;
       z-index: 9999999 !important;
       top: ${position.top};
       left: ${position.left};
     `;
-
-    // Add inline fallback styles if controller should start hidden
-    // This prevents FOUC if inject.css hasn't loaded yet
-    if (this.config.settings.startHidden || this.shouldStartHidden) {
-      styleText += `
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      `;
-      window.VSC.logger.debug('Applied inline fallback styles for hidden controller');
-    }
 
     wrapper.style.cssText = styleText;
 
