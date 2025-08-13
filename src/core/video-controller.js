@@ -215,17 +215,13 @@ class VideoController {
     // Bind event handlers
     this.handlePlay = mediaEventAction.bind(this);
     this.handleSeek = mediaEventAction.bind(this);
-    this.handleLoadStart = mediaEventAction.bind(this);
-    this.handleCanPlay = mediaEventAction.bind(this);
 
-    // Add comprehensive event listeners for robust speed restoration
+    // Add essential event listeners for speed restoration
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
-    this.video.addEventListener('loadstart', this.handleLoadStart);
-    this.video.addEventListener('canplay', this.handleCanPlay);
 
     window.VSC.logger.debug(
-      'Added comprehensive media event handlers: play, seeked, loadstart, canplay'
+      'Added essential media event handlers: play, seeked'
     );
   }
 
@@ -273,12 +269,6 @@ class VideoController {
     }
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
-    }
-    if (this.handleLoadStart) {
-      this.video.removeEventListener('loadstart', this.handleLoadStart);
-    }
-    if (this.handleCanPlay) {
-      this.video.removeEventListener('canplay', this.handleCanPlay);
     }
 
     // Disconnect mutation observer
