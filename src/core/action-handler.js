@@ -206,9 +206,9 @@ class ActionHandler {
   }
 
   /**
-   * Reset speed with toggle functionality
+   * Reset speed with memory toggle functionality
    * @param {HTMLMediaElement} video - Video element
-   * @param {number} target - Target speed
+   * @param {number} target - Target speed (usually 1.0)
    */
   resetSpeed(video, target) {
     // Show controller for visual feedback (will be shown by adjustSpeed but we can show it early)
@@ -216,24 +216,28 @@ class ActionHandler {
       this.eventManager.showController(video.vsc.div);
     }
 
-    const resetBindingValue = this.config.getKeyBinding('reset');
-    const fastBindingValue = this.config.getKeyBinding('fast');
+    if (!video.vsc) {
+      window.VSC.logger.warn('resetSpeed called on video without controller');
+      return;
+    }
 
-    if (video.playbackRate === target) {
-      if (video.playbackRate === resetBindingValue) {
-        if (target !== 1.0) {
-          window.VSC.logger.info('Resetting playback speed to 1.0');
-          this.adjustSpeed(video, 1.0);
-        } else {
-          window.VSC.logger.info('Toggling playback speed to "fast" speed');
-          this.adjustSpeed(video, fastBindingValue);
-        }
+    const currentSpeed = video.playbackRate;
+
+    if (currentSpeed === target) {
+      // At target speed - restore remembered speed if we have one, otherwise reset to target
+      if (video.vsc.speedBeforeReset !== null) {
+        window.VSC.logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
+        const rememberedSpeed = video.vsc.speedBeforeReset;
+        video.vsc.speedBeforeReset = null; // Clear memory after use
+        this.adjustSpeed(video, rememberedSpeed);
       } else {
-        window.VSC.logger.info('Toggling playback speed to "reset" speed');
-        this.adjustSpeed(video, resetBindingValue);
+        window.VSC.logger.info(`Already at reset speed ${target}, no change`);
+        // Already at target and nothing remembered - no action needed
       }
     } else {
-      window.VSC.logger.info(`Resetting playback speed to ${target}`);
+      // Not at target speed - remember current and reset to target
+      window.VSC.logger.info(`Remembering speed ${currentSpeed} and resetting to ${target}`);
+      video.vsc.speedBeforeReset = currentSpeed;
       this.adjustSpeed(video, target);
     }
   }

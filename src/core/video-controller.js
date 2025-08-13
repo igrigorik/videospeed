@@ -22,6 +22,9 @@ class VideoController {
     // Generate unique controller ID for badge tracking
     this.controllerId = this.generateControllerId(target);
 
+    // Transient reset memory (not persisted, per-controller)
+    this.speedBeforeReset = null;
+
     // Attach controller to video element first (needed for adjustSpeed)
     target.vsc = this;
 
