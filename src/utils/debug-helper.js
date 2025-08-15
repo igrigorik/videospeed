@@ -130,7 +130,7 @@ class DebugHelper {
   checkControllers() {
     console.group('🎮 Controllers Analysis');
 
-    const controllers = document.querySelectorAll('.vsc-controller');
+    const controllers = document.querySelectorAll('vsc-controller');
     console.log(`Found ${controllers.length} VSC controllers`);
 
     controllers.forEach((controller, index) => {
@@ -285,7 +285,7 @@ class DebugHelper {
   forceShowControllers() {
     console.log('🔧 Force showing all controllers');
 
-    const controllers = document.querySelectorAll('.vsc-controller');
+    const controllers = document.querySelectorAll('vsc-controller');
     controllers.forEach((controller, index) => {
       // Remove all hiding classes
       controller.classList.remove('vsc-hidden', 'vsc-nosource');
@@ -371,7 +371,7 @@ class DebugHelper {
           (mutation.attributeName === 'class' || mutation.attributeName === 'style')
         ) {
           const target = mutation.target;
-          if (target.classList.contains('vsc-controller')) {
+          if (target.tagName === 'VSC-CONTROLLER') {
             console.log('🔄 Controller visibility changed:', {
               element: target,
               classes: target.className,

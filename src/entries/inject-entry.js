@@ -30,6 +30,7 @@ import '../core/video-controller.js';
 import '../ui/controls.js';
 import '../ui/drag-handler.js';
 import '../ui/shadow-dom.js';
+import '../ui/vsc-controller-element.js';
 
 // Site-specific handlers - depends on core
 import '../site-handlers/base-handler.js';
