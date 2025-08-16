@@ -7,6 +7,39 @@ window.VSC = window.VSC || {};
 
 class ShadowDOMManager {
   /**
+   * Detect the visible height of native/player controls at the bottom of the video
+   * @param {HTMLVideoElement} video
+   * @param {HTMLElement} targetElement - container used for positioning
+   * @returns {number} height in pixels
+   */
+  static detectNativeControlsHeight(video, targetElement) {
+    try {
+      // Site-specific: YouTube custom controls
+      if (location.hostname === 'www.youtube.com') {
+        const ytpControls = document.querySelector('.ytp-chrome-bottom');
+        if (ytpControls && ytpControls.offsetHeight) {
+          let h = ytpControls.offsetHeight;
+          // When autohide is active, controls are hidden; keep a small baseline
+          const player = document.querySelector('.html5-video-player');
+          if (player && player.classList.contains('ytp-autohide')) {
+            return 10;
+          }
+          return h;
+        }
+      }
+
+      // Standard native controls
+      if (video && video.controls) {
+        // Heuristic default for native controls when visible
+        return 36; // typical desktop native controls bar height
+      }
+    } catch (_) {
+      // ignore and use fallback
+    }
+
+    return 0;
+  }
+  /**
    * Create shadow DOM for video controller
    * @param {HTMLElement} wrapper - Wrapper element
    * @param {Object} options - Configuration options
@@ -288,8 +321,24 @@ class ShadowDOMManager {
     if (positionConfig.top) {
       top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
     } else {
-      // For bottom positioning, calculate offset from bottom
-      const bottomOffset = 60; // Basic offset for bottom positioning
+      // For bottom positioning, detect native controls height and add padding
+      const nativeControlsHeight = this.detectNativeControlsHeight(video, targetElement);
+      
+      // Estimate controller height for spacing
+      const defaultBtn = window.VSC.Constants?.DEFAULT_SETTINGS?.controllerButtonSize || 14;
+      const controllerHeight = Math.round(defaultBtn * 1.4 + 8); // 1.4em + padding
+      const controllerMarginTop = 10; // default from CSS
+      
+      // Add padding for separation from native controls
+      const padding = location.hostname === 'www.youtube.com' ? 15 : 10;
+      let bottomOffset = Math.max(20, nativeControlsHeight + padding + controllerMarginTop + controllerHeight);
+      
+      // Keep controller within video bounds
+      const maxUsableOffset = Math.max(20, rect.height - Math.min(controllerHeight + 20, rect.height * 0.25));
+      if (bottomOffset > maxUsableOffset) {
+        bottomOffset = maxUsableOffset;
+      }
+
       const calculatedBottom = rect.bottom - (offsetRect?.top || 0) - bottomOffset;
       top = `${Math.max(calculatedBottom, 0)}px`;
     }
