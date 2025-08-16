@@ -54,6 +54,9 @@ document.addEventListener("DOMContentLoaded", function () {
         "48": chrome.runtime.getURL(`src/assets/icons/icon48${suffix}.png`)
       }
     });
+
+    // Notify background script of state change
+    chrome.runtime.sendMessage({ type: 'EXTENSION_TOGGLE', enabled: enabled });
   }
 
   function settingsSavedReloadMessage(enabled) {

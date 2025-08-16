@@ -31,6 +31,15 @@ runner.beforeEach(() => {
 
 runner.afterEach(() => {
   cleanupChromeMock();
+
+  // Clear state manager after each test to prevent state leakage
+  if (window.VSC && window.VSC.stateManager) {
+    window.VSC.stateManager.controllers.clear();
+  }
+
+  // Remove any lingering video elements
+  document.querySelectorAll('video, audio').forEach(el => el.remove());
+
   if (mockDOM) {
     mockDOM.cleanup();
   }
@@ -89,7 +98,7 @@ runner.test('VideoController should initialize speed based on settings', async (
 });
 
 runner.test('VideoController should create controller UI', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -106,7 +115,7 @@ runner.test('VideoController should create controller UI', async () => {
 });
 
 runner.test('VideoController should handle video without source', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -121,7 +130,7 @@ runner.test('VideoController should handle video without source', async () => {
 });
 
 runner.test('VideoController should start hidden when configured', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.startHidden = true;
 
@@ -137,7 +146,7 @@ runner.test('VideoController should start hidden when configured', async () => {
 });
 
 runner.test('VideoController should clean up properly when removed', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -161,7 +170,7 @@ runner.test('VideoController should clean up properly when removed', async () =>
 });
 
 runner.test('VideoController should register with state manager', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -172,17 +181,23 @@ runner.test('VideoController should register with state manager', async () => {
   mockDOM.container.appendChild(mockVideo1);
   mockDOM.container.appendChild(mockVideo2);
 
-  assert.equal(window.VSC.stateManager.controllers.size, 0);
+  // State manager should be clean from beforeEach
+  assert.equal(window.VSC.stateManager.controllers.size, 0, 'Should start with no controllers');
 
-  new window.VSC.VideoController(mockVideo1, mockDOM.container, config, actionHandler);
-  assert.equal(window.VSC.stateManager.controllers.size, 1);
+  const controller1 = new window.VSC.VideoController(mockVideo1, mockDOM.container, config, actionHandler);
+  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Should have 1 controller after first creation');
 
-  new window.VSC.VideoController(mockVideo2, mockDOM.container, config, actionHandler);
-  assert.equal(window.VSC.stateManager.controllers.size, 2);
+  const controller2 = new window.VSC.VideoController(mockVideo2, mockDOM.container, config, actionHandler);
+  assert.equal(window.VSC.stateManager.controllers.size, 2, 'Should have 2 controllers after second creation');
+
+  // Clean up
+  controller1.remove();
+  controller2.remove();
+  assert.equal(window.VSC.stateManager.controllers.size, 0, 'Should have no controllers after cleanup');
 });
 
 runner.test('VideoController should initialize speed using adjustSpeed method', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = false; // Per-video mode
   config.settings.speeds = {
@@ -218,7 +233,7 @@ runner.test('VideoController should initialize speed using adjustSpeed method', 
 });
 
 runner.test('VideoController should handle initialization with no stored speed', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = false;
   config.settings.speeds = {}; // No stored speeds
@@ -239,7 +254,7 @@ runner.test('VideoController should handle initialization with no stored speed',
 });
 
 runner.test('VideoController should initialize in global speed mode correctly', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = true; // Global mode
   config.settings.lastSpeed = 2.25;
@@ -257,7 +272,7 @@ runner.test('VideoController should initialize in global speed mode correctly', 
 });
 
 runner.test('VideoController should properly setup event handlers', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -288,7 +303,7 @@ runner.test('VideoController should properly setup event handlers', async () => 
 });
 
 runner.test('VideoController should handle media events correctly', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
+  const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = false;
   config.settings.speeds = { 'https://example.com/video.mp4': 1.5 };

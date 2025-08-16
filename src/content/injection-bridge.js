@@ -42,7 +42,10 @@ export function setupMessageBridge() {
       if (action === 'storage-update') {
         chrome.storage.sync.set(data);
       } else if (action === 'runtime-message') {
-        chrome.runtime.sendMessage(data);
+        // Forward runtime messages
+        if (data.type !== 'VSC_STATE_UPDATE') {
+          chrome.runtime.sendMessage(data);
+        }
       } else if (action === 'get-storage') {
         // Page script requesting current storage
         chrome.storage.sync.get(null, (items) => {
