@@ -28,6 +28,13 @@ class VideoController {
     // Attach controller to video element first (needed for adjustSpeed)
     target.vsc = this;
 
+    // Register with state manager immediately after controller is attached
+    if (window.VSC.stateManager) {
+      window.VSC.stateManager.registerController(this);
+    } else {
+      window.VSC.logger.error('StateManager not available during VideoController initialization');
+    }
+
     // Initialize speed
     this.initializeSpeed();
 
@@ -41,12 +48,6 @@ class VideoController {
     this.setupMutationObserver();
 
     window.VSC.logger.info('VideoController initialized for video element');
-
-    if (window.VSC.stateManager) {
-      window.VSC.stateManager.registerController(this);
-    } else {
-      window.VSC.logger.error('StateManager not available during VideoController initialization');
-    }
   }
 
   /**
@@ -307,7 +308,8 @@ class VideoController {
       return hash & hash; // Convert to 32-bit integer
     }, 0);
 
-    return `${tagName}-${Math.abs(srcHash)}-${timestamp}`;
+    const random = Math.floor(Math.random() * 1000);
+    return `${tagName}-${Math.abs(srcHash)}-${timestamp}-${random}`;
   }
 
   /**
