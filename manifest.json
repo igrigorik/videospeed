@@ -50,6 +50,15 @@
       "js": [
         "dist/content.js"
       ]
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "src/content/injector_youtube.js"
+      ],
+      "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
