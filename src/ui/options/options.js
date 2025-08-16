@@ -283,10 +283,12 @@ async function save_options() {
 
     var rememberSpeed = document.getElementById("rememberSpeed").checked;
     var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
+    var controllerHover = document.getElementById("controllerHover").checked;
     var audioBoolean = document.getElementById("audioBoolean").checked;
     var startHidden = document.getElementById("startHidden").checked;
     var controllerOpacity = Number(document.getElementById("controllerOpacity").value);
     var controllerButtonSize = Number(document.getElementById("controllerButtonSize").value);
+    var controllerPosition = document.getElementById("controllerPosition").value;
     var logLevel = parseInt(document.getElementById("logLevel").value);
     var blacklist = document.getElementById("blacklist").value;
 
@@ -299,10 +301,12 @@ async function save_options() {
     const settingsToSave = {
       rememberSpeed: rememberSpeed,
       forceLastSavedSpeed: forceLastSavedSpeed,
+      controllerHover: controllerHover,
       audioBoolean: audioBoolean,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
+      controllerPosition: controllerPosition,
       logLevel: logLevel,
       keyBindings: keyBindings,
       blacklist: blacklist.replace(window.VSC.Constants.regStrip, "")
@@ -351,10 +355,12 @@ async function restore_options() {
 
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
+    document.getElementById("controllerHover").checked = storage.controllerHover;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;
     document.getElementById("controllerButtonSize").value = storage.controllerButtonSize;
+    document.getElementById("controllerPosition").value = storage.controllerPosition || 'top-left';
     document.getElementById("logLevel").value = storage.logLevel;
     document.getElementById("blacklist").value = storage.blacklist;
 

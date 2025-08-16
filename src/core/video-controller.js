@@ -99,8 +99,12 @@ class VideoController {
     window.VSC.logger.debug('initializeControls Begin');
 
     const document = this.video.ownerDocument;
+    // For the UI indicator, reflect the actual current playback rate
     const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
+    
+    // Get position based on user preference
+    const userPosition = this.config.settings.controllerPosition || 'top-left';
+    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, userPosition);
 
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
@@ -108,7 +112,7 @@ class VideoController {
     const wrapper = document.createElement('div');
 
     // Apply all CSS classes at once to prevent race condition flash
-    const cssClasses = ['vsc-controller'];
+    const cssClasses = ['vsc-controller', `vsc-position-${userPosition}`];
 
     // Only hide controller if video has no source AND is not ready/functional
     // This prevents hiding controllers for live streams or dynamically loaded videos
@@ -160,6 +164,7 @@ class VideoController {
       speed: speed,
       opacity: this.config.settings.controllerOpacity,
       buttonSize: this.config.settings.controllerButtonSize,
+      position: userPosition, // Pass position to shadow DOM
     });
 
     // Set up control events

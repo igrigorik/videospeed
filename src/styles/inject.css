@@ -24,6 +24,23 @@
   user-select: none;
 }
 
+/* Position-specific styles */
+.vsc-position-top-left {
+  transform-origin: top left !important;
+}
+
+.vsc-position-top-right {
+  transform-origin: top right !important;
+}
+
+.vsc-position-bottom-left {
+  transform-origin: bottom left !important;
+}
+
+.vsc-position-bottom-right {
+  transform-origin: bottom right !important;
+}
+
 /* Origin specific overrides */
 /* YouTube player */
 .ytp-hide-info-bar .vsc-controller {

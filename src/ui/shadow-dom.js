@@ -13,13 +13,19 @@ class ShadowDOMManager {
    * @returns {ShadowRoot} Created shadow root
    */
   static createShadowDOM(wrapper, options = {}) {
-    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
+    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14, position = 'top-left' } = options;
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
 
     // Create style element with embedded CSS
     const style = document.createElement('style');
-    style.textContent = `
+    
+    // Get position configuration
+    const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
+                          window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
+    
+    // Base CSS with position-specific adjustments
+    const baseCSS = `
       * {
         line-height: 1.8em;
         font-family: sans-serif;
@@ -38,10 +44,13 @@ class ShadowDOMManager {
         color: white;
         border-radius: 6px;
         padding: 4px;
-        margin: 10px 10px 10px 15px;
         cursor: default;
         z-index: 9999999;
         white-space: nowrap;
+        ${positionConfig.left 
+          ? 'margin: 10px 10px 10px 15px;' 
+          : 'transform: translateX(-100%); margin: 10px 0 10px 10px;'
+        }
       }
       
       #controller:hover {
@@ -49,12 +58,12 @@ class ShadowDOMManager {
       }
       
       #controller:hover>.draggable {
-        margin-right: 0.8em;
+        ${positionConfig.left ? 'margin-right: 0.8em;' : 'margin-left: 0.8em;'}
       }
       
       #controls {
         display: none;
-        vertical-align: middle;
+        white-space: nowrap;
       }
       
       #controller.dragging {
@@ -76,6 +85,7 @@ class ShadowDOMManager {
         text-align: center;
         vertical-align: middle;
         box-sizing: border-box;
+        ${!positionConfig?.left ? 'text-align: right;' : ''}
       }
       
       .draggable:active {
@@ -120,24 +130,17 @@ class ShadowDOMManager {
       
       button.hideButton {
         opacity: 0.65;
-        margin-left: 8px;
-        margin-right: 2px;
+        ${positionConfig.left ? 'margin-left: 8px; margin-right: 2px;' : 'margin-right: 8px; margin-left: 2px;'}
       }
     `;
+    
+    style.textContent = baseCSS;
     shadow.appendChild(style);
 
     // Create controller div
     const controller = document.createElement('div');
     controller.id = 'controller';
     controller.style.cssText = `top:${top}; left:${left}; opacity:${opacity};`;
-
-    // Create draggable speed indicator
-    const draggable = document.createElement('span');
-    draggable.setAttribute('data-action', 'drag');
-    draggable.className = 'draggable';
-    draggable.style.cssText = `font-size: ${buttonSize}px;`;
-    draggable.textContent = speed;
-    controller.appendChild(draggable);
 
     // Create controls span
     const controls = document.createElement('span');
@@ -153,17 +156,53 @@ class ShadowDOMManager {
       { action: 'display', text: '×', class: 'hideButton' },
     ];
 
-    buttons.forEach((btnConfig) => {
-      const button = document.createElement('button');
-      button.setAttribute('data-action', btnConfig.action);
-      if (btnConfig.class) {
-        button.className = btnConfig.class;
-      }
-      button.textContent = btnConfig.text;
-      controls.appendChild(button);
-    });
+    // Create draggable speed indicator
+    const draggable = document.createElement('span');
+    draggable.setAttribute('data-action', 'drag');
+    draggable.className = 'draggable';
+    draggable.style.cssText = `font-size: ${buttonSize}px;`;
+    draggable.textContent = speed;
 
-    controller.appendChild(controls);
+    if (positionConfig.left) {
+      controller.appendChild(draggable);
+      
+      buttons.forEach((btnConfig) => {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', btnConfig.action);
+        if (btnConfig.class) {
+          button.className = btnConfig.class;
+        }
+        button.textContent = btnConfig.text;
+        controls.appendChild(button);
+      });
+      
+      controller.appendChild(controls);
+    } else {
+      const displayButton = buttons.find(btn => btn.action === 'display');
+      if (displayButton) {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', displayButton.action);
+        if (displayButton.class) {
+          button.className = displayButton.class;
+        }
+        button.textContent = displayButton.text;
+        controls.appendChild(button);
+      }
+      
+      const innerButtons = buttons.filter(btn => btn.action !== 'display');
+      innerButtons.forEach((btnConfig) => {
+        const button = document.createElement('button');
+        button.setAttribute('data-action', btnConfig.action);
+        if (btnConfig.class) {
+          button.className = btnConfig.class;
+        }
+        button.textContent = btnConfig.text;
+        controls.appendChild(button);
+      });
+      
+      controller.appendChild(controls);
+      controller.appendChild(draggable);
+    }
     shadow.appendChild(controller);
 
     window.VSC.logger.debug('Shadow DOM created for video controller');
@@ -219,19 +258,49 @@ class ShadowDOMManager {
   }
 
   /**
-   * Calculate position for controller based on video element
+   * Calculate position for controller based on video element and user preference
    * @param {HTMLVideoElement} video - Video element
+   * @param {string} position - Position preference ('top-left', 'top-right', etc.)
    * @returns {Object} Position object with top and left properties
    */
-  static calculatePosition(video) {
-    const rect = video.getBoundingClientRect();
+  static calculatePosition(video, position = 'top-left', baseRectOverride = null) {
+    let targetElement = video;
+    if (location.hostname === 'www.youtube.com') {
+      const playerContainer = video.closest('.ytp-player-content.ytp-iv-player-content') || 
+                             video.closest('.ytp-player-content') ||
+                             video.closest('#movie_player') ||
+                             video.closest('.html5-video-player');
+      if (playerContainer) {
+        targetElement = playerContainer;
+      }
+    }
 
-    // getBoundingClientRect is relative to the viewport; style coordinates
-    // are relative to offsetParent, so we adjust for that here. offsetParent
-    // can be null if the video has `display: none` or is not yet in the DOM.
-    const offsetRect = video.offsetParent?.getBoundingClientRect();
-    const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
-    const left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
+    const rect = targetElement.getBoundingClientRect();
+
+    // Allow caller to specify the coordinate base (e.g., controller's offsetParent)
+    const offsetRect = baseRectOverride || video.offsetParent?.getBoundingClientRect();
+    
+    const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
+                          window.VSC.Constants.CONTROLLER_POSITIONS['top-left'];
+    
+    let top, left;
+    
+    if (positionConfig.top) {
+      top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
+    } else {
+      // For bottom positioning, calculate offset from bottom
+      const bottomOffset = 60; // Basic offset for bottom positioning
+      const calculatedBottom = rect.bottom - (offsetRect?.top || 0) - bottomOffset;
+      top = `${Math.max(calculatedBottom, 0)}px`;
+    }
+    
+    if (positionConfig.left) {
+      left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
+    } else {
+      const rightEdge = rect.right - (offsetRect?.left || 0);
+      // Position wrapper 15px inside; the controller uses translateX(-100%) and margin-right:15
+      left = `${Math.max(rightEdge - 15, 0)}px`;
+    }
 
     return { top, left };
   }
