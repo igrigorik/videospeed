@@ -4,10 +4,10 @@
 
 import { installChromeMock, cleanupChromeMock } from '../../helpers/chrome-mock.js';
 import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
-import { loadObserverModules } from '../../helpers/module-loader.js';
+import { loadCoreModules } from '../../helpers/module-loader.js';
 
 // Load all required modules
-await loadObserverModules();
+await loadCoreModules();
 
 const runner = new SimpleTestRunner();
 

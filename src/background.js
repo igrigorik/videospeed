@@ -7,9 +7,9 @@ async function updateIcon(enabled) {
     const suffix = enabled ? '' : '_disabled';
     await chrome.action.setIcon({
       path: {
-        "19": chrome.runtime.getURL(`src/assets/icons/icon19${suffix}.png`),
-        "38": chrome.runtime.getURL(`src/assets/icons/icon38${suffix}.png`),
-        "48": chrome.runtime.getURL(`src/assets/icons/icon48${suffix}.png`)
+        "19": `assets/icons/icon19${suffix}.png`,
+        "38": `assets/icons/icon38${suffix}.png`,
+        "48": `assets/icons/icon48${suffix}.png`
       }
     });
     console.log(`Icon updated: ${enabled ? 'enabled' : 'disabled'}`);

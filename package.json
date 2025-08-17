@@ -16,12 +16,13 @@
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write src/**/*.js tests/**/*.js",
-    "zip": "npm run build && rm -rf dist/videospeed.zip && mkdir -p dist/videospeed && cp -r manifest.json dist/*.js src/styles src/assets src/ui/popup src/ui/options *.md dist/videospeed/ && cd dist && zip -r videospeed.zip videospeed && cd .. && echo 'Extension packaged at dist/videospeed.zip'"
+    "zip": "npm run build && cd dist && zip -r videospeed.zip . && cd .. && echo 'Extension packaged at dist/videospeed.zip'"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",
     "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
+    "fs-extra": "^11.2.0",
     "globals": "^13.24.0",
     "jsdom": "^23.0.0",
     "prettier": "^3.1.0",

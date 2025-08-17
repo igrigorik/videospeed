@@ -73,6 +73,7 @@ Object.assign(global, {
   KeyboardEvent: dom.window.KeyboardEvent,
   CustomEvent: dom.window.CustomEvent,
   MutationObserver: dom.window.MutationObserver,
+  customElements: dom.window.customElements,
   requestIdleCallback: (fn) => setTimeout(fn, 0),
   location: { hostname: 'localhost', href: 'http://localhost' }
 });

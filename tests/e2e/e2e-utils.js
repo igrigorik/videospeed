@@ -21,13 +21,12 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @returns {Promise<{browser: Browser, page: Page}>}
  */
 export async function launchChromeWithExtension() {
-  const extensionPath = join(__dirname, '../../');
+  const extensionPath = join(__dirname, '../../dist');
 
   console.log(`   📁 Loading extension from: ${extensionPath}`);
 
   try {
     const browser = await puppeteer.launch({
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       headless: false, // Extensions require non-headless mode
       devtools: false,
       args: [

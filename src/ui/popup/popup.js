@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
-    window.open(chrome.runtime.getURL("src/ui/options/options.html"));
+    window.open(chrome.runtime.getURL("ui/options/options.html"));
   });
 
   // Power button toggle event listener
@@ -49,9 +49,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const suffix = enabled ? "" : "_disabled";
     chrome.action.setIcon({
       path: {
-        "19": chrome.runtime.getURL(`src/assets/icons/icon19${suffix}.png`),
-        "38": chrome.runtime.getURL(`src/assets/icons/icon38${suffix}.png`),
-        "48": chrome.runtime.getURL(`src/assets/icons/icon48${suffix}.png`)
+        "19": chrome.runtime.getURL(`assets/icons/icon19${suffix}.png`),
+        "38": chrome.runtime.getURL(`assets/icons/icon38${suffix}.png`),
+        "48": chrome.runtime.getURL(`assets/icons/icon48${suffix}.png`)
       }
     });
 

@@ -105,7 +105,7 @@ class VideoController {
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
     // Create custom element wrapper to avoid CSS conflicts
-    const wrapper = document.createElement('vsc-controller');
+    const wrapper = new window.VSC.VSCControllerElement();
 
     // Apply all CSS classes at once to prevent race condition flash
     const cssClasses = ['vsc-controller'];

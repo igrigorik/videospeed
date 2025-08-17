@@ -19,7 +19,7 @@ async function init() {
     (document.head || document.documentElement).appendChild(settingsElement);
 
     // Inject the bundled page script containing all VSC modules
-    await injectScript('dist/inject.js');
+    await injectScript('inject.js');
 
     // Set up bi-directional message bridge for popup ↔ page communication
     setupMessageBridge();
