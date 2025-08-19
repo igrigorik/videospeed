@@ -383,7 +383,7 @@ class ActionHandler {
 
     // Clamp to valid range
     targetSpeed = Math.min(
-      Math.max(targetSpeed, window.VSC.Constants.SPEED_LIMITS.MIN),
+      Math.max(targetSpeed || 1, window.VSC.Constants.SPEED_LIMITS.MIN),
       window.VSC.Constants.SPEED_LIMITS.MAX
     );
 
