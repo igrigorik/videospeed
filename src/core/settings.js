@@ -8,6 +8,9 @@ if (!window.VSC.VideoSpeedConfig) {
   class VideoSpeedConfig {
     constructor() {
       this.settings = { ...window.VSC.Constants.DEFAULT_SETTINGS };
+      this.pendingSave = null;
+      this.saveTimer = null;
+      this.SAVE_DELAY = 1000; // 1 second
     }
 
     /**
@@ -65,7 +68,32 @@ if (!window.VSC.VideoSpeedConfig) {
      */
     async save(newSettings = {}) {
       try {
+        // Update in-memory settings immediately
         this.settings = { ...this.settings, ...newSettings };
+
+        // Check if this is a speed-only update that should be debounced
+        const keys = Object.keys(newSettings);
+        if (keys.length === 1 && keys[0] === 'lastSpeed') {
+          // Debounce speed saves
+          this.pendingSave = newSettings.lastSpeed;
+          
+          if (this.saveTimer) {
+            clearTimeout(this.saveTimer);
+          }
+          
+          this.saveTimer = setTimeout(async () => {
+            const speedToSave = this.pendingSave;
+            this.pendingSave = null;
+            this.saveTimer = null;
+            
+            await window.VSC.StorageManager.set({ ...this.settings, lastSpeed: speedToSave });
+            window.VSC.logger.info('Debounced speed setting saved successfully');
+          }, this.SAVE_DELAY);
+          
+          return;
+        }
+
+        // Immediate save for all other settings
         await window.VSC.StorageManager.set(this.settings);
 
         // Update logger verbosity if logLevel was changed
