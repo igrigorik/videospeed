@@ -43,7 +43,7 @@ runner.test('refreshCoolDown should activate cooldown period', async () => {
 
   // Activate cooldown
   eventManager.refreshCoolDown();
-  
+
   // Cooldown should now be active (a timeout object)
   assert.true(eventManager.coolDown !== false);
 });
@@ -88,8 +88,9 @@ runner.test('cooldown should expire after timeout', async () => {
   eventManager.refreshCoolDown();
   assert.true(eventManager.coolDown !== false);
 
-  // Wait for cooldown to expire (1000ms + buffer)
-  await new Promise(resolve => setTimeout(resolve, 1100));
+  // Wait for cooldown to expire (COOLDOWN_MS + buffer)
+  const waitMs = (window.VSC.EventManager?.COOLDOWN_MS || 50) + 50;
+  await new Promise(resolve => setTimeout(resolve, waitMs));
 
   // Cooldown should be expired
   assert.equal(eventManager.coolDown, false);
@@ -113,7 +114,7 @@ runner.test('multiple refreshCoolDown calls should reset timer', async () => {
   // Second cooldown activation should replace the first
   eventManager.refreshCoolDown();
   const secondTimeout = eventManager.coolDown;
-  
+
   // Should be a different timeout object
   assert.true(secondTimeout !== firstTimeout);
   assert.true(secondTimeout !== false);

@@ -223,7 +223,7 @@ class EventManager {
 
     this.coolDown = setTimeout(() => {
       this.coolDown = false;
-    }, 1000);
+    }, EventManager.COOLDOWN_MS);
 
     window.VSC.logger.debug('End refreshCoolDown');
   }
@@ -286,6 +286,9 @@ class EventManager {
     }
   }
 }
+
+// Cooldown duration (ms) for ratechange handling
+EventManager.COOLDOWN_MS = 50;
 
 // Create singleton instance
 window.VSC.EventManager = EventManager;
