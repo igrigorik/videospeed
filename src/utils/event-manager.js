@@ -188,7 +188,19 @@ class EventManager {
     }
 
     // External change - use adjustSpeed with external source
-    window.VSC.logger.debug('External rate change detected');
+    const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
+
+    // Ignore spurious external ratechanges below our supported MIN to avoid persisting clamped 0.07
+    const min = window.VSC.Constants.SPEED_LIMITS.MIN;
+    // Use <= to also catch values that Chrome already clamped to MIN (e.g., site set 0)
+    if (!isNaN(rawExternalRate) && rawExternalRate <= min) {
+      window.VSC.logger.debug(
+        `Ignoring external ratechange below MIN: raw=${rawExternalRate}, MIN=${min}`
+      );
+      event.stopImmediatePropagation();
+      return;
+    }
+
     if (this.actionHandler) {
       this.actionHandler.adjustSpeed(video, video.playbackRate, {
         source: 'external',
