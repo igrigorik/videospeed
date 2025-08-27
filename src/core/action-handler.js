@@ -223,24 +223,24 @@ class ActionHandler {
 
     const currentSpeed = video.playbackRate;
 
-    if (currentSpeed === target) {
-      // At target speed - restore remembered speed if we have one, otherwise reset to target
-      if (video.vsc.speedBeforeReset !== null) {
-        window.VSC.logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
-        const rememberedSpeed = video.vsc.speedBeforeReset;
-        video.vsc.speedBeforeReset = null; // Clear memory after use
-        this.adjustSpeed(video, rememberedSpeed);
-      } else {
-        // Already at target and nothing remembered - set to fast binding value
-        const fastBindingValue = this.config.getKeyBinding('fast');
-        window.VSC.logger.info(`Already at reset speed ${target}, set to fast binding value ${fastBindingValue}`);
-        this.adjustSpeed(video, fastBindingValue);
-      }
-    } else {
-      // Not at target speed - remember current and reset to target
+    // Not at target speed - remember current and reset to target
+    if (currentSpeed !== target) {
       window.VSC.logger.info(`Remembering speed ${currentSpeed} and resetting to ${target}`);
       video.vsc.speedBeforeReset = currentSpeed;
       this.adjustSpeed(video, target);
+      return;
+    }
+
+    // At target speed - restore remembered speed if we have one, set to fast binding value
+    if (video.vsc.speedBeforeReset !== null) {
+      window.VSC.logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
+      const rememberedSpeed = video.vsc.speedBeforeReset;
+      video.vsc.speedBeforeReset = null; // Clear memory after use
+      this.adjustSpeed(video, rememberedSpeed);
+    } else {
+      const fastBindingValue = this.config.getKeyBinding('fast');
+      window.VSC.logger.info(`Already at reset speed ${target}, set to fast binding value ${fastBindingValue}`);
+      this.adjustSpeed(video, fastBindingValue);
     }
   }
 
