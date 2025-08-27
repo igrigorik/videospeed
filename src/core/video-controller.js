@@ -100,7 +100,7 @@ class VideoController {
 
     const document = this.video.ownerDocument;
     const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
+    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video, this.config.settings.controllerPosition);
 
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 

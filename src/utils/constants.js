@@ -27,6 +27,7 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
     controllerButtonSize: 14,
+    controllerPosition: 'top-left', // default: top-left
     keyBindings: [
       { action: 'slower', key: 83, value: 0.1, force: false, predefined: true }, // S
       { action: 'faster', key: 68, value: 0.1, force: false, predefined: true }, // D
