@@ -72,6 +72,14 @@ export default async function runBasicE2ETests() {
       assert.true(speedDisplay.includes('1.'), 'Speed display should show 1.x');
     });
 
+    await runTest('Initial press of Reset key with no other action should set speed to fast value', async () => {
+      await testKeyboardShortcut(page, 'KeyR');
+      await sleep(500);
+
+      const speed = await getVideoSpeed(page);
+      assert.approximately(speed, 1.8, 0.1, 'Speed should be approximately 1.8');
+    });
+
     await runTest('Faster button should increase speed', async () => {
       const initialSpeed = await getVideoSpeed(page);
       const success = await controlVideo(page, 'faster');

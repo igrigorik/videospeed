@@ -231,8 +231,10 @@ class ActionHandler {
         video.vsc.speedBeforeReset = null; // Clear memory after use
         this.adjustSpeed(video, rememberedSpeed);
       } else {
-        window.VSC.logger.info(`Already at reset speed ${target}, no change`);
-        // Already at target and nothing remembered - no action needed
+        // Already at target and nothing remembered - set to fast binding value
+        const fastBindingValue = this.config.getKeyBinding('fast');
+        window.VSC.logger.info(`Already at reset speed ${target}, set to fast binding value ${fastBindingValue}`);
+        this.adjustSpeed(video, fastBindingValue);
       }
     } else {
       // Not at target speed - remember current and reset to target
