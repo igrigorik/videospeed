@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
-    window.open(chrome.runtime.getURL("ui/options/options.html"));
+    chrome.runtime.openOptionsPage();
   });
 
   // Power button toggle event listener
