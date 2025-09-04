@@ -191,6 +191,43 @@ runner.test('VideoMutationObserver should detect video elements in shadow DOM', 
   assert.equal(mockOnVideoFound[0].parent, videoElement.parentNode);
 });
 
+runner.test('VideoMutationObserver should handle HTMLCollection children properly', () => {
+  const mockConfig = { settings: {} };
+  const mockOnVideoFound = [];
+  const mockOnVideoRemoved = [];
+
+  const onVideoFound = (video, parent) => {
+    mockOnVideoFound.push({ video, parent });
+  };
+
+  const onVideoRemoved = (video) => {
+    mockOnVideoRemoved.push(video);
+  };
+
+  const observer = new window.VSC.VideoMutationObserver(
+    mockConfig,
+    onVideoFound,
+    onVideoRemoved
+  );
+
+  // Create a container with multiple child elements including a video
+  const container = document.createElement('div');
+  const videoElement = document.createElement('video');
+  const spanElement = document.createElement('span');
+  const pElement = document.createElement('p');
+
+  container.appendChild(spanElement);
+  container.appendChild(videoElement);
+  container.appendChild(pElement);
+
+  // Simulate the processNodeChildren call directly
+  observer.processNodeChildren(container, document.body, true);
+
+  // Should find the video element in the children
+  assert.equal(mockOnVideoFound.length, 1);
+  assert.equal(mockOnVideoFound[0].video, videoElement);
+});
+
 runner.test('VideoMutationObserver should detect nested video elements', () => {
   const mockConfig = { settings: {} };
   const mockOnVideoFound = [];

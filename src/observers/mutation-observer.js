@@ -226,7 +226,7 @@ class VideoMutationObserver {
 
     // Handle regular children
     if (node.children) {
-      children = [...children, ...node.children];
+      children = [...children, ...Array.from(node.children)];
     }
 
     // Process all children
