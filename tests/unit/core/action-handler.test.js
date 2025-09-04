@@ -790,4 +790,61 @@ runner.test('adjustSpeed should handle complex force mode scenarios', async () =
   assert.equal(video1.playbackRate, 1.8);
 });
 
+runner.test('reset action should use configured reset speed value', async () => {
+  const config = window.VSC.videoSpeedConfig;
+  await config.load();
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  // Test with default reset speed (1.0)
+  const mockVideo1 = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
+  actionHandler.runAction('reset', 1.0); // Pass the value as keyboard handler would
+  assert.equal(mockVideo1.playbackRate, 1.0);
+
+  // Test with custom reset speed
+  config.setKeyBinding('reset', 1.5);
+  const mockVideo2 = createTestVideoWithController(config, actionHandler, { playbackRate: 2.5 });
+  actionHandler.runAction('reset', 1.5); // Pass the custom value
+  assert.equal(mockVideo2.playbackRate, 1.5);
+
+  // Test reset memory toggle functionality with custom reset speed
+  const mockVideo3 = createTestVideoWithController(config, actionHandler, { playbackRate: 1.5 });
+  
+  // First reset should remember current speed and go to reset speed
+  mockVideo3.playbackRate = 2.2;
+  actionHandler.runAction('reset', 1.5); // Pass custom value
+  assert.equal(mockVideo3.playbackRate, 1.5); // Should reset to configured value
+  assert.equal(mockVideo3.vsc.speedBeforeReset, 2.2); // Should remember previous speed
+
+  // Second reset should restore remembered speed
+  actionHandler.runAction('reset', 1.5); // Pass custom value
+  assert.equal(mockVideo3.playbackRate, 2.2); // Should restore remembered speed
+  assert.equal(mockVideo3.vsc.speedBeforeReset, null); // Should clear memory
+});
+
+runner.test('reset action should work with keyboard event simulation', async () => {
+  const config = window.VSC.videoSpeedConfig;
+  await config.load();
+
+  const actionHandler = new window.VSC.ActionHandler(config, null);
+  const eventManager = new window.VSC.EventManager(config, actionHandler);
+  actionHandler.eventManager = eventManager;
+
+  // Test with custom reset speed via keyboard simulation
+  config.setKeyBinding('reset', 1.5);
+  const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
+
+  // Simulate pressing R key (82) - this will pass the configured value automatically
+  eventManager.handleKeydown({
+    keyCode: 82, // R key
+    target: document.body,
+    getModifierState: () => false,
+    preventDefault: () => {},
+    stopPropagation: () => {}
+  });
+  
+  assert.equal(mockVideo.playbackRate, 1.5); // Should use configured reset speed
+});
+
 export { runner as actionHandlerTestRunner };

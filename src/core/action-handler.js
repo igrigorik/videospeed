@@ -86,7 +86,7 @@ class ActionHandler {
 
       case 'reset':
         window.VSC.logger.debug('Reset speed');
-        this.resetSpeed(video, 1.0);
+        this.resetSpeed(video, value);
         break;
 
       case 'display': {
