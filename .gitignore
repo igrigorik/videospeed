@@ -1,7 +1,11 @@
 .DS_Store
 .cursor
+.claude
+.agent
+.idea
+.AGENT.md
+CLAUDE*.md
 local
 dist
 tests/e2e/screenshots
 node_modules
-.idea

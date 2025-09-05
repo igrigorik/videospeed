@@ -199,10 +199,8 @@ runner.test('VideoController should register with state manager', async () => {
 runner.test('VideoController should initialize speed using adjustSpeed method', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  config.settings.rememberSpeed = false; // Per-video mode
-  config.settings.speeds = {
-    'https://example.com/test.mp4': 1.75
-  };
+  config.settings.rememberSpeed = true; // Enable global persistence
+  config.settings.lastSpeed = 1.75;
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -236,7 +234,6 @@ runner.test('VideoController should handle initialization with no stored speed',
   const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = false;
-  config.settings.speeds = {}; // No stored speeds
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -305,8 +302,8 @@ runner.test('VideoController should properly setup event handlers', async () => 
 runner.test('VideoController should handle media events correctly', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  config.settings.rememberSpeed = false;
-  config.settings.speeds = { 'https://example.com/video.mp4': 1.5 };
+  config.settings.rememberSpeed = true; // Enable global persistence 
+  config.settings.lastSpeed = 1.5;
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);

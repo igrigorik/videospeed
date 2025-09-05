@@ -18,7 +18,6 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
   const DEFAULT_SETTINGS = {
     lastSpeed: 1.0, // default 1x
     enabled: true, // default enabled
-    speeds: {}, // empty object to hold speed for each source
 
     displayKeyCode: 86, // default: V
     rememberSpeed: false, // default: false

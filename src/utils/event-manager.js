@@ -288,7 +288,9 @@ class EventManager {
 }
 
 // Cooldown duration (ms) for ratechange handling
-EventManager.COOLDOWN_MS = 50;
+// Increased back to 1000ms to handle delayed native ratechange events on complex sites like Twitch
+// The previous 50ms optimization was too aggressive for iframe-heavy sites
+EventManager.COOLDOWN_MS = 1000;
 
 // Create singleton instance
 window.VSC.EventManager = EventManager;

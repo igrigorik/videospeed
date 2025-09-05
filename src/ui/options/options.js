@@ -367,13 +367,9 @@ async function restore_options() {
     // Process key bindings
     const keyBindings = storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
 
-    console.log('Debug: storage object:', storage);
-    console.log('Debug: keyBindings:', keyBindings);
-    console.log('Debug: DEFAULT_SETTINGS:', window.VSC.Constants.DEFAULT_SETTINGS);
 
     for (let i in keyBindings) {
       var item = keyBindings[i];
-      console.log(`Debug: Processing binding ${i}:`, item);
 
       if (item.predefined) {
         // Handle predefined shortcuts
@@ -392,7 +388,6 @@ async function restore_options() {
         const valueInput = document.querySelector("#" + item["action"] + " .customValue");
         const forceInput = document.querySelector("#" + item["action"] + " .customForce");
 
-        console.log(`Debug: DOM elements for ${item.action}:`, { keyInput, valueInput, forceInput });
 
         if (keyInput) {
           updateCustomShortcutInputText(keyInput, item["key"]);

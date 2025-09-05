@@ -64,10 +64,10 @@ runner.test('Full flow: keyboard shortcut → adjustSpeed → storage → UI upd
   assert.equal(lastSave.lastSpeed, 1.1); // Correct data saved
 });
 
-runner.test('Full flow: popup button → adjustSpeed → storage (per-video mode)', async () => {
+runner.test('Full flow: popup button → adjustSpeed → storage (non-persistent mode)', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  config.settings.rememberSpeed = false; // Per-video mode
+  config.settings.rememberSpeed = false; // Non-persistent mode
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -91,15 +91,11 @@ runner.test('Full flow: popup button → adjustSpeed → storage (per-video mode
   // Simulate popup preset button (1.5x speed)
   actionHandler.runAction('SET_SPEED', 1.5);
 
-  // Verify complete flow for per-video mode
+  // Verify complete flow for non-persistent mode
   assert.equal(mockVideo.playbackRate, 1.5); // Video speed changed
   assert.equal(controller.speedIndicator.textContent, '1.50'); // UI updated
-  assert.equal(config.settings.lastSpeed, 1.5); // Global lastSpeed updated for UI
-  assert.equal(config.settings.speeds['https://example.com/test-video.mp4'], 1.5); // Per-video speed in memory
-  assert.true(savedData.length >= 1); // Storage called at least once
-  const lastSave = savedData[savedData.length - 1];
-  assert.equal(lastSave.lastSpeed, 1.5); // Only global speed saved
-  assert.equal(lastSave.speeds, undefined); // Per-video speeds NOT saved
+  // With rememberSpeed = false, no storage saves should occur
+  assert.equal(savedData.length, 0); // No storage saves in non-persistent mode
 });
 
 runner.test('Full flow: external change → force mode → restore → storage', async () => {
@@ -172,7 +168,7 @@ runner.test(
   async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
-    config.settings.rememberSpeed = false; // Per-video mode
+    config.settings.rememberSpeed = false; // Non-persistent mode
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -205,18 +201,8 @@ runner.test(
     assert.equal(controller1.speedIndicator.textContent, '1.25');
     assert.equal(controller2.speedIndicator.textContent, '1.75');
 
-    // Verify memory storage
-    assert.equal(config.settings.speeds['https://site1.com/video1.mp4'], 1.25);
-    assert.equal(config.settings.speeds['https://site2.com/video2.mp4'], 1.75);
-
-    // Verify only global speeds saved to storage (not per-video)
-    assert.true(savedData.length >= 2);
-    savedData.forEach((save) => {
-      assert.deepEqual(Object.keys(save), ['lastSpeed']);
-      assert.equal(save.speeds, undefined);
-    });
-    const lastSave = savedData[savedData.length - 1];
-    assert.equal(lastSave.lastSpeed, 1.75); // Last change
+    // With non-persistent mode, no storage saves should occur
+    assert.equal(savedData.length, 0); // No saves with rememberSpeed = false
   }
 );
 

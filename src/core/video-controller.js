@@ -22,7 +22,7 @@ class VideoController {
     // Generate unique controller ID for badge tracking
     this.controllerId = this.generateControllerId(target);
 
-    // Transient reset memory (not persisted, per-controller)
+    // Transient reset memory (not persisted, instance-specific)
     this.speedBeforeReset = null;
 
     // Attach controller to video element first (needed for adjustSpeed)
@@ -73,20 +73,16 @@ class VideoController {
    * @private
    */
   getTargetSpeed(media = this.video) {
-    let targetSpeed;
-
+    // Always start with current preferred speed (lastSpeed)
+    // The difference is whether changes get saved back to lastSpeed
+    const targetSpeed = this.config.settings.lastSpeed || 1.0;
+    
     if (this.config.settings.rememberSpeed) {
-      // Global behavior - use lastSpeed for all videos
-      targetSpeed = this.config.settings.lastSpeed || 1.0;
-      window.VSC.logger.debug(`Global mode: using lastSpeed ${targetSpeed}`);
+      window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
     } else {
-      // Per-video behavior - use stored speed for this specific video
-      const videoSrc = media.currentSrc || media.src;
-      const storedSpeed = this.config.settings.speeds[videoSrc];
-      targetSpeed = storedSpeed || 1.0;
-      window.VSC.logger.debug(`Per-video mode: using speed ${targetSpeed} for ${videoSrc}`);
+      window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
     }
-
+    
     return targetSpeed;
   }
 

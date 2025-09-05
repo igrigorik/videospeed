@@ -65,6 +65,7 @@ runner.afterEach(() => {
 runner.test('ActionHandler should set video speed', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+  config.settings.rememberSpeed = true; // Enable persistence for this test
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -341,6 +342,7 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
 runner.test('adjustSpeed should handle absolute speed changes', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+  config.settings.rememberSpeed = true; // Enable persistence for this test
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -397,7 +399,6 @@ runner.test('adjustSpeed should handle external changes with force mode', async 
   await config.load();
 
   // Reset config state for clean test
-  config.settings.speeds = {};
   config.settings.rememberSpeed = false;
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -423,7 +424,7 @@ runner.test('adjustSpeed should handle external changes with force mode', async 
   assert.equal(mockVideo.playbackRate, 2.0);
 });
 
-runner.test('_getUserPreferredSpeed should respect rememberSpeed setting', async () => {
+runner.test('getPreferredSpeed should return global lastSpeed', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
 
@@ -435,21 +436,20 @@ runner.test('_getUserPreferredSpeed should respect rememberSpeed setting', async
     currentSrc: 'https://example.com/video1.mp4'
   });
 
-  // Test global mode (rememberSpeed = true)
-  config.settings.rememberSpeed = true;
+  // Test with set lastSpeed
   config.settings.lastSpeed = 1.75;
-  assert.equal(actionHandler._getUserPreferredSpeed(mockVideo), 1.75);
+  assert.equal(actionHandler.getPreferredSpeed(mockVideo), 1.75);
 
-  // Test per-video mode (rememberSpeed = false)  
-  config.settings.rememberSpeed = false;
-  config.settings.speeds['https://example.com/video1.mp4'] = 2.25;
-  assert.equal(actionHandler._getUserPreferredSpeed(mockVideo), 2.25);
+  // Test fallback when no lastSpeed
+  config.settings.lastSpeed = null;
+  assert.equal(actionHandler.getPreferredSpeed(mockVideo), 1.0);
 
-  // Test fallback when no stored speed
+  // Different video should return same global speed
   const mockVideo2 = createMockVideo({
     currentSrc: 'https://example.com/video2.mp4'
   });
-  assert.equal(actionHandler._getUserPreferredSpeed(mockVideo2), 1.0);
+  config.settings.lastSpeed = 2.5;
+  assert.equal(actionHandler.getPreferredSpeed(mockVideo2), 2.5);
 });
 
 runner.test('adjustSpeed should validate input properly', async () => {
@@ -490,9 +490,10 @@ runner.test('adjustSpeed should validate input properly', async () => {
   assert.equal(validVideo.playbackRate, 1.0); // Should not change
 });
 
-runner.test('_commitSpeedChange should only save global speed to storage', async () => {
+runner.test('setSpeed should save global speed to storage', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+  config.settings.rememberSpeed = true; // Enable persistence for this test
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -512,13 +513,11 @@ runner.test('_commitSpeedChange should only save global speed to storage', async
     savedData = data;
   };
 
-  // Test that only lastSpeed is saved (not per-video speeds)
-  config.settings.rememberSpeed = false;
-  actionHandler._commitSpeedChange(mockVideo, 1.5, 'internal');
+  // Test that only lastSpeed is saved
+  actionHandler.setSpeed(mockVideo, 1.5, 'internal');
 
   assert.equal(savedData.lastSpeed, 1.5);
-  assert.equal(savedData.speeds, undefined); // Should NOT save per-video speeds
-  assert.equal(config.settings.speeds['https://example.com/video.mp4'], 1.5); // Should be in memory only
+  assert.equal(config.settings.lastSpeed, 1.5); // Global speed updated
 });
 
 runner.test('do not persist video speed to storage', async () => {
@@ -546,18 +545,12 @@ runner.test('do not persist video speed to storage', async () => {
   await actionHandler.adjustSpeed(video1, 1.5);
   await actionHandler.adjustSpeed(video2, 2.0);
 
-  // Check memory storage - should store per-video speeds in memory
-  assert.equal(config.settings.speeds['https://example.com/video1.mp4'], 1.5);
-  assert.equal(config.settings.speeds['https://example.com/video2.mp4'], 2.0);
-
-  // Check persistence - should ONLY save lastSpeed, NEVER per-video speeds
-  assert.equal(savedCalls.length, 2);
-  savedCalls.forEach(call => {
-    assert.deepEqual(Object.keys(call), ['lastSpeed']);
-    assert.equal(call.speeds, undefined, 'Per-video speeds should never be saved to storage');
-  });
-
-  assert.equal(savedCalls[1].lastSpeed, 2.0);
+  // With rememberSpeed = false, no speeds should be persisted to storage
+  assert.equal(savedCalls.length, 0, 'No saves should occur when rememberSpeed is false');
+  
+  // Videos should still have their playback rates set
+  assert.equal(video1.playbackRate, 1.5);
+  assert.equal(video2.playbackRate, 2.0);
 });
 
 runner.test('rememberSpeed: true should only store global speed', async () => {
@@ -567,7 +560,6 @@ runner.test('rememberSpeed: true should only store global speed', async () => {
   config.settings.forceLastSavedSpeed = false;
 
   // Clear any existing speeds from previous tests
-  config.settings.speeds = {};
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -579,8 +571,6 @@ runner.test('rememberSpeed: true should only store global speed', async () => {
   await actionHandler.adjustSpeed(video1, 1.5);
   await actionHandler.adjustSpeed(video2, 2.0);
 
-  // In global mode, per-video speeds should NOT be stored even in memory
-  assert.equal(Object.keys(config.settings.speeds).length, 0);
 
   // Global lastSpeed should be updated
   assert.equal(config.settings.lastSpeed, 2.0);
@@ -664,8 +654,7 @@ runner.test('adjustSpeed should handle multiple source types comprehensively', a
 runner.test('adjustSpeed should work correctly with multiple videos', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
-  config.settings.rememberSpeed = false; // Per-video mode
-  config.settings.speeds = {}; // Clear existing speeds
+  config.settings.rememberSpeed = true; // Enable persistence for this test
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
@@ -684,22 +673,17 @@ runner.test('adjustSpeed should work correctly with multiple videos', async () =
   assert.equal(video2.playbackRate, 2.0);
   assert.equal(video3.playbackRate, 1.25);
 
-  // Verify per-video storage in memory
-  assert.equal(config.settings.speeds['https://site1.com/video1.mp4'], 1.5);
-  assert.equal(config.settings.speeds['https://site2.com/video2.mp4'], 2.0);
-  assert.equal(config.settings.speeds['https://site1.com/video3.mp4'], 1.25);
 
-  // Test _getUserPreferredSpeed returns correct speed for each video
-  assert.equal(actionHandler._getUserPreferredSpeed(video1), 1.5);
-  assert.equal(actionHandler._getUserPreferredSpeed(video2), 2.0);
-  assert.equal(actionHandler._getUserPreferredSpeed(video3), 1.25);
+  // Verify global speed behavior - all videos share same preferred speed
+  assert.equal(actionHandler.getPreferredSpeed(video1), 1.25);
+  assert.equal(actionHandler.getPreferredSpeed(video2), 1.25);
+  assert.equal(actionHandler.getPreferredSpeed(video3), 1.25);
 });
 
 runner.test('adjustSpeed should handle global mode with multiple videos', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
   config.settings.rememberSpeed = true; // Global mode
-  config.settings.speeds = {}; // Clear existing speeds
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
@@ -709,19 +693,18 @@ runner.test('adjustSpeed should handle global mode with multiple videos', async 
   // Change speed on first video
   actionHandler.adjustSpeed(video1, 1.8);
   assert.equal(config.settings.lastSpeed, 1.8);
-  assert.equal(Object.keys(config.settings.speeds).length, 0); // No per-video storage
 
-  // _getUserPreferredSpeed should return global speed for both videos
-  assert.equal(actionHandler._getUserPreferredSpeed(video1), 1.8);
-  assert.equal(actionHandler._getUserPreferredSpeed(video2), 1.8);
+  // getPreferredSpeed should return global speed for both videos
+  assert.equal(actionHandler.getPreferredSpeed(video1), 1.8);
+  assert.equal(actionHandler.getPreferredSpeed(video2), 1.8);
 
   // Change speed on second video
   actionHandler.adjustSpeed(video2, 2.2);
   assert.equal(config.settings.lastSpeed, 2.2);
 
   // Both videos should now prefer the new global speed
-  assert.equal(actionHandler._getUserPreferredSpeed(video1), 2.2);
-  assert.equal(actionHandler._getUserPreferredSpeed(video2), 2.2);
+  assert.equal(actionHandler.getPreferredSpeed(video1), 2.2);
+  assert.equal(actionHandler.getPreferredSpeed(video2), 2.2);
 });
 
 runner.test('adjustSpeed should handle edge cases and error conditions', async () => {
@@ -764,30 +747,19 @@ runner.test('adjustSpeed should handle complex force mode scenarios', async () =
   await config.load();
   config.settings.forceLastSavedSpeed = true;
   config.settings.rememberSpeed = false; // Per-video mode
-  config.settings.speeds = {
-    'https://example.com/video1.mp4': 1.5,
-    'https://example.com/video2.mp4': 2.0
-  };
+  config.settings.lastSpeed = 1.5;
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
-  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
-  const video3 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video3.mp4' }); // No stored speed
+  const video = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video.mp4' });
 
-  // External changes should be blocked and restored to preferred speeds
-  actionHandler.adjustSpeed(video1, 3.0, { source: 'external' });
-  assert.equal(video1.playbackRate, 1.5); // Restored to stored speed
+  // External changes should be blocked and restored to global speed
+  actionHandler.adjustSpeed(video, 3.0, { source: 'external' });
+  assert.equal(video.playbackRate, 1.5);
 
-  actionHandler.adjustSpeed(video2, 3.0, { source: 'external' });
-  assert.equal(video2.playbackRate, 2.0); // Restored to stored speed
-
-  actionHandler.adjustSpeed(video3, 3.0, { source: 'external' });
-  assert.equal(video3.playbackRate, 1.0); // Restored to default (no stored speed)
-
-  // Internal changes should still work
-  actionHandler.adjustSpeed(video1, 1.8, { source: 'internal' });
-  assert.equal(video1.playbackRate, 1.8);
+  // Internal changes should work normally
+  actionHandler.adjustSpeed(video, 1.8, { source: 'internal' });
+  assert.equal(video.playbackRate, 1.8);
 });
 
 runner.test('reset action should use configured reset speed value', async () => {

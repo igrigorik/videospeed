@@ -18,8 +18,6 @@ class ActionHandler {
    * @param {Event} e - Event object (optional)
    */
   runAction(action, value, e) {
-    window.VSC.logger.debug(`runAction Begin: ${action}`);
-
     // Use state manager for complete media discovery (includes shadow DOM)
     const mediaTags = window.VSC.stateManager ?
       window.VSC.stateManager.getControlledElements() :
@@ -50,8 +48,6 @@ class ActionHandler {
         this.executeAction(action, value, v, e);
       }
     });
-
-    window.VSC.logger.debug('runAction End');
   }
 
   /**
@@ -74,15 +70,17 @@ class ActionHandler {
         this.seek(video, value);
         break;
 
-      case 'faster':
+      case 'faster': {
         window.VSC.logger.debug('Increase speed');
         this.adjustSpeed(video, value, { relative: true });
         break;
+      }
 
-      case 'slower':
+      case 'slower': {
         window.VSC.logger.debug('Decrease speed');
         this.adjustSpeed(video, -value, { relative: true });
         break;
+      }
 
       case 'reset':
         window.VSC.logger.debug('Reset speed');
@@ -161,18 +159,18 @@ class ActionHandler {
 
       case 'SET_SPEED':
         window.VSC.logger.info('Setting speed to:', value);
-        this.adjustSpeed(video, value);
+        this.adjustSpeed(video, value, { source: 'internal' });
         break;
 
       case 'ADJUST_SPEED':
         window.VSC.logger.info('Adjusting speed by:', value);
-        this.adjustSpeed(video, value, { relative: true });
+        this.adjustSpeed(video, value, { relative: true, source: 'internal' });
         break;
 
       case 'RESET_SPEED': {
         window.VSC.logger.info('Resetting speed');
-        const preferredSpeed = this.config.getSpeedStep('fast');
-        this.adjustSpeed(video, preferredSpeed);
+        const preferredSpeed = this.config.getKeyBinding('fast') || 1.0;
+        this.adjustSpeed(video, preferredSpeed, { source: 'internal' });
         break;
       }
 
@@ -344,6 +342,7 @@ class ActionHandler {
 
   /**
    * Adjust video playback speed (absolute or relative)
+   * Simplified to use proven working logic from setSpeed method
    *
    * @param {HTMLMediaElement} video - Target video element
    * @param {number} value - Speed value (absolute) or delta (relative)
@@ -390,87 +389,76 @@ class ActionHandler {
     // Round to 2 decimal places to avoid floating point issues
     targetSpeed = Number(targetSpeed.toFixed(2));
 
-    // Handle force mode for external changes
+    // Handle force mode for external changes - restore user preference
     if (source === 'external' && this.config.settings.forceLastSavedSpeed) {
-      // In force mode, reject external changes by restoring user preference
-      targetSpeed = this._getUserPreferredSpeed(video);
+      // In force mode, use lastSpeed instead of allowing external change
+      targetSpeed = this.config.settings.lastSpeed || 1.0;
       window.VSC.logger.debug(`Force mode: blocking external change, restoring to ${targetSpeed}`);
     }
 
-    // Apply the speed change
-    this._commitSpeedChange(video, targetSpeed, source);
+    // Use the proven setSpeed implementation with source tracking
+    this.setSpeed(video, targetSpeed, source);
   }
 
   /**
-   * Get user's preferred speed for a video based on settings
-   * @param {HTMLMediaElement} video - Video element
-   * @returns {number} Preferred speed
-   * @private
+   * Get user's preferred speed (always global lastSpeed)
+   * Public method for tests - matches VideoController.getTargetSpeed() logic
+   * @param {HTMLMediaElement} video - Video element (for API compatibility) 
+   * @returns {number} Current preferred speed (always lastSpeed regardless of rememberSpeed setting)
    */
-  _getUserPreferredSpeed(video) {
-    if (this.config.settings.rememberSpeed) {
-      // Global mode - use lastSpeed for all videos
-      return this.config.settings.lastSpeed || 1.0;
-    } else {
-      // Per-video mode - use stored speed for this specific video
-      const videoSrc = video.currentSrc || video.src;
-      return this.config.settings.speeds[videoSrc] || 1.0;
-    }
+  getPreferredSpeed(video) {
+    return this.config.settings.lastSpeed || 1.0;
   }
 
   /**
-   * Apply speed change and update all state
+   * Set video playback speed with complete state management
+   * Unified implementation with all functionality - no fragmented logic
    * @param {HTMLMediaElement} video - Video element
    * @param {number} speed - Target speed
-   * @param {string} source - Change source ('internal' or 'external')
-   * @private
+   * @param {string} source - Change source: 'internal' (user/extension) or 'external' (site)
    */
-  _commitSpeedChange(video, speed, source) {
-    window.VSC.logger.debug(`Committing speed change: ${speed} (source: ${source})`);
+  setSpeed(video, speed, source = 'internal') {
+    const speedValue = speed.toFixed(2);
+    const numericSpeed = Number(speedValue);
 
     // 1. Set the actual playback rate
-    video.playbackRate = speed;
+    video.playbackRate = numericSpeed;
 
-    // 2. Dispatch synthetic event with origin marker
+    // 2. Always dispatch synthetic event with source tracking
+    // This allows EventManager to distinguish our changes from external ones
     video.dispatchEvent(
       new CustomEvent('ratechange', {
         bubbles: true,
         composed: true,
-        detail: {
-          origin: 'videoSpeed',
-          speed: window.VSC.Constants.formatSpeed(speed),
-          source: source,
+        detail: { 
+          origin: 'videoSpeed', 
+          speed: speedValue,
+          source: source
         },
       })
     );
 
-    // 3. Update UI
+    // 3. Update UI indicator
     const speedIndicator = video.vsc?.speedIndicator;
-    if (speedIndicator) {
-      speedIndicator.textContent = window.VSC.Constants.formatSpeed(speed);
+    if (!speedIndicator) {
+      window.VSC.logger.warn(
+        'Cannot update speed indicator: video controller UI not fully initialized'
+      );
+      return;
     }
+    speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 4. Update settings based on rememberSpeed
+    // 4. Update global speed preference if rememberSpeed is enabled
     if (this.config.settings.rememberSpeed) {
-      // Global mode - update lastSpeed
-      this.config.settings.lastSpeed = speed;
-    } else {
-      // Per-video mode - store in memory only (not persisted)
-      const videoSrc = video.currentSrc || video.src;
-      if (videoSrc) {
-        this.config.settings.speeds[videoSrc] = speed;
-      }
+      this.config.settings.lastSpeed = numericSpeed;
+      
+      // 5. Save to storage for persistence
+      this.config.save({
+        lastSpeed: this.config.settings.lastSpeed,
+      });
     }
 
-    // Always update lastSpeed for UI consistency
-    this.config.settings.lastSpeed = speed;
-
-    // 5. Save to storage
-    this.config.save({
-      lastSpeed: this.config.settings.lastSpeed,
-    });
-
-    // 6. Show controller briefly if hidden
+    // 6. Show controller briefly for visual feedback
     if (video.vsc?.div) {
       this.blinkController(video.vsc.div);
     }
@@ -480,6 +468,7 @@ class ActionHandler {
       this.eventManager.refreshCoolDown();
     }
   }
+
 }
 
 // Create singleton instance
