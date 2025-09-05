@@ -795,6 +795,42 @@ runner.test('reset action should use configured reset speed value', async () => 
   assert.equal(mockVideo3.vsc.speedBeforeReset, null); // Should clear memory
 });
 
+runner.test('lastSpeed should update during session even when rememberSpeed is false', async () => {
+  const config = window.VSC.videoSpeedConfig;
+  await config.load();
+  config.settings.rememberSpeed = false; // Disable cross-session persistence
+  config.settings.lastSpeed = 1.0; // Start with default speed
+
+  const eventManager = new window.VSC.EventManager(config, null);
+  const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+  // Track storage saves
+  const savedCalls = [];
+  const originalSave = config.save;
+  config.save = function(data) {
+    savedCalls.push({ ...data });
+    return originalSave.call(config, data);
+  };
+
+  const video = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video.mp4' });
+  
+  // Change speed to 1.4
+  await actionHandler.adjustSpeed(video, 1.4);
+  
+  // lastSpeed should be updated in memory for session persistence
+  assert.equal(config.settings.lastSpeed, 1.4, 'lastSpeed should update in memory even with rememberSpeed=false');
+  
+  // No storage saves should occur
+  assert.equal(savedCalls.length, 0, 'No saves should occur when rememberSpeed is false');
+  
+  // Simulate play event (which calls getTargetSpeed)
+  const targetSpeed = video.vsc.getTargetSpeed(video);
+  assert.equal(targetSpeed, 1.4, 'getTargetSpeed should return updated lastSpeed for session persistence');
+  
+  // Restore original save method
+  config.save = originalSave;
+});
+
 runner.test('reset action should work with keyboard event simulation', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();

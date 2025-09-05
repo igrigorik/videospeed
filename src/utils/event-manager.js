@@ -187,6 +187,13 @@ class EventManager {
       return;
     }
 
+    // Ignore external ratechanges during video initialization
+    if (video.readyState < 1) {
+      window.VSC.logger.debug('Ignoring external ratechange during video initialization (readyState < 1)');
+      event.stopImmediatePropagation();
+      return;
+    }
+
     // External change - use adjustSpeed with external source
     const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
 
