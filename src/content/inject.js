@@ -364,6 +364,12 @@ class VideoSpeedExtension {
     }
   });
 
+  // Prevent double injection
+  if (window.VSC_controller && window.VSC_controller.initialized) {
+    window.VSC.logger?.info('VSC already initialized, skipping re-injection');
+    return;
+  }
+
   // Auto-initialize
   extension.initialize().catch((error) => {
     console.error(`Extension initialization failed: ${error.message}`);
