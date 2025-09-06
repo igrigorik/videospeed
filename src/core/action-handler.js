@@ -351,18 +351,36 @@ class ActionHandler {
    * @param {string} options.source - 'internal' (user action) or 'external' (site/other)
    */
   adjustSpeed(video, value, options = {}) {
+    return window.VSC.logger.withContext(video, () => {
+      const { relative = false, source = 'internal' } = options;
+
+      // DEBUG: Log all adjustSpeed calls to trace the mystery
+      window.VSC.logger.debug(`adjustSpeed called: value=${value}, relative=${relative}, source=${source}`);
+      const stack = new Error().stack;
+      const stackLines = stack.split('\n').slice(1, 8); // First 7 stack frames
+      window.VSC.logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
+
+      // Validate input
+      if (!video || !video.vsc) {
+        window.VSC.logger.warn('adjustSpeed called on video without controller');
+        return;
+      }
+
+      if (typeof value !== 'number' || isNaN(value)) {
+        window.VSC.logger.warn('adjustSpeed called with invalid value:', value);
+        return;
+      }
+
+      return this._adjustSpeedInternal(video, value, options);
+    });
+  }
+
+  /**
+   * Internal adjustSpeed implementation (context already set)
+   * @private
+   */
+  _adjustSpeedInternal(video, value, options) {
     const { relative = false, source = 'internal' } = options;
-
-    // Validate input
-    if (!video || !video.vsc) {
-      window.VSC.logger.warn('adjustSpeed called on video without controller');
-      return;
-    }
-
-    if (typeof value !== 'number' || isNaN(value)) {
-      window.VSC.logger.warn('adjustSpeed called with invalid value:', value);
-      return;
-    }
 
     // Show controller for visual feedback when speed is changed
     if (video.vsc?.div && this.eventManager) {
@@ -375,9 +393,11 @@ class ActionHandler {
       // For relative changes, add to current speed
       const currentSpeed = video.playbackRate < 0.1 ? 0.0 : video.playbackRate;
       targetSpeed = currentSpeed + value;
+      window.VSC.logger.debug(`Relative speed calculation: currentSpeed=${currentSpeed} + ${value} = ${targetSpeed}`);
     } else {
       // For absolute changes, use value directly
       targetSpeed = value;
+      window.VSC.logger.debug(`Absolute speed set: ${targetSpeed}`);
     }
 
     // Clamp to valid range
@@ -430,8 +450,8 @@ class ActionHandler {
       new CustomEvent('ratechange', {
         bubbles: true,
         composed: true,
-        detail: { 
-          origin: 'videoSpeed', 
+        detail: {
+          origin: 'videoSpeed',
           speed: speedValue,
           source: source
         },
@@ -448,14 +468,18 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 4. Update global speed preference if rememberSpeed is enabled
+    // 4. Always update page-scoped speed preference
+    window.VSC.logger.debug(`Updating config.settings.lastSpeed from ${this.config.settings.lastSpeed} to ${numericSpeed}`);
+    this.config.settings.lastSpeed = numericSpeed;
+
+    // 5. Save to storage ONLY if rememberSpeed is enabled for cross-session persistence
     if (this.config.settings.rememberSpeed) {
-      this.config.settings.lastSpeed = numericSpeed;
-      
-      // 5. Save to storage for persistence
+      window.VSC.logger.debug(`Saving lastSpeed ${numericSpeed} to Chrome storage`);
       this.config.save({
         lastSpeed: this.config.settings.lastSpeed,
       });
+    } else {
+      window.VSC.logger.debug('NOT saving to storage - rememberSpeed is false');
     }
 
     // 6. Show controller briefly for visual feedback

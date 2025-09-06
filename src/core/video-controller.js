@@ -76,13 +76,13 @@ class VideoController {
     // Always start with current preferred speed (lastSpeed)
     // The difference is whether changes get saved back to lastSpeed
     const targetSpeed = this.config.settings.lastSpeed || 1.0;
-    
+
     if (this.config.settings.rememberSpeed) {
       window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
     } else {
       window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
     }
-    
+
     return targetSpeed;
   }
 
@@ -236,7 +236,7 @@ class VideoController {
           mutation.type === 'attributes' &&
           (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')
         ) {
-          window.VSC.logger.debug('mutation of A/V element');
+          window.VSC.logger.debug('Mutation of A/V element detected');
           const controller = this.div;
           if (!mutation.target.src && !mutation.target.currentSrc) {
             controller.classList.add('vsc-nosource');
