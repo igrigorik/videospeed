@@ -49,17 +49,33 @@ If you would like to help, getting started is easy.
 7. Next, open Chrome/Brave/Chromium and enable developer mode via
    `Settings > Extensions > Manage Extensions` and toggle `Developer mode` in
    the top-right corner.
-8. Click `Load unpacked` and browse to the folder you cloned videospeed to.
-9. Try out your changes, make sure they work as expected
-10. Commit and push your changes to github
+
+8. Install dependencies
 
    ```sh
-   git commit -m "Awesome description of some awesome changes."
-   git push
+   npm install
    ```
 
-11. Open your branch up on the github website then click `New pull request` and
+9. Build the extension
+
+   ```sh
+   npm run build
+   ```
+
+10. Click `Load unpacked` and select the `dist/` folder (the build output).
+
+11. Try out your changes, make sure they work as expected
+
+12. Commit and push your changes to github
+
+```sh
+git commit -m "Awesome description of some awesome changes."
+git push
+```
+
+13. Open your branch up on the github website then click `New pull request` and
     write up a description of your changes.
+
 
 ## Optional
 
