@@ -1,24 +1,3 @@
-.vsc-nosource {
-  display: none !important;
-}
-
-.vsc-hidden {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
-
-.vsc-show {
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: block !important;
-}
-
-.vsc-manual:not(.vsc-hidden) {
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
 vsc-controller {
   /* Default visible state */
   visibility: visible;
@@ -34,14 +13,12 @@ vsc-controller {
 
 /* Origin specific overrides */
 /* YouTube player */
-.ytp-hide-info-bar vsc-controller,
-.ytp-hide-info-bar .vsc-controller {
+.ytp-hide-info-bar vsc-controller {
   position: relative;
   top: 10px;
 }
 
-.ytp-autohide vsc-controller,
-.ytp-autohide .vsc-controller {
+.ytp-autohide vsc-controller {
   visibility: hidden;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
@@ -54,37 +31,32 @@ vsc-controller {
 
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
-.html5-video-player:not(.ytp-hide-info-bar) vsc-controller,
-.html5-video-player:not(.ytp-hide-info-bar) .vsc-controller {
+.html5-video-player:not(.ytp-hide-info-bar) vsc-controller {
   position: relative;
   top: 60px;
 }
 
 /* Facebook player */
-#facebook vsc-controller,
-#facebook .vsc-controller {
+#facebook vsc-controller {
   position: relative;
   top: 40px;
 }
 
 /* Google Photos player */
 /* Inline preview doesn't have any additional hooks, relying on Aria label */
-a[aria-label^="Video"] vsc-controller,
-a[aria-label^="Video"] .vsc-controller {
+a[aria-label^="Video"] vsc-controller {
   position: relative;
   top: 35px;
 }
 
 /* Google Photos full-screen view */
-#player .house-brand vsc-controller,
-#player .house-brand .vsc-controller {
+#player .house-brand vsc-controller {
   position: relative;
   top: 50px;
 }
 
 /* Netflix player */
-#netflix-player:not(.player-cinema-mode) vsc-controller,
-#netflix-player:not(.player-cinema-mode) .vsc-controller {
+#netflix-player:not(.player-cinema-mode) vsc-controller {
   position: relative;
   top: 85px;
 }
@@ -118,20 +90,17 @@ div.legacy-video-player.has_played.vertically_center:before {
 }
 
 /* Fix black overlay on openai.com */
-.Shared-Video-player>vsc-controller,
-.Shared-Video-player>.vsc-controller {
+.Shared-Video-player>vsc-controller {
   height: 0;
 }
 
 /* Fix black overlay on Amazon Prime Video */
-.dv-player-fullscreen vsc-controller,
-.dv-player-fullscreen .vsc-controller {
+.dv-player-fullscreen vsc-controller {
   height: 0;
 }
 
 /* Fix for Google Drive overlay: https://github.com/igrigorik/videospeed/issues/1156 */
-#player .html5-video-container vsc-controller,
-#player .html5-video-container .vsc-controller {
+#player .html5-video-container vsc-controller {
   position: relative;
   top: 10px;
 }
@@ -142,8 +111,7 @@ section[role="tabpanel"][aria-label="Video Player"] {
 
 /* ChatGPT audio controller positioning */
 /* https://chatgpt.com */
-:root[style*='--vsc-domain: "chatgpt.com"'] vsc-controller,
-:root[style*='--vsc-domain: "chatgpt.com"'] .vsc-controller {
+:root[style*='--vsc-domain: "chatgpt.com"'] vsc-controller {
   position: relative !important;
   top: 0px !important;
   left: 35px !important;

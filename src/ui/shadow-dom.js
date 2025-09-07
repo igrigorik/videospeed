@@ -29,6 +29,28 @@ class ShadowDOMManager {
         display: inline-block;
       }
       
+      /* Hide shadow DOM content for different hiding scenarios */
+      :host(.vsc-hidden) #controller,
+      :host(.vsc-nosource) #controller {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      
+      /* Override hiding for manual controllers (unless explicitly hidden) */
+      :host(.vsc-manual:not(.vsc-hidden)) #controller {
+        display: block !important;
+        visibility: visible !important;
+        opacity: ${opacity} !important;
+      }
+      
+      /* Show shadow DOM content when host has vsc-show class (highest priority) */
+      :host(.vsc-show) #controller {
+        display: block !important;
+        visibility: visible !important;
+        opacity: ${opacity} !important;
+      }
+      
       #controller {
         position: absolute;
         top: 0;

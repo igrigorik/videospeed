@@ -101,7 +101,7 @@ class VideoController {
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
     // Create custom element wrapper to avoid CSS conflicts
-    const wrapper = new window.VSC.VSCControllerElement();
+    const wrapper = document.createElement('vsc-controller');
 
     // Apply all CSS classes at once to prevent race condition flash
     const cssClasses = ['vsc-controller'];
@@ -114,13 +114,7 @@ class VideoController {
 
     if (this.config.settings.startHidden || this.shouldStartHidden) {
       cssClasses.push('vsc-hidden');
-      if (this.shouldStartHidden) {
-        window.VSC.logger.debug('Starting controller hidden due to video visibility/size');
-      } else {
-        window.VSC.logger.info(
-          `Controller starting hidden due to startHidden setting: ${this.config.settings.startHidden}`
-        );
-      }
+      window.VSC.logger.debug('Starting controller hidden');
     }
     // When startHidden=false, use natural visibility (no special class needed)
 
@@ -155,9 +149,6 @@ class VideoController {
 
     // Insert into DOM based on site-specific rules
     this.insertIntoDOM(document, wrapper);
-
-    // Debug: Log final classes on controller
-    window.VSC.logger.info(`Controller classes after creation: ${wrapper.className}`);
 
     window.VSC.logger.debug('initializeControls End');
     return wrapper;
