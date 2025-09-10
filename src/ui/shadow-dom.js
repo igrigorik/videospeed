@@ -240,21 +240,65 @@ class ShadowDOMManager {
   }
 
   /**
-   * Calculate position for controller based on video element
+   * Calculate position for controller based on video element and position preference
    * @param {HTMLVideoElement} video - Video element
+   * @param {string} position - Position preference (top-left, top-center, top-right, bottom-left, bottom-center, bottom-right)
    * @returns {Object} Position object with top and left properties
    */
-  static calculatePosition(video) {
+  static calculatePosition(video, position = 'top-left') {
     const rect = video.getBoundingClientRect();
 
     // getBoundingClientRect is relative to the viewport; style coordinates
     // are relative to offsetParent, so we adjust for that here. offsetParent
     // can be null if the video has `display: none` or is not yet in the DOM.
     const offsetRect = video.offsetParent?.getBoundingClientRect();
-    const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
-    const left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
+    
+    const baseTop = rect.top - (offsetRect?.top || 0);
+    const baseLeft = rect.left - (offsetRect?.left || 0);
+    
+    let top, left;
+    
+    switch (position) {
+      case 'top-left':
+        top = Math.max(baseTop, 0);
+        left = Math.max(baseLeft, 0);
+        break;
+        
+      case 'top-center':
+        top = Math.max(baseTop, 0);
+        left = Math.max(baseLeft + (rect.width / 2) - 50, 0); // Approximate controller width offset
+        break;
+        
+      case 'top-right':
+        top = Math.max(baseTop, 0);
+        left = Math.max(baseLeft + rect.width - 100, 0); // Approximate controller width
+        break;
+        
+      case 'bottom-left':
+        top = Math.max(baseTop + rect.height - 30, 0); // Approximate controller height
+        left = Math.max(baseLeft, 0);
+        break;
+        
+      case 'bottom-center':
+        top = Math.max(baseTop + rect.height - 30, 0); // Approximate controller height
+        left = Math.max(baseLeft + (rect.width / 2) - 50, 0); // Approximate controller width offset
+        break;
+        
+      case 'bottom-right':
+        top = Math.max(baseTop + rect.height - 30, 0); // Approximate controller height
+        left = Math.max(baseLeft + rect.width - 100, 0); // Approximate controller width
+        break;
+        
+      default:
+        // Default to top-left
+        top = Math.max(baseTop, 0);
+        left = Math.max(baseLeft, 0);
+    }
 
-    return { top, left };
+    return { 
+      top: `${top}px`, 
+      left: `${left}px` 
+    };
   }
 }
 
