@@ -33,7 +33,6 @@ if (!window.VSC.VideoSpeedConfig) {
         }
 
         // Apply loaded settings
-        this.settings.lastSpeed = Number(storage.lastSpeed);
         this.settings.displayKeyCode = Number(storage.displayKeyCode);
         this.settings.rememberSpeed = Boolean(storage.rememberSpeed);
         this.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
@@ -46,6 +45,7 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.logLevel = Number(
           storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel
         );
+        this.settings.lastSpeed = this.settings.rememberSpeed ? Number(storage.lastSpeed) : 1.0;
 
         // Ensure display binding exists (for upgrades)
         this.ensureDisplayBinding(storage);
