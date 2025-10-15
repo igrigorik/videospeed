@@ -78,6 +78,12 @@ a[aria-label^="Video"] vsc-controller {
   top: 100px !important;
 }
 
+/* Move VSC controller down in YouTube fullscreen to avoid title overlap */
+.ytp-fullscreen vsc-controller {
+  position: relative;
+  top: 40px !important;
+}
+
 /* disable Vimeo video overlay */
 div.video-wrapper+div.target {
   height: 0;
