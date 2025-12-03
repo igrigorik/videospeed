@@ -231,14 +231,14 @@ function createKeyBindings(item) {
 function validate() {
   var valid = true;
   var status = document.getElementById("status");
-  var blacklist = document.getElementById("blacklist");
+  var allowlist = document.getElementById("allowlist");
 
   // Clear any existing timeout for validation errors
   if (window.validationTimeout) {
     clearTimeout(window.validationTimeout);
   }
 
-  blacklist.value.split("\n").forEach((match) => {
+  allowlist.value.split("\n").forEach((match) => {
     match = match.replace(window.VSC.Constants.regStrip, "");
 
     if (match.startsWith("/")) {
@@ -254,7 +254,7 @@ function validate() {
         var regexp = new RegExp(regex, flags);
       } catch (err) {
         status.textContent =
-          "Error: Invalid blacklist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
+          "Error: Invalid allowlist regex: \"" + match + "\". Unable to save. Try wrapping it in foward slashes.";
         status.classList.add("show", "error");
         valid = false;
 
@@ -301,7 +301,7 @@ async function save_options() {
     var controllerOpacity = Number(document.getElementById("controllerOpacity").value);
     var controllerButtonSize = Number(document.getElementById("controllerButtonSize").value);
     var logLevel = parseInt(document.getElementById("logLevel").value);
-    var blacklist = document.getElementById("blacklist").value;
+    var allowlist = document.getElementById("allowlist").value;
 
     // Ensure VideoSpeedConfig singleton is initialized
     if (!window.VSC.videoSpeedConfig) {
@@ -318,7 +318,7 @@ async function save_options() {
       controllerButtonSize: controllerButtonSize,
       logLevel: logLevel,
       keyBindings: keyBindings,
-      blacklist: blacklist.replace(window.VSC.Constants.regStrip, "")
+      allowlist: allowlist.replace(window.VSC.Constants.regStrip, "")
     };
 
     // Save with optimistic UI (like old version)
@@ -362,7 +362,7 @@ async function restore_options() {
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;
     document.getElementById("controllerButtonSize").value = storage.controllerButtonSize;
     document.getElementById("logLevel").value = storage.logLevel;
-    document.getElementById("blacklist").value = storage.blacklist;
+    document.getElementById("allowlist").value = storage.allowlist || '';
 
     // Process key bindings
     const keyBindings = storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;

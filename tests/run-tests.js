@@ -46,7 +46,7 @@ global.chrome = {
           startHidden: false,
           controllerOpacity: 0.3,
           controllerButtonSize: 14,
-          blacklist: "www.instagram.com\nx.com",
+          allowlist: "",
           logLevel: 3
         };
         setTimeout(() => callback(mockData), 10);
@@ -141,7 +141,7 @@ async function runTests() {
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
-      'unit/utils/blacklist-regex.test.js',
+      'unit/utils/allowlist-regex.test.js',
       'unit/utils/event-manager.test.js'
     ];
   } else if (testType === 'integration') {
@@ -164,7 +164,7 @@ async function runTests() {
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
-      'unit/utils/blacklist-regex.test.js',
+      'unit/utils/allowlist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',

@@ -16,14 +16,20 @@ window.VSC.DomUtils.escapeStringRegExp = function (str) {
 };
 
 /**
- * Check if current page is blacklisted
- * @param {string} blacklist - Newline separated list of patterns
- * @returns {boolean} Whether current page is blacklisted
+ * Check if current page is allowed based on allowlist
+ * @param {string} allowlist - Newline separated list of patterns
+ * @returns {boolean} Whether current page is allowed (true if allowlist is empty or matches)
  */
-window.VSC.DomUtils.isBlacklisted = function (blacklist) {
-  let blacklisted = false;
+window.VSC.DomUtils.isAllowed = function (allowlist) {
+  // If allowlist is empty or only whitespace, allow all sites
+  const trimmed = allowlist.replace(window.VSC.Constants.regStrip, '');
+  if (trimmed.length === 0) {
+    return true;
+  }
 
-  blacklist.split('\n').forEach((match) => {
+  let allowed = false;
+
+  allowlist.split('\n').forEach((match) => {
     match = match.replace(window.VSC.Constants.regStrip, '');
     if (match.length === 0) {
       return;
@@ -70,11 +76,11 @@ window.VSC.DomUtils.isBlacklisted = function (blacklist) {
     }
 
     if (regexp.test(location.href)) {
-      blacklisted = true;
+      allowed = true;
     }
   });
 
-  return blacklisted;
+  return allowed;
 };
 
 /**

@@ -23,7 +23,7 @@ class VideoSpeedExtension {
       this.ActionHandler = window.VSC.ActionHandler;
       this.EventManager = window.VSC.EventManager;
       this.logger = window.VSC.logger;
-      this.isBlacklisted = window.VSC.DomUtils.isBlacklisted;
+      this.isAllowed = window.VSC.DomUtils.isAllowed;
       this.initializeWhenReady = window.VSC.DomUtils.initializeWhenReady;
       this.siteHandlerManager = window.VSC.siteHandlerManager;
       this.VideoMutationObserver = window.VSC.VideoMutationObserver;
@@ -42,9 +42,9 @@ class VideoSpeedExtension {
         return;
       }
 
-      // Check if site is blacklisted
-      if (this.isBlacklisted(this.config.settings.blacklist)) {
-        this.logger.info('Site is blacklisted');
+      // Check if site is allowed
+      if (!this.isAllowed(this.config.settings.allowlist)) {
+        this.logger.info('Site is not in allowlist');
         return;
       }
 

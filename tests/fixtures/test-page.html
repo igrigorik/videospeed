@@ -110,11 +110,11 @@
       
       try {
         // Import DOM utils and test them
-        const { isBlacklisted, inIframe, findMediaElements } = await import('../../src/utils/dom-utils.js');
-        
-        // Test blacklist functionality
-        const blacklisted = isBlacklisted('www.instagram.com\nx.com');
-        resultsDiv.textContent += `Blacklist test (should be false): ${!blacklisted ? 'PASS' : 'FAIL'}\n`;
+        const { isAllowed, inIframe, findMediaElements } = await import('../../src/utils/dom-utils.js');
+
+        // Test allowlist functionality (empty allowlist should allow all)
+        const allowed = isAllowed('');
+        resultsDiv.textContent += `Allowlist test (should be true with empty list): ${allowed ? 'PASS' : 'FAIL'}\n`;
         
         // Test iframe detection
         const iframe = inIframe();
