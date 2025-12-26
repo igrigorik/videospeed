@@ -75,12 +75,14 @@ class VideoController {
   getTargetSpeed(media = this.video) {
     // Always start with current preferred speed (lastSpeed)
     // The difference is whether changes get saved back to lastSpeed
-    const targetSpeed = this.config.settings.lastSpeed || 1.0;
+    var targetSpeed = 1.0;
 
     if (this.config.settings.rememberSpeed) {
       window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
+      targetSpeed = this.config.settings.lastSpeed || 1.0;
     } else {
-      window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
+      window.VSC.logger.debug(`No Remember mode: using originSpeed ${1.0} (changes won't be saved)`);
+      targetSpeed = 1.0;
     }
 
     return targetSpeed;
