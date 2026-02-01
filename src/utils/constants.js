@@ -18,8 +18,6 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
   const DEFAULT_SETTINGS = {
     lastSpeed: 1.0, // default 1x
     enabled: true, // default enabled
-
-    displayKeyCode: 86, // default: V
     rememberSpeed: false, // default: false
     forceLastSavedSpeed: false, //default: false
     audioBoolean: true, // default: true (enable audio controller support)

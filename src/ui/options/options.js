@@ -374,7 +374,7 @@ async function restore_options() {
       if (item.predefined) {
         // Handle predefined shortcuts
         if (item["action"] == "display" && typeof item["key"] === "undefined") {
-          item["key"] = storage.displayKeyCode || window.VSC.Constants.DEFAULT_SETTINGS.displayKeyCode;
+          item["key"] = 86; // V
         }
 
         if (window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(item["action"])) {

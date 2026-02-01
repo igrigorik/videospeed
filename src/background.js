@@ -33,6 +33,39 @@ async function initializeIcon() {
 }
 
 /**
+ * Migrate storage to current config version
+ * Removes deprecated keys from older versions
+ */
+async function migrateConfig() {
+  const DEPRECATED_KEYS = [
+    // Removed in v0.9.x
+    'speeds',
+    'version',
+
+    // Migrated to keyBindings array in v0.6.x
+    'resetSpeed',
+    'speedStep',
+    'fastSpeed',
+    'rewindTime',
+    'advanceTime',
+    'resetKeyCode',
+    'slowerKeyCode',
+    'fasterKeyCode',
+    'rewindKeyCode',
+    'advanceKeyCode',
+    'fastKeyCode',
+    'displayKeyCode',
+  ];
+
+  try {
+    await chrome.storage.sync.remove(DEPRECATED_KEYS);
+    console.log('[VSC] Config migrated to current version');
+  } catch (error) {
+    console.error('[VSC] Config migration failed:', error);
+  }
+}
+
+/**
  * Listen for storage changes (extension enabled/disabled)
  */
 chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -56,6 +89,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
  */
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('Video Speed Controller installed/updated');
+  await migrateConfig();
   await initializeIcon();
 });
 
