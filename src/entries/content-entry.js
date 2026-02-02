@@ -4,11 +4,26 @@
  */
 
 import { injectScript, setupMessageBridge } from '../content/injection-bridge.js';
+import { isBlacklisted } from '../utils/blacklist.js';
 
 async function init() {
   try {
-    // Get settings from chrome.storage - these will be injected for page context
     const settings = await chrome.storage.sync.get(null);
+
+    // Early exit if extension is disabled
+    if (settings.enabled === false) {
+      console.debug('[VSC] Extension disabled');
+      return;
+    }
+
+    // Early exit if site is blacklisted
+    if (isBlacklisted(settings.blacklist, location.href)) {
+      console.debug('[VSC] Site blacklisted');
+      return;
+    }
+
+    delete settings.blacklist;
+    delete settings.enabled;
 
     // Bridge settings to page context via DOM (only synchronous path between Chrome's isolated worlds)
     // Script elements with type="application/json" are inert, avoiding site interference and CSP issues

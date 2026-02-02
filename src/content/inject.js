@@ -23,7 +23,6 @@ class VideoSpeedExtension {
       this.ActionHandler = window.VSC.ActionHandler;
       this.EventManager = window.VSC.EventManager;
       this.logger = window.VSC.logger;
-      this.isBlacklisted = window.VSC.DomUtils.isBlacklisted;
       this.initializeWhenReady = window.VSC.DomUtils.initializeWhenReady;
       this.siteHandlerManager = window.VSC.siteHandlerManager;
       this.VideoMutationObserver = window.VSC.VideoMutationObserver;
@@ -32,21 +31,8 @@ class VideoSpeedExtension {
 
       this.logger.info('Video Speed Controller starting...');
 
-      // Load configuration
       this.config = window.VSC.videoSpeedConfig;
       await this.config.load();
-
-      // Check if extension is enabled
-      if (!this.config.settings.enabled) {
-        this.logger.info('Extension is disabled');
-        return;
-      }
-
-      // Check if site is blacklisted
-      if (this.isBlacklisted(this.config.settings.blacklist)) {
-        this.logger.info('Site is blacklisted');
-        return;
-      }
 
       // Initialize site handler
       this.siteHandlerManager.initialize(document);

@@ -140,6 +140,7 @@ async function runTests() {
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
+      'unit/content/content-entry.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js'
@@ -148,7 +149,8 @@ async function runTests() {
     testFiles = [
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',
-      'integration/state-manager-integration.test.js'
+      'integration/state-manager-integration.test.js',
+      'integration/blacklist-blocking.test.js'
     ];
   } else {
     // Run all tests
@@ -163,12 +165,14 @@ async function runTests() {
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
+      'unit/content/content-entry.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',
-      'integration/state-manager-integration.test.js'
+      'integration/state-manager-integration.test.js',
+      'integration/blacklist-blocking.test.js'
     ];
   }
 

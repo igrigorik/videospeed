@@ -4,34 +4,9 @@
  */
 
 import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
-import { loadMinimalModules } from '../../helpers/module-loader.js';
-
-// Load all required modules
-await loadMinimalModules();
+import { isBlacklisted } from '../../../src/utils/blacklist.js';
 
 const runner = new SimpleTestRunner();
-
-runner.beforeEach(() => {
-  // Store original location
-  runner.originalHref = global.location.href;
-});
-
-runner.afterEach(() => {
-  // Restore original location
-  Object.defineProperty(global.location, 'href', {
-    value: runner.originalHref,
-    writable: true,
-    configurable: true
-  });
-});
-
-function setTestURL(url) {
-  Object.defineProperty(global.location, 'href', {
-    value: url,
-    writable: true,
-    configurable: true
-  });
-}
 
 runner.test('should parse regex patterns WITHOUT flags', () => {
   const blacklist = '/(.+)youtube\\.com(\\/*)$/';
@@ -44,8 +19,7 @@ runner.test('should parse regex patterns WITHOUT flags', () => {
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
-    setTestURL(url);
-    const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    const result = isBlacklisted(blacklist, url);
     assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
   });
 });
@@ -61,17 +35,14 @@ runner.test('should parse regex patterns WITH flags', () => {
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
-    setTestURL(url);
-    const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    const result = isBlacklisted(blacklist, url);
     assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
   });
 });
 
 runner.test('should handle simple string patterns', () => {
   const blacklist = 'youtube.com';
-
-  setTestURL('https://www.youtube.com/watch?v=123');
-  const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+  const result = isBlacklisted(blacklist, 'https://www.youtube.com/watch?v=123');
   assert.equal(result, true);
 });
 
@@ -89,8 +60,7 @@ runner.test('should handle multiple blacklist entries with mixed formats', () =>
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
-    setTestURL(url);
-    const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    const result = isBlacklisted(blacklist, url);
     assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'}`);
   });
 });
@@ -100,13 +70,11 @@ runner.test('should handle malformed regex patterns gracefully', () => {
 /[unclosed
 /valid\\.com/`;
 
-  setTestURL('https://valid.com/');
-
   // Should not throw and should match the valid pattern
   let result;
   let threwError = false;
   try {
-    result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    result = isBlacklisted(blacklist, 'https://valid.com/');
   } catch (e) {
     threwError = true;
   }
@@ -117,13 +85,12 @@ runner.test('should handle malformed regex patterns gracefully', () => {
 
 runner.test('should handle empty patterns', () => {
   const blacklist = `
-    
+
 youtube.com
 
 `;
 
-  setTestURL('https://www.youtube.com/');
-  const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+  const result = isBlacklisted(blacklist, 'https://www.youtube.com/');
   assert.equal(result, true);
 });
 
@@ -140,8 +107,7 @@ runner.test('should not match partial domain names (x.com should not match netfl
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
-    setTestURL(url);
-    const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    const result = isBlacklisted(blacklist, url);
     assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
   });
 });
@@ -174,8 +140,7 @@ meet.google.com`;
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
-    setTestURL(url);
-    const result = window.VSC.DomUtils.isBlacklisted(blacklist);
+    const result = isBlacklisted(blacklist, url);
     assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} with user's blacklist`);
   });
 });

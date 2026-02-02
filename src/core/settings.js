@@ -37,11 +37,9 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.rememberSpeed = Boolean(storage.rememberSpeed);
         this.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
         this.settings.audioBoolean = Boolean(storage.audioBoolean);
-        this.settings.enabled = Boolean(storage.enabled);
         this.settings.startHidden = Boolean(storage.startHidden);
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
-        this.settings.blacklist = String(storage.blacklist);
         this.settings.logLevel = Number(
           storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel
         );
