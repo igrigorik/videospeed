@@ -63,6 +63,7 @@ async function build() {
       entryPoints: {
         'content': 'src/entries/content-entry.js',
         'inject': 'src/entries/inject-entry.js',
+        'injector-youtube': 'src/content/injector-youtube.js',
         'background': 'src/background.js',
         'ui/popup/popup': 'src/ui/popup/popup.js',
         'ui/options/options': 'src/ui/options/options.js'
