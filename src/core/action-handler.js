@@ -1,6 +1,6 @@
 /**
  * Action handling system for Video Speed Controller
- * 
+ *
  */
 
 window.VSC = window.VSC || {};
@@ -19,9 +19,9 @@ class ActionHandler {
    */
   runAction(action, value, e) {
     // Use state manager for complete media discovery (includes shadow DOM)
-    const mediaTags = window.VSC.stateManager ?
-      window.VSC.stateManager.getControlledElements() :
-      []; // No fallback - state manager should always be available
+    const mediaTags = window.VSC.stateManager
+      ? window.VSC.stateManager.getControlledElements()
+      : []; // No fallback - state manager should always be available
 
     // Get the controller that was used if called from a button press event
     let targetController = null;
@@ -330,8 +330,9 @@ class ActionHandler {
    */
   isAudioController(controller) {
     // Find associated media element using state manager
-    const mediaElements = window.VSC.stateManager ?
-      window.VSC.stateManager.getControlledElements() : [];
+    const mediaElements = window.VSC.stateManager
+      ? window.VSC.stateManager.getControlledElements()
+      : [];
     for (const media of mediaElements) {
       if (media.vsc && media.vsc.div === controller) {
         return media.tagName === 'AUDIO';
@@ -355,7 +356,9 @@ class ActionHandler {
       const { relative = false, source = 'internal' } = options;
 
       // DEBUG: Log all adjustSpeed calls to trace the mystery
-      window.VSC.logger.debug(`adjustSpeed called: value=${value}, relative=${relative}, source=${source}`);
+      window.VSC.logger.debug(
+        `adjustSpeed called: value=${value}, relative=${relative}, source=${source}`
+      );
       const stack = new Error().stack;
       const stackLines = stack.split('\n').slice(1, 8); // First 7 stack frames
       window.VSC.logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
@@ -393,7 +396,9 @@ class ActionHandler {
       // For relative changes, add to current speed
       const currentSpeed = video.playbackRate < 0.1 ? 0.0 : video.playbackRate;
       targetSpeed = currentSpeed + value;
-      window.VSC.logger.debug(`Relative speed calculation: currentSpeed=${currentSpeed} + ${value} = ${targetSpeed}`);
+      window.VSC.logger.debug(
+        `Relative speed calculation: currentSpeed=${currentSpeed} + ${value} = ${targetSpeed}`
+      );
     } else {
       // For absolute changes, use value directly
       targetSpeed = value;
@@ -423,7 +428,7 @@ class ActionHandler {
   /**
    * Get user's preferred speed (always global lastSpeed)
    * Public method for tests - matches VideoController.getTargetSpeed() logic
-   * @param {HTMLMediaElement} video - Video element (for API compatibility) 
+   * @param {HTMLMediaElement} video - Video element (for API compatibility)
    * @returns {number} Current preferred speed (always lastSpeed regardless of rememberSpeed setting)
    */
   getPreferredSpeed(video) {
@@ -453,7 +458,7 @@ class ActionHandler {
         detail: {
           origin: 'videoSpeed',
           speed: speedValue,
-          source: source
+          source: source,
         },
       })
     );
@@ -469,7 +474,9 @@ class ActionHandler {
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
     // 4. Always update page-scoped speed preference
-    window.VSC.logger.debug(`Updating config.settings.lastSpeed from ${this.config.settings.lastSpeed} to ${numericSpeed}`);
+    window.VSC.logger.debug(
+      `Updating config.settings.lastSpeed from ${this.config.settings.lastSpeed} to ${numericSpeed}`
+    );
     this.config.settings.lastSpeed = numericSpeed;
 
     // 5. Save to storage ONLY if rememberSpeed is enabled for cross-session persistence
@@ -491,8 +498,34 @@ class ActionHandler {
     if (this.eventManager) {
       this.eventManager.refreshCoolDown();
     }
+
+    // 8. Notify background script to update extension badge
+    this.notifySpeedChange(numericSpeed);
   }
 
+  /**
+   * Notify background script of speed change to update extension badge
+   * Uses window.postMessage to communicate through the content script bridge
+   * @param {number} speed - Current playback speed
+   * @private
+   */
+  notifySpeedChange(speed) {
+    try {
+      window.postMessage(
+        {
+          source: 'vsc-page',
+          action: 'runtime-message',
+          data: {
+            type: 'SPEED_CHANGE',
+            speed: speed,
+          },
+        },
+        '*'
+      );
+    } catch (error) {
+      console.error('Failed to notify speed change:', error);
+    }
+  }
 }
 
 // Create singleton instance

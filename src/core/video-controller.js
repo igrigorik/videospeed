@@ -1,6 +1,6 @@
 /**
  * Video Controller class for managing individual video elements
- * 
+ *
  */
 
 window.VSC = window.VSC || {};
@@ -63,6 +63,9 @@ class VideoController {
     if (this.actionHandler && targetSpeed !== this.video.playbackRate) {
       window.VSC.logger.debug('Setting initial speed via adjustSpeed');
       this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
+    } else if (this.actionHandler) {
+      // Speed already matches, but still notify badge to show current speed
+      this.actionHandler.notifySpeedChange(targetSpeed);
     }
   }
 
@@ -78,9 +81,13 @@ class VideoController {
     const targetSpeed = this.config.settings.lastSpeed || 1.0;
 
     if (this.config.settings.rememberSpeed) {
-      window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
+      window.VSC.logger.debug(
+        `Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`
+      );
     } else {
-      window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
+      window.VSC.logger.debug(
+        `Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`
+      );
     }
 
     return targetSpeed;
@@ -211,9 +218,7 @@ class VideoController {
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
 
-    window.VSC.logger.debug(
-      'Added essential media event handlers: play, seeked'
-    );
+    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
   }
 
   /**
