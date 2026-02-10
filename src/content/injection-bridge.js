@@ -30,7 +30,7 @@ export async function injectScript(scriptPath) {
  */
 export function setupMessageBridge() {
   // Listen for messages from the page context (injected script)
-  window.addEventListener('message', (event) => {
+  function handlePageMessage(event) {
     if (event.source !== window || !event.data?.source?.startsWith('vsc-')) {
       return;
     }
@@ -38,26 +38,34 @@ export function setupMessageBridge() {
     const { source, action, data } = event.data;
 
     if (source === 'vsc-page') {
-      // Forward page messages to extension runtime
-      if (action === 'storage-update') {
-        chrome.storage.sync.set(data);
-      } else if (action === 'runtime-message') {
-        // Forward runtime messages
-        if (data.type !== 'VSC_STATE_UPDATE') {
-          chrome.runtime.sendMessage(data);
+      try {
+        // Forward page messages to extension runtime
+        if (action === 'storage-update') {
+          chrome.storage.sync.set(data);
+        } else if (action === 'runtime-message') {
+          // Forward runtime messages
+          if (data.type !== 'VSC_STATE_UPDATE') {
+            chrome.runtime.sendMessage(data);
+          }
+        } else if (action === 'get-storage') {
+          // Page script requesting current storage
+          chrome.storage.sync.get(null, (items) => {
+            window.postMessage({
+              source: 'vsc-content',
+              action: 'storage-data',
+              data: items
+            }, '*');
+          });
         }
-      } else if (action === 'get-storage') {
-        // Page script requesting current storage
-        chrome.storage.sync.get(null, (items) => {
-          window.postMessage({
-            source: 'vsc-content',
-            action: 'storage-data',
-            data: items
-          }, '*');
-        });
+      } catch (e) {
+        // Extension context invalidated (extension reloaded/updated) — clean up
+        if (e.message?.includes('Extension context invalidated')) {
+          window.removeEventListener('message', handlePageMessage);
+        }
       }
     }
-  });
+  }
+  window.addEventListener('message', handlePageMessage);
 
   // Listen for messages from popup/background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

@@ -48,6 +48,9 @@ class VideoSpeedExtension {
         return;
       }
 
+      // Listen for settings changes from options page / popup
+      this.setupStorageListener();
+
       // Initialize site handler
       this.siteHandlerManager.initialize(document);
 
@@ -204,6 +207,25 @@ class VideoSpeedExtension {
     } catch (error) {
       this.logger.error(`Failed to apply domain styles: ${error.message}`);
     }
+  }
+
+  /**
+   * Listen for storage changes and hot-reload settings
+   */
+  setupStorageListener() {
+    window.VSC.StorageManager.onChanged((changes) => {
+      this.logger.debug('Storage changed, updating in-memory settings:', Object.keys(changes));
+      for (const [key, { newValue }] of Object.entries(changes)) {
+        if (key in this.config.settings) {
+          this.config.settings[key] = newValue;
+        }
+      }
+
+      // Update logger verbosity if it changed
+      if (changes.logLevel) {
+        this.logger.setVerbosity(this.config.settings.logLevel);
+      }
+    });
   }
 
   /**
