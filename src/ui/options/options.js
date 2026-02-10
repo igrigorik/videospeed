@@ -296,6 +296,7 @@ async function save_options() {
 
     var rememberSpeed = document.getElementById("rememberSpeed").checked;
     var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
+    var disableSnapToOne = document.getElementById("disableSnapToOne").checked;
     var audioBoolean = document.getElementById("audioBoolean").checked;
     var startHidden = document.getElementById("startHidden").checked;
     var controllerOpacity = Number(document.getElementById("controllerOpacity").value);
@@ -312,6 +313,7 @@ async function save_options() {
     const settingsToSave = {
       rememberSpeed: rememberSpeed,
       forceLastSavedSpeed: forceLastSavedSpeed,
+      disableSnapToOne: disableSnapToOne,
       audioBoolean: audioBoolean,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
@@ -357,6 +359,7 @@ async function restore_options() {
 
     document.getElementById("rememberSpeed").checked = storage.rememberSpeed;
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
+    document.getElementById("disableSnapToOne").checked = storage.disableSnapToOne;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value = storage.controllerOpacity;

@@ -37,6 +37,7 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.displayKeyCode = Number(storage.displayKeyCode);
         this.settings.rememberSpeed = Boolean(storage.rememberSpeed);
         this.settings.forceLastSavedSpeed = Boolean(storage.forceLastSavedSpeed);
+        this.settings.disableSnapToOne = Boolean(storage.disableSnapToOne);
         this.settings.audioBoolean = Boolean(storage.audioBoolean);
         this.settings.enabled = Boolean(storage.enabled);
         this.settings.startHidden = Boolean(storage.startHidden);

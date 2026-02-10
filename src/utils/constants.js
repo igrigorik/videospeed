@@ -22,6 +22,7 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
     displayKeyCode: 86, // default: V
     rememberSpeed: false, // default: false
     forceLastSavedSpeed: false, //default: false
+    disableSnapToOne: false, // default: false (snap to 1.0x when crossing boundary)
     audioBoolean: true, // default: true (enable audio controller support)
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
