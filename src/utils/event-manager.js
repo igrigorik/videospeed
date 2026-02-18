@@ -75,12 +75,6 @@ class EventManager {
 
     this.lastKeyEventSignature = eventSignature;
 
-    // Ignore if following modifier is active
-    if (this.hasActiveModifier(event)) {
-      window.VSC.logger.debug(`Keydown event ignored due to active modifier: ${keyCode}`);
-      return;
-    }
-
     // Ignore keydown event if typing in an input box
     if (this.isTypingContext(event.target)) {
       return false;
@@ -94,7 +88,7 @@ class EventManager {
     }
 
     // Find matching key binding
-    const keyBinding = this.config.settings.keyBindings.find((item) => item.key === keyCode);
+    const keyBinding = this.findMatchingKeyBinding(event, keyCode);
 
     if (keyBinding) {
       this.actionHandler.runAction(keyBinding.action, keyBinding.value, event);
@@ -112,21 +106,77 @@ class EventManager {
   }
 
   /**
-   * Check if any modifier keys are active
+   * Find first matching key binding for event
    * @param {KeyboardEvent} event - Keyboard event
-   * @returns {boolean} True if modifiers are active
+   * @param {number} keyCode - Event keyCode
+   * @returns {Object|undefined} Matching key binding
    * @private
    */
-  hasActiveModifier(event) {
+  findMatchingKeyBinding(event, keyCode) {
+    return this.config.settings.keyBindings.find((item) => this.matchesKeyBinding(item, event, keyCode));
+  }
+
+  /**
+   * Check if key binding matches keyboard event
+   * Backward compatibility:
+   * - Legacy bindings without modifiers ignore Shift and only block Alt/Ctrl/Meta
+   * - New bindings with modifiers require exact modifier match
+   * @param {Object} binding - Key binding
+   * @param {KeyboardEvent} event - Keyboard event
+   * @param {number} keyCode - Event keyCode
+   * @returns {boolean} True if binding matches event
+   * @private
+   */
+  matchesKeyBinding(binding, event, keyCode) {
+    if (!binding || binding.key !== keyCode) {
+      return false;
+    }
+
+    const modifiers = this.getEventModifiers(event);
+
+    if (!binding.modifiers) {
+      return !modifiers.alt && !modifiers.ctrl && !modifiers.meta;
+    }
+
     return (
-      !event.getModifierState ||
-      event.getModifierState('Alt') ||
-      event.getModifierState('Control') ||
-      event.getModifierState('Fn') ||
-      event.getModifierState('Meta') ||
-      event.getModifierState('Hyper') ||
-      event.getModifierState('OS')
+      modifiers.shift === Boolean(binding.modifiers.shift) &&
+      modifiers.ctrl === Boolean(binding.modifiers.ctrl) &&
+      modifiers.alt === Boolean(binding.modifiers.alt) &&
+      modifiers.meta === Boolean(binding.modifiers.meta)
     );
+  }
+
+  /**
+   * Get normalized modifier state for event
+   * @param {KeyboardEvent} event - Keyboard event
+   * @returns {{shift: boolean, ctrl: boolean, alt: boolean, meta: boolean}} Event modifiers
+   * @private
+   */
+  getEventModifiers(event) {
+    if (!event) {
+      return {
+        shift: false,
+        ctrl: false,
+        alt: false,
+        meta: false,
+      };
+    }
+
+    if (event.getModifierState) {
+      return {
+        shift: event.getModifierState('Shift'),
+        ctrl: event.getModifierState('Control'),
+        alt: event.getModifierState('Alt'),
+        meta: event.getModifierState('Meta') || event.getModifierState('OS'),
+      };
+    }
+
+    return {
+      shift: Boolean(event.shiftKey),
+      ctrl: Boolean(event.ctrlKey),
+      alt: Boolean(event.altKey),
+      meta: Boolean(event.metaKey),
+    };
   }
 
   /**

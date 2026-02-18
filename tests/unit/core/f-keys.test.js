@@ -51,12 +51,15 @@ runner.test('F13-F24 keys should be valid key bindings', async () => {
   await config.save({ keyBindings: fKeyBindings });
   await config.load();
 
-  assert.equal(config.settings.keyBindings.length, fKeyBindings.length, 'All F-key bindings should be saved');
+  assert.equal(config.settings.keyBindings.length >= fKeyBindings.length, true,
+    'All F-key bindings should be saved');
 
-  // Verify each F-key binding
+  // Verify each F-key binding exists
   for (let i = 0; i < fKeyBindings.length; i++) {
-    const binding = config.settings.keyBindings[i];
-    assert.equal(binding.key, fKeyBindings[i].key, `F${i + 13} key should be saved correctly`);
+    const expectedBinding = fKeyBindings[i];
+    const binding = config.settings.keyBindings.find((item) => item.key === expectedBinding.key);
+    assert.exists(binding, `F${i + 13} binding should exist`);
+    assert.equal(binding.key, expectedBinding.key, `F${i + 13} key should be saved correctly`);
   }
 });
 
@@ -86,11 +89,12 @@ runner.test('Special keys beyond standard range should be accepted', async () =>
   await config.save({ keyBindings: specialKeyBindings });
   await config.load();
 
-  assert.equal(config.settings.keyBindings.length, specialKeyBindings.length,
+  assert.equal(config.settings.keyBindings.length >= specialKeyBindings.length, true,
     'All special key bindings should be saved');
 
-  specialKeys.forEach((specialKey, index) => {
-    const binding = config.settings.keyBindings[index];
+  specialKeys.forEach((specialKey) => {
+    const binding = config.settings.keyBindings.find((item) => item.key === specialKey.keyCode);
+    assert.exists(binding, `${specialKey.description} binding should exist`);
     assert.equal(binding.key, specialKey.keyCode,
       `${specialKey.description} key should be saved correctly`);
   });
@@ -190,6 +194,146 @@ runner.test('EventManager should handle F-keys correctly', async () => {
   eventManager.handleKeydown(f13Event);
 
   assert.equal(mockVideo.playbackRate, 1.1, 'F13 key should increase speed by 0.1');
+});
+
+runner.test('EventManager should match chord binding with exact modifiers', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+
+  const actionHandler = new window.VSC.ActionHandler(config, null);
+  const eventManager = new window.VSC.EventManager(config, actionHandler);
+  actionHandler.eventManager = eventManager;
+
+  config.settings.keyBindings = [{
+    action: 'faster',
+    key: 80, // P
+    value: 0.2,
+    force: false,
+    predefined: false,
+    modifiers: {
+      shift: true,
+      ctrl: false,
+      alt: false,
+      meta: false
+    }
+  }];
+
+  const mockVideo = {
+    playbackRate: 1.0,
+    paused: false,
+    muted: false,
+    currentTime: 0,
+    duration: 100,
+    classList: {
+      contains: () => false
+    },
+    dispatchEvent: () => { },
+    tagName: 'VIDEO',
+    currentSrc: 'test-chord-video.mp4',
+    src: 'test-chord-video.mp4',
+    isConnected: true
+  };
+
+  const controllerId = 'test-chord-controller';
+  mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
+  window.VSC.stateManager.controllers.set(controllerId, {
+    id: controllerId,
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc,
+    tagName: mockVideo.tagName,
+    created: Date.now(),
+    isActive: true
+  });
+
+  const mockTarget = {
+    nodeName: 'DIV',
+    isContentEditable: false,
+    getRootNode: () => ({ host: null })
+  };
+
+  const createModifierEvent = (modifiers) => ({
+    keyCode: 80,
+    type: 'keydown',
+    timeStamp: Date.now() + Math.random(),
+    target: mockTarget,
+    getModifierState: (modifierName) => {
+      if (modifierName === 'Shift') return Boolean(modifiers.shift);
+      if (modifierName === 'Control') return Boolean(modifiers.ctrl);
+      if (modifierName === 'Alt') return Boolean(modifiers.alt);
+      if (modifierName === 'Meta' || modifierName === 'OS') return Boolean(modifiers.meta);
+      return false;
+    },
+    preventDefault: () => { },
+    stopPropagation: () => { }
+  });
+
+  eventManager.handleKeydown(createModifierEvent({ shift: false, ctrl: false, alt: false, meta: false }));
+  assert.equal(mockVideo.playbackRate, 1.0, 'Plain P should not trigger Shift+P binding');
+
+  eventManager.handleKeydown(createModifierEvent({ shift: true, ctrl: false, alt: false, meta: false }));
+  assert.equal(mockVideo.playbackRate, 1.2, 'Shift+P should trigger chord binding');
+});
+
+runner.test('Legacy binding should remain shift-compatible', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+
+  const actionHandler = new window.VSC.ActionHandler(config, null);
+  const eventManager = new window.VSC.EventManager(config, actionHandler);
+  actionHandler.eventManager = eventManager;
+
+  config.settings.keyBindings = [{
+    action: 'faster',
+    key: 68, // D
+    value: 0.1,
+    force: false,
+    predefined: true
+  }];
+
+  const mockVideo = {
+    playbackRate: 1.0,
+    paused: false,
+    muted: false,
+    currentTime: 0,
+    duration: 100,
+    classList: {
+      contains: () => false
+    },
+    dispatchEvent: () => { },
+    tagName: 'VIDEO',
+    currentSrc: 'test-legacy-video.mp4',
+    src: 'test-legacy-video.mp4',
+    isConnected: true
+  };
+
+  const controllerId = 'test-legacy-controller';
+  mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
+  window.VSC.stateManager.controllers.set(controllerId, {
+    id: controllerId,
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc,
+    tagName: mockVideo.tagName,
+    created: Date.now(),
+    isActive: true
+  });
+
+  const mockTarget = {
+    nodeName: 'DIV',
+    isContentEditable: false,
+    getRootNode: () => ({ host: null })
+  };
+
+  eventManager.handleKeydown({
+    keyCode: 68,
+    type: 'keydown',
+    timeStamp: Date.now(),
+    target: mockTarget,
+    getModifierState: (modifierName) => modifierName === 'Shift',
+    preventDefault: () => { },
+    stopPropagation: () => { }
+  });
+
+  assert.equal(mockVideo.playbackRate, 1.1, 'Legacy D binding should still work with Shift held');
 });
 
 runner.test('Key display names should work for all supported keys', () => {

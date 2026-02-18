@@ -56,6 +56,13 @@ runner.test('DEFAULT_SETTINGS keyBindings should have proper structure', () => {
     assert.equal(typeof binding.value, 'number', `Binding ${index}: value should be number`);
     assert.equal(typeof binding.force, 'boolean', `Binding ${index}: force should be boolean`);
     assert.equal(typeof binding.predefined, 'boolean', `Binding ${index}: predefined should be boolean`);
+
+    if (binding.modifiers !== undefined) {
+      assert.equal(typeof binding.modifiers.shift, 'boolean', `Binding ${index}: modifiers.shift should be boolean`);
+      assert.equal(typeof binding.modifiers.ctrl, 'boolean', `Binding ${index}: modifiers.ctrl should be boolean`);
+      assert.equal(typeof binding.modifiers.alt, 'boolean', `Binding ${index}: modifiers.alt should be boolean`);
+      assert.equal(typeof binding.modifiers.meta, 'boolean', `Binding ${index}: modifiers.meta should be boolean`);
+    }
   });
 });
 
@@ -161,6 +168,84 @@ runner.test('Should handle string force values from legacy storage', async () =>
     assert.equal(typeof binding.force, 'boolean',
       `Binding ${index} force should be boolean, got ${typeof binding.force}`);
   });
+});
+
+runner.test('Should preserve legacy bindings without modifiers', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+
+  const legacyBindings = [
+    { action: 'faster', key: 68, value: 0.1, force: false, predefined: true },
+    { action: 'display', key: 86, value: 0, force: false, predefined: true }
+  ];
+
+  await config.save({ keyBindings: legacyBindings });
+  await config.load();
+
+  const fasterBinding = config.settings.keyBindings.find((binding) => binding.action === 'faster');
+  const displayBinding = config.settings.keyBindings.find((binding) => binding.action === 'display');
+
+  assert.exists(fasterBinding, 'Legacy faster binding should exist');
+  assert.exists(displayBinding, 'Legacy display binding should exist');
+  assert.equal(fasterBinding.modifiers, undefined, 'Legacy binding should not be forced to have modifiers');
+  assert.equal(displayBinding.modifiers, undefined, 'Legacy binding should keep missing modifiers');
+});
+
+runner.test('Should normalize chord modifier values to booleans', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+
+  const chordBindings = [
+    {
+      action: 'pause',
+      key: 80,
+      value: 0,
+      force: false,
+      predefined: false,
+      modifiers: {
+        shift: 1,
+        ctrl: 0,
+        alt: 'true',
+        meta: null
+      }
+    }
+  ];
+
+  await config.save({ keyBindings: chordBindings });
+  await config.load();
+
+  const pauseBinding = config.settings.keyBindings.find((binding) => binding.action === 'pause');
+  assert.exists(pauseBinding, 'Chord binding should exist');
+  assert.exists(pauseBinding.modifiers, 'Chord binding should keep modifiers');
+  assert.equal(pauseBinding.modifiers.shift, true, 'shift modifier should normalize to true');
+  assert.equal(pauseBinding.modifiers.ctrl, false, 'ctrl modifier should normalize to false');
+  assert.equal(pauseBinding.modifiers.alt, true, 'alt modifier should normalize to true');
+  assert.equal(pauseBinding.modifiers.meta, false, 'meta modifier should normalize to false');
+});
+
+runner.test('Should drop empty modifiers object for backward compatibility', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+
+  const plainBindingWithEmptyModifiers = [
+    {
+      action: 'faster',
+      key: 68,
+      value: 0.1,
+      force: false,
+      predefined: true,
+      modifiers: {
+        shift: false,
+        ctrl: false,
+        alt: false,
+        meta: false
+      }
+    }
+  ];
+
+  await config.save({ keyBindings: plainBindingWithEmptyModifiers });
+  await config.load();
+
+  const fasterBinding = config.settings.keyBindings.find((binding) => binding.action === 'faster');
+  assert.exists(fasterBinding, 'Binding should exist');
+  assert.equal(fasterBinding.modifiers, undefined, 'Empty modifiers should be removed');
 });
 
 // Regression Prevention tests

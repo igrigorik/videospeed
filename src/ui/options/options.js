@@ -102,11 +102,78 @@ var keyCodeAliases = {
   222: "'"
 };
 
+function normalizeModifiers(modifiers = {}) {
+  return {
+    shift: Boolean(modifiers.shift),
+    ctrl: Boolean(modifiers.ctrl),
+    alt: Boolean(modifiers.alt),
+    meta: Boolean(modifiers.meta),
+  };
+}
+
+function hasAnyModifier(modifiers = {}) {
+  const normalized = normalizeModifiers(modifiers);
+  return normalized.shift || normalized.ctrl || normalized.alt || normalized.meta;
+}
+
+function getEventModifiers(event) {
+  return normalizeModifiers({
+    shift: event.shiftKey,
+    ctrl: event.ctrlKey,
+    alt: event.altKey,
+    meta: event.metaKey,
+  });
+}
+
+function getKeyDisplayName(keyCode) {
+  return keyCodeAliases[keyCode] ||
+    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
+}
+
+function formatShortcutDisplay(keyCode, modifiers = null) {
+  if (keyCode === null || typeof keyCode === 'undefined') {
+    return 'null';
+  }
+
+  const normalizedModifiers = normalizeModifiers(modifiers || {});
+  const parts = [];
+
+  if (normalizedModifiers.ctrl) {
+    parts.push('Ctrl');
+  }
+  if (normalizedModifiers.alt) {
+    parts.push('Alt');
+  }
+  if (normalizedModifiers.meta) {
+    parts.push('Meta');
+  }
+  if (normalizedModifiers.shift) {
+    parts.push('Shift');
+  }
+
+  parts.push(getKeyDisplayName(keyCode));
+  return parts.join(' + ');
+}
+
+function setShortcutInput(input, keyCode, modifiers = null) {
+  const normalizedModifiers = normalizeModifiers(modifiers || {});
+  input.value = formatShortcutDisplay(keyCode, normalizedModifiers);
+  input.keyCode = keyCode;
+
+  if (hasAnyModifier(normalizedModifiers)) {
+    input.keyModifiers = normalizedModifiers;
+  } else {
+    input.keyModifiers = null;
+  }
+}
+
 function recordKeyPress(e) {
   // Special handling for backspace and escape
   if (e.keyCode === 8) {
     // Clear input when backspace pressed
     e.target.value = "";
+    e.target.keyCode = null;
+    e.target.keyModifiers = null;
     e.preventDefault();
     e.stopPropagation();
     return;
@@ -114,6 +181,7 @@ function recordKeyPress(e) {
     // When esc clicked, clear input
     e.target.value = "null";
     e.target.keyCode = null;
+    e.target.keyModifiers = null;
     e.preventDefault();
     e.stopPropagation();
     return;
@@ -127,10 +195,7 @@ function recordKeyPress(e) {
   }
 
   // Accept all other keys
-  // Use friendly name if available, otherwise show "Key {code}"
-  e.target.value = keyCodeAliases[e.keyCode] ||
-    (e.keyCode >= 48 && e.keyCode <= 90 ? String.fromCharCode(e.keyCode) : `Key ${e.keyCode}`);
-  e.target.keyCode = e.keyCode;
+  setShortcutInput(e.target, e.keyCode, getEventModifiers(e));
 
   e.preventDefault();
   e.stopPropagation();
@@ -150,21 +215,16 @@ function inputFocus(e) {
 
 function inputBlur(e) {
   const keyCode = e.target.keyCode;
-  e.target.value = keyCodeAliases[keyCode] ||
-    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
+  setShortcutInput(e.target, keyCode, e.target.keyModifiers);
 }
 
-function updateShortcutInputText(inputId, keyCode) {
+function updateShortcutInputText(inputId, keyCode, modifiers = null) {
   const input = document.getElementById(inputId);
-  input.value = keyCodeAliases[keyCode] ||
-    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
-  input.keyCode = keyCode;
+  setShortcutInput(input, keyCode, modifiers);
 }
 
-function updateCustomShortcutInputText(inputItem, keyCode) {
-  inputItem.value = keyCodeAliases[keyCode] ||
-    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
-  inputItem.keyCode = keyCode;
+function updateCustomShortcutInputText(inputItem, keyCode, modifiers = null) {
+  setShortcutInput(inputItem, keyCode, modifiers);
 }
 
 
@@ -212,19 +272,27 @@ function add_shortcut() {
 
 function createKeyBindings(item) {
   const action = item.querySelector(".customDo").value;
-  const key = item.querySelector(".customKey").keyCode;
+  const keyInput = item.querySelector(".customKey");
+  const key = keyInput.keyCode;
   const value = Number(item.querySelector(".customValue").value);
   const forceElement = item.querySelector(".customForce");
   const force = forceElement ? forceElement.value : "false";
   const predefined = !!item.id; //item.id ? true : false;
 
-  keyBindings.push({
+  const keyBinding = {
     action: action,
     key: key,
     value: value,
     force: force,
     predefined: predefined
-  });
+  };
+
+  const modifiers = normalizeModifiers(keyInput.keyModifiers || {});
+  if (hasAnyModifier(modifiers)) {
+    keyBinding.modifiers = modifiers;
+  }
+
+  keyBindings.push(keyBinding);
 }
 
 // Validates settings before saving
@@ -390,7 +458,7 @@ async function restore_options() {
 
 
         if (keyInput) {
-          updateCustomShortcutInputText(keyInput, item["key"]);
+          updateCustomShortcutInputText(keyInput, item["key"], item["modifiers"]);
         }
         if (valueInput) {
           valueInput.value = item["value"];
@@ -413,7 +481,8 @@ async function restore_options() {
 
         updateCustomShortcutInputText(
           dom.querySelector(".customKey"),
-          item["key"]
+          item["key"],
+          item["modifiers"]
         );
         dom.querySelector(".customValue").value = item["value"];
         // If force value exists in settings but element doesn't exist, create it

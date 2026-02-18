@@ -23,12 +23,15 @@ if (!window.VSC.VideoSpeedConfig) {
         const storage = await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
 
         // Handle key bindings migration/initialization
-        this.settings.keyBindings =
-          storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
+        this.settings.keyBindings = this.normalizeKeyBindings(
+          storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings
+        );
 
         if (!storage.keyBindings || storage.keyBindings.length === 0) {
           window.VSC.logger.info('First initialization - setting up default key bindings');
-          this.settings.keyBindings = [...window.VSC.Constants.DEFAULT_SETTINGS.keyBindings];
+          this.settings.keyBindings = this.normalizeKeyBindings(
+            window.VSC.Constants.DEFAULT_SETTINGS.keyBindings
+          );
           await this.save({ keyBindings: this.settings.keyBindings });
         }
 
@@ -65,14 +68,19 @@ if (!window.VSC.VideoSpeedConfig) {
      */
     async save(newSettings = {}) {
       try {
+        const normalizedSettings = { ...newSettings };
+        if (Array.isArray(normalizedSettings.keyBindings)) {
+          normalizedSettings.keyBindings = this.normalizeKeyBindings(normalizedSettings.keyBindings);
+        }
+
         // Update in-memory settings immediately
-        this.settings = { ...this.settings, ...newSettings };
+        this.settings = { ...this.settings, ...normalizedSettings };
 
         // Check if this is a speed-only update that should be debounced
-        const keys = Object.keys(newSettings);
+        const keys = Object.keys(normalizedSettings);
         if (keys.length === 1 && keys[0] === 'lastSpeed') {
           // Debounce speed saves
-          this.pendingSave = newSettings.lastSpeed;
+          this.pendingSave = normalizedSettings.lastSpeed;
           
           if (this.saveTimer) {
             clearTimeout(this.saveTimer);
@@ -94,7 +102,7 @@ if (!window.VSC.VideoSpeedConfig) {
         await window.VSC.StorageManager.set(this.settings);
 
         // Update logger verbosity if logLevel was changed
-        if (newSettings.logLevel !== undefined) {
+        if (normalizedSettings.logLevel !== undefined) {
           window.VSC.logger.setVerbosity(this.settings.logLevel);
         }
 
@@ -162,6 +170,52 @@ if (!window.VSC.VideoSpeedConfig) {
           predefined: true,
         });
       }
+    }
+
+    /**
+     * Normalize key bindings for backward-compatible storage and matching
+     * @param {Array<Object>} keyBindings - Key bindings array
+     * @returns {Array<Object>} Normalized key bindings
+     * @private
+     */
+    normalizeKeyBindings(keyBindings) {
+      if (!Array.isArray(keyBindings)) {
+        return [];
+      }
+
+      return keyBindings.map((binding) => this.normalizeKeyBinding(binding));
+    }
+
+    /**
+     * Normalize a single key binding object
+     * @param {Object} binding - Key binding
+     * @returns {Object} Normalized key binding
+     * @private
+     */
+    normalizeKeyBinding(binding) {
+      const normalizedBinding = { ...binding };
+
+      if (binding && binding.modifiers) {
+        const normalizedModifiers = {
+          shift: Boolean(binding.modifiers.shift),
+          ctrl: Boolean(binding.modifiers.ctrl),
+          alt: Boolean(binding.modifiers.alt),
+          meta: Boolean(binding.modifiers.meta),
+        };
+
+        if (
+          normalizedModifiers.shift ||
+          normalizedModifiers.ctrl ||
+          normalizedModifiers.alt ||
+          normalizedModifiers.meta
+        ) {
+          normalizedBinding.modifiers = normalizedModifiers;
+        } else {
+          delete normalizedBinding.modifiers;
+        }
+      }
+
+      return normalizedBinding;
     }
   }
 
