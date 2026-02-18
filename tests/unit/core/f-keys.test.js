@@ -442,6 +442,127 @@ runner.test('Chord binding should take precedence over legacy binding on same ke
   assert.equal(mockVideo.playbackRate, 0.9, 'Plain P should continue to trigger legacy action');
 });
 
+runner.test('Propagation behavior should follow matched binding force for legacy/chord overlap', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+
+  const actionHandler = new window.VSC.ActionHandler(config, null);
+  const eventManager = new window.VSC.EventManager(config, actionHandler);
+  actionHandler.eventManager = eventManager;
+
+  config.settings.keyBindings = [
+    {
+      action: 'faster',
+      key: 80, // P (legacy)
+      value: 0.1,
+      force: true,
+      predefined: true,
+    },
+    {
+      action: 'slower',
+      key: 80, // Shift+P (chord)
+      value: 0.2,
+      force: false,
+      predefined: false,
+      modifiers: {
+        shift: true,
+        ctrl: false,
+        alt: false,
+        meta: false,
+      },
+    },
+  ];
+
+  const mockVideo = {
+    playbackRate: 1.0,
+    paused: false,
+    muted: false,
+    currentTime: 0,
+    duration: 100,
+    classList: {
+      contains: () => false,
+    },
+    dispatchEvent: () => {},
+    tagName: 'VIDEO',
+    currentSrc: 'test-propagation-overlap-video.mp4',
+    src: 'test-propagation-overlap-video.mp4',
+    isConnected: true,
+  };
+
+  const controllerId = 'test-propagation-overlap-controller';
+  mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
+  window.VSC.stateManager.controllers.set(controllerId, {
+    id: controllerId,
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc,
+    tagName: mockVideo.tagName,
+    created: Date.now(),
+    isActive: true,
+  });
+
+  const mockTarget = {
+    nodeName: 'DIV',
+    isContentEditable: false,
+    getRootNode: () => ({ host: null }),
+  };
+
+  const createModifierEvent = (modifiers) => {
+    const eventState = {
+      preventDefaultCount: 0,
+      stopPropagationCount: 0,
+    };
+
+    return {
+      event: {
+        keyCode: 80,
+        type: 'keydown',
+        timeStamp: Date.now() + Math.random(),
+        target: mockTarget,
+        getModifierState: (modifierName) => {
+          if (modifierName === 'Shift') {
+            return Boolean(modifiers.shift);
+          }
+          if (modifierName === 'Control') {
+            return Boolean(modifiers.ctrl);
+          }
+          if (modifierName === 'Alt') {
+            return Boolean(modifiers.alt);
+          }
+          if (modifierName === 'Meta' || modifierName === 'OS') {
+            return Boolean(modifiers.meta);
+          }
+          return false;
+        },
+        preventDefault: () => {
+          eventState.preventDefaultCount += 1;
+        },
+        stopPropagation: () => {
+          eventState.stopPropagationCount += 1;
+        },
+      },
+      eventState,
+    };
+  };
+
+  const shiftEvent = createModifierEvent({ shift: true, ctrl: false, alt: false, meta: false });
+  eventManager.handleKeydown(shiftEvent.event);
+
+  assert.equal(mockVideo.playbackRate, 0.8, 'Shift+P should trigger chord action');
+  assert.equal(shiftEvent.eventState.preventDefaultCount, 0,
+    'Shift+P chord with allow propagation should not prevent default');
+  assert.equal(shiftEvent.eventState.stopPropagationCount, 0,
+    'Shift+P chord with allow propagation should not stop propagation');
+
+  const plainEvent = createModifierEvent({ shift: false, ctrl: false, alt: false, meta: false });
+  eventManager.handleKeydown(plainEvent.event);
+
+  assert.equal(mockVideo.playbackRate, 0.9, 'Plain P should trigger legacy action');
+  assert.equal(plainEvent.eventState.preventDefaultCount, 1,
+    'Plain P legacy with disable propagation should prevent default once');
+  assert.equal(plainEvent.eventState.stopPropagationCount, 1,
+    'Plain P legacy with disable propagation should stop propagation once');
+});
+
 runner.test('Key display names should work for all supported keys', () => {
   // Test that key display logic handles various key types
   const keyCodeAliases = window.VSC?.Constants?.keyCodeAliases || {};
