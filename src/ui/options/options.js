@@ -8,8 +8,8 @@ import '../../utils/constants.js';
 import '../../utils/logger.js';
 
 // Storage and settings - depends on utils  
-import '../../core/storage-manager.js';
 import '../../core/settings.js';
+import '../../core/storage-manager.js';
 
 // Initialize global namespace for options page
 window.VSC = window.VSC || {};
@@ -155,6 +155,25 @@ function formatShortcutDisplay(keyCode, modifiers = null) {
   return parts.join(' + ');
 }
 
+function autoSizeKeyInput(input) {
+  const minWidth = 75;
+  if (!input.value || input.value.length <= 3) {
+    input.style.width = minWidth + 'px';
+    return;
+  }
+  const span = document.createElement('span');
+  span.style.visibility = 'hidden';
+  span.style.position = 'absolute';
+  span.style.font = getComputedStyle(input).font;
+  span.style.whiteSpace = 'nowrap';
+  span.textContent = input.value;
+  document.body.appendChild(span);
+  const textWidth = span.offsetWidth;
+  document.body.removeChild(span);
+  const padding = 26;
+  input.style.width = Math.max(minWidth, textWidth + padding) + 'px';
+}
+
 function setShortcutInput(input, keyCode, modifiers = null) {
   const normalizedModifiers = normalizeModifiers(modifiers || {});
   input.value = formatShortcutDisplay(keyCode, normalizedModifiers);
@@ -165,23 +184,25 @@ function setShortcutInput(input, keyCode, modifiers = null) {
   } else {
     input.keyModifiers = null;
   }
+
+  autoSizeKeyInput(input);
 }
 
 function recordKeyPress(e) {
   // Special handling for backspace and escape
   if (e.keyCode === 8) {
-    // Clear input when backspace pressed
     e.target.value = "";
     e.target.keyCode = null;
     e.target.keyModifiers = null;
+    autoSizeKeyInput(e.target);
     e.preventDefault();
     e.stopPropagation();
     return;
   } else if (e.keyCode === 27) {
-    // When esc clicked, clear input
     e.target.value = "null";
     e.target.keyCode = null;
     e.target.keyModifiers = null;
+    autoSizeKeyInput(e.target);
     e.preventDefault();
     e.stopPropagation();
     return;

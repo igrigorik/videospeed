@@ -61,7 +61,12 @@ html {
   font-size: 1em;
   background-color: var(--md-surface);
   color: var(--md-on-surface);
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Roboto',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -106,7 +111,7 @@ section {
 }
 
 /* First row after heading should have less top margin */
-h3+.row {
+h3 + .row {
   margin-top: 8px;
 }
 
@@ -114,28 +119,27 @@ h3+.row {
   gap: 8px;
   align-items: center;
   display: grid;
-  grid-template-columns: 180px 75px 75px;
+  grid-template-columns: 180px auto 75px;
+  justify-content: start;
   position: relative;
   padding-left: 44px;
 }
 
 /* When advanced features are shown */
 .row.customs:has(.customForce) {
-  grid-template-columns: 180px 75px 75px 200px;
+  grid-template-columns: 180px auto 75px 200px;
 }
-
-
 
 /* Special handling for rows without value inputs */
-.row.customs:has(input[style*="display: none"]) {
-  grid-template-columns: 180px 75px 0;
+.row.customs:has(input[style*='display: none']) {
+  grid-template-columns: 180px auto 0;
 }
 
-.row.customs:has(input[style*="display: none"]):has(.customForce) {
-  grid-template-columns: 180px 75px 0 200px;
+.row.customs:has(input[style*='display: none']):has(.customForce) {
+  grid-template-columns: 180px auto 0 200px;
 }
 
-.row.customs:has(input[style*="display: none"]) .customValue {
+.row.customs:has(input[style*='display: none']) .customValue {
   width: 0;
   padding: 0;
   border: none;
@@ -228,8 +232,8 @@ label em {
 }
 
 /* Material Design text inputs */
-input[type="text"],
-input[type="number"] {
+input[type='text'],
+input[type='number'] {
   padding: 8px 12px;
   border: 1px solid var(--md-outline);
   border-radius: 4px;
@@ -246,6 +250,8 @@ input[type="number"] {
 .customKey {
   color: transparent;
   text-shadow: 0 0 0 var(--md-on-surface);
+  width: 75px;
+  min-width: 75px;
 }
 
 /* Specific input widths */
@@ -254,13 +260,13 @@ input[type="number"] {
   width: 60px;
 }
 
-input[type="text"]:hover,
-input[type="number"]:hover {
+input[type='text']:hover,
+input[type='number']:hover {
   border-color: var(--md-on-surface);
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus {
+input[type='text']:focus,
+input[type='number']:focus {
   outline: none;
   border-color: var(--md-primary);
   box-shadow: 0 0 0 1px var(--md-primary);
@@ -277,7 +283,7 @@ input:disabled {
   background-color: var(--md-surface-variant);
 }
 
-input[type="checkbox"] {
+input[type='checkbox'] {
   width: 20px;
   height: 20px;
   cursor: pointer;
@@ -599,7 +605,7 @@ button:focus-visible {
 }
 
 /* Advanced feature inputs and selects */
-.row.advanced-feature.show input[type="text"],
+.row.advanced-feature.show input[type='text'],
 .row.advanced-feature.show select,
 .row.advanced-feature.show textarea {
   background-color: rgba(255, 235, 59, 0.1);
@@ -607,14 +613,14 @@ button:focus-visible {
   box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
 }
 
-.row.advanced-feature.show input[type="text"]:hover,
+.row.advanced-feature.show input[type='text']:hover,
 .row.advanced-feature.show select:hover,
 .row.advanced-feature.show textarea:hover {
   border-color: rgba(255, 193, 7, 1);
   box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
 }
 
-.row.advanced-feature.show input[type="text"]:focus,
+.row.advanced-feature.show input[type='text']:focus,
 .row.advanced-feature.show select:focus,
 .row.advanced-feature.show textarea:focus {
   border-color: rgba(255, 152, 0, 1);
@@ -622,8 +628,7 @@ button:focus-visible {
 }
 
 @media (prefers-color-scheme: dark) {
-
-  .row.advanced-feature.show input[type="text"],
+  .row.advanced-feature.show input[type='text'],
   .row.advanced-feature.show select,
   .row.advanced-feature.show textarea {
     background-color: rgba(255, 235, 59, 0.08);
@@ -645,7 +650,7 @@ button:focus-visible {
     padding-left: 44px;
   }
 
-  .row.customs>* {
+  .row.customs > * {
     margin-bottom: 8px;
   }
 
@@ -654,7 +659,7 @@ button:focus-visible {
   }
 
   select,
-  input[type="text"] {
+  input[type='text']:not(.customKey) {
     width: 100%;
   }
 
@@ -692,7 +697,9 @@ button::before {
   background-color: currentColor;
   opacity: 0.1;
   transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+  transition:
+    width 0.6s,
+    height 0.6s;
 }
 
 button:active::before {
