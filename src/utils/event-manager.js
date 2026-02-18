@@ -113,7 +113,13 @@ class EventManager {
    * @private
    */
   findMatchingKeyBinding(event, keyCode) {
-    return this.config.settings.keyBindings.find((item) => this.matchesKeyBinding(item, event, keyCode));
+    const keyBindings = this.config?.settings?.keyBindings || [];
+    const modifiers = this.getEventModifiers(event);
+
+    return (
+      keyBindings.find((item) => this.matchesChordKeyBinding(item, modifiers, keyCode)) ||
+      keyBindings.find((item) => this.matchesLegacyKeyBinding(item, modifiers, keyCode))
+    );
   }
 
   /**
@@ -128,14 +134,28 @@ class EventManager {
    * @private
    */
   matchesKeyBinding(binding, event, keyCode) {
+    const modifiers = this.getEventModifiers(event);
+    return (
+      this.matchesChordKeyBinding(binding, modifiers, keyCode) ||
+      this.matchesLegacyKeyBinding(binding, modifiers, keyCode)
+    );
+  }
+
+  /**
+   * Check if chord key binding with explicit modifiers matches
+   * @param {Object} binding - Key binding
+   * @param {{shift: boolean, ctrl: boolean, alt: boolean, meta: boolean}} modifiers - Event modifiers
+   * @param {number} keyCode - Event keyCode
+   * @returns {boolean} True if binding matches event exactly
+   * @private
+   */
+  matchesChordKeyBinding(binding, modifiers, keyCode) {
     if (!binding || binding.key !== keyCode) {
       return false;
     }
 
-    const modifiers = this.getEventModifiers(event);
-
     if (!binding.modifiers) {
-      return !modifiers.alt && !modifiers.ctrl && !modifiers.meta;
+      return false;
     }
 
     return (
@@ -144,6 +164,24 @@ class EventManager {
       modifiers.alt === Boolean(binding.modifiers.alt) &&
       modifiers.meta === Boolean(binding.modifiers.meta)
     );
+  }
+
+  /**
+   * Check if legacy key binding without modifiers matches
+   * Backward compatibility: legacy bindings still ignore Shift,
+   * but do not match when Alt/Ctrl/Meta are active.
+   * @param {Object} binding - Key binding
+   * @param {{shift: boolean, ctrl: boolean, alt: boolean, meta: boolean}} modifiers - Event modifiers
+   * @param {number} keyCode - Event keyCode
+   * @returns {boolean} True if legacy binding matches event
+   * @private
+   */
+  matchesLegacyKeyBinding(binding, modifiers, keyCode) {
+    if (!binding || binding.key !== keyCode || binding.modifiers) {
+      return false;
+    }
+
+    return !modifiers.alt && !modifiers.ctrl && !modifiers.meta;
   }
 
   /**

@@ -3,9 +3,9 @@
  * Verifies that the expanded keyboard handling works correctly
  */
 
-import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
+import { cleanupChromeMock, installChromeMock, resetMockStorage } from '../../helpers/chrome-mock.js';
 import { loadMinimalModules } from '../../helpers/module-loader.js';
+import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
 
 // Load required modules
 await loadMinimalModules([
@@ -334,6 +334,112 @@ runner.test('Legacy binding should remain shift-compatible', async () => {
   });
 
   assert.equal(mockVideo.playbackRate, 1.1, 'Legacy D binding should still work with Shift held');
+});
+
+runner.test('Chord binding should take precedence over legacy binding on same key', async () => {
+  const config = new window.VSC.VideoSpeedConfig();
+  await config.load();
+
+  const actionHandler = new window.VSC.ActionHandler(config, null);
+  const eventManager = new window.VSC.EventManager(config, actionHandler);
+  actionHandler.eventManager = eventManager;
+
+  const originalRunAction = actionHandler.runAction.bind(actionHandler);
+  const firedActions = [];
+  actionHandler.runAction = (action, value, event) => {
+    firedActions.push({ action, value });
+    return originalRunAction(action, value, event);
+  };
+
+  config.settings.keyBindings = [
+    {
+      action: 'faster',
+      key: 80, // P
+      value: 0.1,
+      force: false,
+      predefined: true,
+    },
+    {
+      action: 'slower',
+      key: 80, // Shift+P
+      value: 0.2,
+      force: false,
+      predefined: false,
+      modifiers: {
+        shift: true,
+        ctrl: false,
+        alt: false,
+        meta: false,
+      },
+    },
+  ];
+
+  const mockVideo = {
+    playbackRate: 1.0,
+    paused: false,
+    muted: false,
+    currentTime: 0,
+    duration: 100,
+    classList: {
+      contains: () => false,
+    },
+    dispatchEvent: () => {},
+    tagName: 'VIDEO',
+    currentSrc: 'test-chord-precedence-video.mp4',
+    src: 'test-chord-precedence-video.mp4',
+    isConnected: true,
+  };
+
+  const controllerId = 'test-chord-precedence-controller';
+  mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
+  window.VSC.stateManager.controllers.set(controllerId, {
+    id: controllerId,
+    element: mockVideo,
+    videoSrc: mockVideo.currentSrc,
+    tagName: mockVideo.tagName,
+    created: Date.now(),
+    isActive: true,
+  });
+
+  const mockTarget = {
+    nodeName: 'DIV',
+    isContentEditable: false,
+    getRootNode: () => ({ host: null }),
+  };
+
+  const createModifierEvent = (modifiers) => ({
+    keyCode: 80,
+    type: 'keydown',
+    timeStamp: Date.now() + Math.random(),
+    target: mockTarget,
+    getModifierState: (modifierName) => {
+      if (modifierName === 'Shift') {
+        return Boolean(modifiers.shift);
+      }
+      if (modifierName === 'Control') {
+        return Boolean(modifiers.ctrl);
+      }
+      if (modifierName === 'Alt') {
+        return Boolean(modifiers.alt);
+      }
+      if (modifierName === 'Meta' || modifierName === 'OS') {
+        return Boolean(modifiers.meta);
+      }
+      return false;
+    },
+    preventDefault: () => {},
+    stopPropagation: () => {},
+  });
+
+  eventManager.handleKeydown(createModifierEvent({ shift: true, ctrl: false, alt: false, meta: false }));
+  assert.equal(firedActions.length, 1, 'Shift+P should fire exactly one action');
+  assert.equal(firedActions[0].action, 'slower', 'Shift+P should resolve to chord action only');
+  assert.equal(mockVideo.playbackRate, 0.8, 'Shift+P should trigger chord action, not legacy action');
+
+  eventManager.handleKeydown(createModifierEvent({ shift: false, ctrl: false, alt: false, meta: false }));
+  assert.equal(firedActions.length, 2, 'Plain P should add exactly one more action');
+  assert.equal(firedActions[1].action, 'faster', 'Plain P should resolve to legacy action only');
+  assert.equal(mockVideo.playbackRate, 0.9, 'Plain P should continue to trigger legacy action');
 });
 
 runner.test('Key display names should work for all supported keys', () => {
