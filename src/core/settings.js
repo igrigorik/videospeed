@@ -11,6 +11,32 @@ if (!window.VSC.VideoSpeedConfig) {
       this.pendingSave = null;
       this.saveTimer = null;
       this.SAVE_DELAY = 1000; // 1 second
+
+      // Keep in-memory settings fresh when other contexts write to storage.
+      // This prevents the stale-read problem where e.g. the options page holds
+      // an old lastSpeed while the content script has already updated it.
+      this._setupStorageListener();
+    }
+
+    /**
+     * Listen for storage changes from other contexts and update in-memory state.
+     * @private
+     */
+    _setupStorageListener() {
+      try {
+        window.VSC.StorageManager.onChanged((changes) => {
+          for (const [key, change] of Object.entries(changes)) {
+            if (key in this.settings && change.newValue !== undefined) {
+              this.settings[key] = change.newValue;
+              window.VSC.logger.debug(`Settings refreshed from external change: ${key}`);
+            }
+          }
+        });
+      } catch (e) {
+        // StorageManager may not be fully available yet (e.g. during tests)
+        // This is non-fatal — the listener just won't be active
+        window.VSC.logger.debug(`Could not set up storage change listener: ${e.message}`);
+      }
     }
 
     /**
@@ -60,7 +86,15 @@ if (!window.VSC.VideoSpeedConfig) {
 
     /**
      * Save settings to Chrome storage
-     * @param {Object} newSettings - Settings to save
+     *
+     * IMPORTANT: Only the keys present in newSettings are written to storage.
+     * This avoids the "stale full-blob write" race condition where two contexts
+     * (e.g. options page + content script) each hold their own in-memory copy
+     * and overwrite each other's changes.  chrome.storage.sync.set({key: val})
+     * atomically merges — it updates only the supplied keys and leaves the
+     * rest untouched.
+     *
+     * @param {Object} newSettings - Settings to save (only these keys are written)
      * @returns {Promise<void>}
      */
     async save(newSettings = {}) {
@@ -73,25 +107,26 @@ if (!window.VSC.VideoSpeedConfig) {
         if (keys.length === 1 && keys[0] === 'lastSpeed') {
           // Debounce speed saves
           this.pendingSave = newSettings.lastSpeed;
-          
+
           if (this.saveTimer) {
             clearTimeout(this.saveTimer);
           }
-          
+
           this.saveTimer = setTimeout(async () => {
             const speedToSave = this.pendingSave;
             this.pendingSave = null;
             this.saveTimer = null;
-            
-            await window.VSC.StorageManager.set({ ...this.settings, lastSpeed: speedToSave });
+
+            // Write ONLY lastSpeed — not the full settings blob
+            await window.VSC.StorageManager.set({ lastSpeed: speedToSave });
             window.VSC.logger.info('Debounced speed setting saved successfully');
           }, this.SAVE_DELAY);
-          
+
           return;
         }
 
-        // Immediate save for all other settings
-        await window.VSC.StorageManager.set(this.settings);
+        // Write ONLY the changed keys, not the full settings blob
+        await window.VSC.StorageManager.set(newSettings);
 
         // Update logger verbosity if logLevel was changed
         if (newSettings.logLevel !== undefined) {

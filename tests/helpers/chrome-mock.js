@@ -16,6 +16,9 @@ const mockStorage = {
   logLevel: 3,
 };
 
+// Track onChanged listeners so set() can fire them
+const onChangedListeners = [];
+
 export const chromeMock = {
   storage: {
     sync: {
@@ -25,7 +28,7 @@ export const chromeMock = {
           const result =
             typeof keys === 'object' && keys !== null
               ? Object.keys(keys).reduce((acc, key) => {
-                  acc[key] = mockStorage[key] || keys[key];
+                  acc[key] = mockStorage[key] !== undefined ? mockStorage[key] : keys[key];
                   return acc;
                 }, {})
               : { ...mockStorage };
@@ -33,7 +36,21 @@ export const chromeMock = {
         }, 10);
       },
       set: (items, callback) => {
+        // Build changes object BEFORE mutating storage (mirrors real chrome behavior)
+        const changes = {};
+        for (const [key, newValue] of Object.entries(items)) {
+          changes[key] = { oldValue: mockStorage[key], newValue };
+        }
+
         Object.assign(mockStorage, items);
+
+        // Fire onChanged listeners asynchronously (mirrors real chrome behavior)
+        setTimeout(() => {
+          for (const listener of onChangedListeners) {
+            listener(changes, 'sync');
+          }
+        }, 5);
+
         setTimeout(() => callback && callback(), 10);
       },
       remove: (keys, callback) => {
@@ -47,14 +64,19 @@ export const chromeMock = {
       },
     },
     onChanged: {
-      addListener: (_callback) => {
-        // Mock storage change listener
+      addListener: (callback) => {
+        onChangedListeners.push(callback);
+      },
+      removeListener: (callback) => {
+        const idx = onChangedListeners.indexOf(callback);
+        if (idx !== -1) onChangedListeners.splice(idx, 1);
       },
     },
   },
   runtime: {
     getURL: (path) => `chrome-extension://test-extension/${path}`,
     id: 'test-extension-id',
+    lastError: null,
     onMessage: {
       addListener: (_callback) => {
         // Mock message listener
@@ -114,4 +136,32 @@ export function resetMockStorage() {
     blacklist: 'www.instagram.com\nx.com',
     logLevel: 3,
   });
+  // Clear all onChanged listeners between tests
+  onChangedListeners.length = 0;
+}
+
+/**
+ * Get a direct reference to mock storage for assertions
+ * This lets tests inspect what was actually written without going through get()
+ */
+export function getMockStorage() {
+  return mockStorage;
+}
+
+/**
+ * Write directly to mock storage WITHOUT firing onChanged listeners.
+ * Simulates an external context (e.g. another tab) writing to chrome.storage
+ * and then manually fires onChanged to simulate Chrome's behavior.
+ */
+export function simulateExternalStorageWrite(items) {
+  const changes = {};
+  for (const [key, newValue] of Object.entries(items)) {
+    changes[key] = { oldValue: mockStorage[key], newValue };
+  }
+  Object.assign(mockStorage, items);
+
+  // Fire listeners synchronously for test determinism
+  for (const listener of onChangedListeners) {
+    listener(changes, 'sync');
+  }
 }
