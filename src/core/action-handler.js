@@ -354,12 +354,6 @@ class ActionHandler {
     return window.VSC.logger.withContext(video, () => {
       const { relative = false, source = 'internal' } = options;
 
-      // DEBUG: Log all adjustSpeed calls to trace the mystery
-      window.VSC.logger.debug(`adjustSpeed called: value=${value}, relative=${relative}, source=${source}`);
-      const stack = new Error().stack;
-      const stackLines = stack.split('\n').slice(1, 8); // First 7 stack frames
-      window.VSC.logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
-
       // Validate input
       if (!video || !video.vsc) {
         window.VSC.logger.warn('adjustSpeed called on video without controller');
@@ -441,11 +435,17 @@ class ActionHandler {
     const speedValue = speed.toFixed(2);
     const numericSpeed = Number(speedValue);
 
-    // 1. Set the actual playback rate
+    // 1. Start cooldown FIRST — the playbackRate assignment below triggers a
+    //    native ratechange event synchronously. Without cooldown active,
+    //    handleRateChange would misclassify it as an external site change.
+    if (this.eventManager) {
+      this.eventManager.refreshCoolDown();
+    }
+
+    // 2. Set the actual playback rate (native ratechange fires here, blocked by cooldown)
     video.playbackRate = numericSpeed;
 
-    // 2. Always dispatch synthetic event with source tracking
-    // This allows EventManager to distinguish our changes from external ones
+    // 3. Dispatch synthetic event with source tracking
     video.dispatchEvent(
       new CustomEvent('ratechange', {
         bubbles: true,
@@ -458,7 +458,7 @@ class ActionHandler {
       })
     );
 
-    // 3. Update UI indicator
+    // 4. Update UI indicator
     const speedIndicator = video.vsc?.speedIndicator;
     if (!speedIndicator) {
       window.VSC.logger.warn(
@@ -468,28 +468,19 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 4. Always update page-scoped speed preference
-    window.VSC.logger.debug(`Updating config.settings.lastSpeed from ${this.config.settings.lastSpeed} to ${numericSpeed}`);
+    // 5. Always update page-scoped speed preference
     this.config.settings.lastSpeed = numericSpeed;
 
-    // 5. Save to storage ONLY if rememberSpeed is enabled for cross-session persistence
+    // 6. Save to storage ONLY if rememberSpeed is enabled for cross-session persistence
     if (this.config.settings.rememberSpeed) {
-      window.VSC.logger.debug(`Saving lastSpeed ${numericSpeed} to Chrome storage`);
       this.config.save({
         lastSpeed: this.config.settings.lastSpeed,
       });
-    } else {
-      window.VSC.logger.debug('NOT saving to storage - rememberSpeed is false');
     }
 
-    // 6. Show controller briefly for visual feedback
+    // 7. Show controller briefly for visual feedback
     if (video.vsc?.div) {
       this.blinkController(video.vsc.div);
-    }
-
-    // 7. Refresh cooldown to prevent rapid changes
-    if (this.eventManager) {
-      this.eventManager.refreshCoolDown();
     }
   }
 

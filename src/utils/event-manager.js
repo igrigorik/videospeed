@@ -14,6 +14,10 @@ class EventManager {
 
     // Event deduplication to prevent duplicate key processing
     this.lastKeyEventSignature = null;
+
+    // Fight detection: track how many times a site resets our speed
+    this.fightCount = 0;
+    this.fightTimer = null;
   }
 
   /**
@@ -201,15 +205,11 @@ class EventManager {
       return;
     }
 
-    // Force last saved speed mode - restore authoritative speed for ANY external change
+    // Force last saved speed mode — restore authoritative speed for ANY external change
     if (this.config.settings.forceLastSavedSpeed) {
-      if (event.detail && event.detail.origin === 'videoSpeed') {
-        video.playbackRate = Number(event.detail.speed);
-      } else {
-        const authoritativeSpeed = this.config.settings.lastSpeed || 1.0;
-        window.VSC.logger.info(`Force mode: restoring external ${video.playbackRate} to authoritative ${authoritativeSpeed}`);
-        video.playbackRate = authoritativeSpeed;
-      }
+      const authoritativeSpeed = this.config.settings.lastSpeed || 1.0;
+      window.VSC.logger.info(`Force mode: restoring external ${video.playbackRate} to authoritative ${authoritativeSpeed}`);
+      video.playbackRate = authoritativeSpeed;
       event.stopImmediatePropagation();
       return;
     }
@@ -221,12 +221,11 @@ class EventManager {
       return;
     }
 
-    // External change - use adjustSpeed with external source
+    // External change
     const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
 
-    // Ignore spurious external ratechanges below our supported MIN to avoid persisting clamped 0.07
+    // Ignore spurious external ratechanges below our supported MIN
     const min = window.VSC.Constants.SPEED_LIMITS.MIN;
-    // Use <= to also catch values that Chrome already clamped to MIN (e.g., site set 0)
     if (!isNaN(rawExternalRate) && rawExternalRate <= min) {
       window.VSC.logger.debug(
         `Ignoring external ratechange below MIN: raw=${rawExternalRate}, MIN=${min}`
@@ -235,13 +234,43 @@ class EventManager {
       return;
     }
 
+    // Fight detection: if site changed speed away from what we set, fight back
+    const authoritativeSpeed = this.config.settings.lastSpeed;
+    if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
+      this.fightCount++;
+
+      // Reset fight count after a quiet period
+      if (this.fightTimer) clearTimeout(this.fightTimer);
+      this.fightTimer = setTimeout(() => {
+        this.fightCount = 0;
+        this.fightTimer = null;
+      }, EventManager.FIGHT_WINDOW_MS);
+
+      if (this.fightCount > EventManager.MAX_FIGHT_COUNT) {
+        // Surrender — accept the site's speed
+        window.VSC.logger.info(
+          `Fight detection: surrendering after ${this.fightCount} resets. Accepting site speed ${video.playbackRate}`
+        );
+        this.fightCount = 0;
+        // Fall through to accept the external change below
+      } else {
+        // Fight back — restore our speed
+        window.VSC.logger.info(
+          `Fight detection: attempt ${this.fightCount}/${EventManager.MAX_FIGHT_COUNT}, re-applying ${authoritativeSpeed}`
+        );
+        video.playbackRate = authoritativeSpeed;
+        this.refreshCoolDown();
+        event.stopImmediatePropagation();
+        return;
+      }
+    }
+
     if (this.actionHandler) {
       this.actionHandler.adjustSpeed(video, video.playbackRate, {
         source: 'external',
       });
     }
 
-    // Always stop propagation to prevent loops
     event.stopImmediatePropagation();
   }
 
@@ -318,11 +347,23 @@ class EventManager {
       clearTimeout(this.timer);
       this.timer = null;
     }
+
+    if (this.fightTimer) {
+      clearTimeout(this.fightTimer);
+      this.fightTimer = null;
+    }
+    this.fightCount = 0;
   }
 }
 
 // Cooldown duration (ms) for ratechange handling
 EventManager.COOLDOWN_MS = 200;
+
+// Fight detection: surrender after this many rapid site-initiated resets
+EventManager.MAX_FIGHT_COUNT = 3;
+
+// Fight detection: reset fight count after this quiet period (ms)
+EventManager.FIGHT_WINDOW_MS = 3000;
 
 // Create singleton instance
 window.VSC.EventManager = EventManager;
