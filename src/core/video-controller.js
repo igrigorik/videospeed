@@ -72,7 +72,7 @@ class VideoController {
    * @returns {number} Target speed
    * @private
    */
-  getTargetSpeed(media = this.video) {
+  getTargetSpeed() {
     // Always start with current preferred speed (lastSpeed)
     // The difference is whether changes get saved back to lastSpeed
     const targetSpeed = this.config.settings.lastSpeed || 1.0;

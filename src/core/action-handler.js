@@ -352,8 +352,6 @@ class ActionHandler {
    */
   adjustSpeed(video, value, options = {}) {
     return window.VSC.logger.withContext(video, () => {
-      const { relative = false, source = 'internal' } = options;
-
       // Validate input
       if (!video || !video.vsc) {
         window.VSC.logger.warn('adjustSpeed called on video without controller');
@@ -420,7 +418,7 @@ class ActionHandler {
    * @param {HTMLMediaElement} video - Video element (for API compatibility) 
    * @returns {number} Current preferred speed (always lastSpeed regardless of rememberSpeed setting)
    */
-  getPreferredSpeed(video) {
+  getPreferredSpeed() {
     return this.config.settings.lastSpeed || 1.0;
   }
 

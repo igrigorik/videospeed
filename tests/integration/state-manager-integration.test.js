@@ -172,8 +172,8 @@ runner.test('StateManager handles disconnected elements gracefully', async () =>
   document.body.appendChild(parent);
   parent.appendChild(mockVideo);
 
-  // Create controller
-  const controller = new window.VSC.VideoController(mockVideo, parent, config, actionHandler);
+  // Create controller (constructor registers it with state manager)
+  new window.VSC.VideoController(mockVideo, parent, config, actionHandler);
 
   // Verify controller is tracked
   assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be registered');
