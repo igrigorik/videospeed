@@ -5,7 +5,7 @@
 
 /**
  * Inject a bundled script file into the page context
- * @param {string} scriptPath - Path to the bundled script file  
+ * @param {string} scriptPath - Path to the bundled script file
  * @returns {Promise<void>}
  */
 export async function injectScript(scriptPath) {
@@ -25,12 +25,13 @@ export async function injectScript(scriptPath) {
 }
 
 /**
- * Set up message bridge between content script and page context
- * Handles bi-directional communication for popup and settings updates
+ * Set up message bridge between content script and page context.
+ * Handles bi-directional communication for popup and settings updates.
+ * @returns {Function} cleanup - Call to remove all listeners (useful for tests)
  */
 export function setupMessageBridge() {
-  // Listen for messages from the page context (injected script)
-  window.addEventListener('message', (event) => {
+  // Named function so we can remove it on context invalidation
+  function handlePageMessage(event) {
     if (event.source !== window || !event.data?.source?.startsWith('vsc-')) {
       return;
     }
@@ -38,26 +39,32 @@ export function setupMessageBridge() {
     const { source, action, data } = event.data;
 
     if (source === 'vsc-page') {
-      // Forward page messages to extension runtime
-      if (action === 'storage-update') {
-        chrome.storage.sync.set(data);
-      } else if (action === 'runtime-message') {
-        // Forward runtime messages
-        if (data.type !== 'VSC_STATE_UPDATE') {
-          chrome.runtime.sendMessage(data);
+      try {
+        if (action === 'storage-update') {
+          chrome.storage.sync.set(data);
+        } else if (action === 'runtime-message') {
+          if (data.type !== 'VSC_STATE_UPDATE') {
+            chrome.runtime.sendMessage(data);
+          }
+        } else if (action === 'get-storage') {
+          chrome.storage.sync.get(null, (items) => {
+            window.postMessage({
+              source: 'vsc-content',
+              action: 'storage-data',
+              data: items
+            }, '*');
+          });
         }
-      } else if (action === 'get-storage') {
-        // Page script requesting current storage
-        chrome.storage.sync.get(null, (items) => {
-          window.postMessage({
-            source: 'vsc-content',
-            action: 'storage-data',
-            data: items
-          }, '*');
-        });
+      } catch (e) {
+        if (e.message?.includes('Extension context invalidated')) {
+          window.removeEventListener('message', handlePageMessage);
+        } else {
+          console.warn('[VSC] Bridge error:', e.message);
+        }
       }
     }
-  });
+  }
+  window.addEventListener('message', handlePageMessage);
 
   // Listen for messages from popup/background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -85,7 +92,6 @@ export function setupMessageBridge() {
   // Listen for storage changes from other extension contexts
   chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
-      // Forward storage changes to page context
       const changedData = {};
       for (const [key, { newValue }] of Object.entries(changes)) {
         changedData[key] = newValue;
@@ -97,4 +103,7 @@ export function setupMessageBridge() {
       }, '*');
     }
   });
+
+  // Return cleanup function for teardown (tests, extension unload)
+  return () => window.removeEventListener('message', handlePageMessage);
 }

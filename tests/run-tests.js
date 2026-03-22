@@ -142,6 +142,7 @@ async function runTests() {
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/content/content-entry.test.js',
+      'unit/content/injection-bridge.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js'
@@ -168,6 +169,7 @@ async function runTests() {
       'unit/content/inject.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/content/content-entry.test.js',
+      'unit/content/injection-bridge.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
