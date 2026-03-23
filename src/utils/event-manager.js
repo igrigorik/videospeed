@@ -205,15 +205,6 @@ class EventManager {
       return;
     }
 
-    // Force last saved speed mode — restore authoritative speed for ANY external change
-    if (this.config.settings.forceLastSavedSpeed) {
-      const authoritativeSpeed = this.config.settings.lastSpeed || 1.0;
-      window.VSC.logger.info(`Force mode: restoring external ${video.playbackRate} to authoritative ${authoritativeSpeed}`);
-      video.playbackRate = authoritativeSpeed;
-      event.stopImmediatePropagation();
-      return;
-    }
-
     // Ignore external ratechanges during video initialization
     if (video.readyState < 1) {
       window.VSC.logger.debug('Ignoring external ratechange during video initialization (readyState < 1)');
@@ -221,10 +212,8 @@ class EventManager {
       return;
     }
 
-    // External change
-    const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
-
     // Ignore spurious external ratechanges below our supported MIN
+    const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
     const min = window.VSC.Constants.SPEED_LIMITS.MIN;
     if (!isNaN(rawExternalRate) && rawExternalRate <= min) {
       window.VSC.logger.debug(
@@ -234,8 +223,13 @@ class EventManager {
       return;
     }
 
-    // Fight detection: if site changed speed away from what we set, fight back
+    // Fight detection: if site changed speed away from what we set, fight back.
+    // forceLastSavedSpeed = fight forever (Infinity retries); otherwise surrender after MAX_FIGHT_COUNT.
     const authoritativeSpeed = this.config.settings.lastSpeed;
+    const maxRetries = this.config.settings.forceLastSavedSpeed
+      ? Infinity
+      : EventManager.MAX_FIGHT_COUNT;
+
     if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
       this.fightCount++;
 
@@ -246,7 +240,7 @@ class EventManager {
         this.fightTimer = null;
       }, EventManager.FIGHT_WINDOW_MS);
 
-      if (this.fightCount > EventManager.MAX_FIGHT_COUNT) {
+      if (this.fightCount > maxRetries) {
         // Surrender — accept the site's speed
         window.VSC.logger.info(
           `Fight detection: surrendering after ${this.fightCount} resets. Accepting site speed ${video.playbackRate}`
@@ -256,7 +250,7 @@ class EventManager {
       } else {
         // Fight back — restore our speed
         window.VSC.logger.info(
-          `Fight detection: attempt ${this.fightCount}/${EventManager.MAX_FIGHT_COUNT}, re-applying ${authoritativeSpeed}`
+          `Fight detection: attempt ${this.fightCount}/${maxRetries}, re-applying ${authoritativeSpeed}`
         );
         video.playbackRate = authoritativeSpeed;
         this.refreshCoolDown();

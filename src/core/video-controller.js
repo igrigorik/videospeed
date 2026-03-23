@@ -67,23 +67,21 @@ class VideoController {
   }
 
   /**
-   * Get target speed based on rememberSpeed setting and update reset binding
-   * @param {HTMLMediaElement} media - Optional media element (defaults to this.video)
+   * Get target speed for video initialization and event restoration.
+   * When rememberSpeed is on, resume from persisted lastSpeed.
+   * When off, start fresh at 1.0 — the user opted out of persistence.
    * @returns {number} Target speed
    * @private
    */
   getTargetSpeed() {
-    // Always start with current preferred speed (lastSpeed)
-    // The difference is whether changes get saved back to lastSpeed
-    const targetSpeed = this.config.settings.lastSpeed || 1.0;
-
     if (this.config.settings.rememberSpeed) {
-      window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
-    } else {
-      window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
+      const targetSpeed = this.config.settings.lastSpeed || 1.0;
+      window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed}`);
+      return targetSpeed;
     }
 
-    return targetSpeed;
+    window.VSC.logger.debug('Non-persistent mode: starting at 1.0');
+    return 1.0;
   }
 
   /**

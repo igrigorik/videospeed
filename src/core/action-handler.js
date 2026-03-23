@@ -401,25 +401,20 @@ class ActionHandler {
     // Round to 2 decimal places to avoid floating point issues
     targetSpeed = Number(targetSpeed.toFixed(2));
 
-    // Handle force mode for external changes - restore user preference
-    if (source === 'external' && this.config.settings.forceLastSavedSpeed) {
-      // In force mode, use lastSpeed instead of allowing external change
-      targetSpeed = this.config.settings.lastSpeed || 1.0;
-      window.VSC.logger.debug(`Force mode: blocking external change, restoring to ${targetSpeed}`);
-    }
-
-    // Use the proven setSpeed implementation with source tracking
+    // Note: forceLastSavedSpeed is enforced upstream in fight detection (event-manager.js).
+    // External changes that reach here have already been approved (fight surrendered or speed matched).
     this.setSpeed(video, targetSpeed, source);
   }
 
   /**
-   * Get user's preferred speed (always global lastSpeed)
-   * Public method for tests - matches VideoController.getTargetSpeed() logic
-   * @param {HTMLMediaElement} video - Video element (for API compatibility) 
-   * @returns {number} Current preferred speed (always lastSpeed regardless of rememberSpeed setting)
+   * Get user's preferred speed, respecting rememberSpeed setting.
+   * @returns {number} Preferred speed (lastSpeed when remembering, 1.0 otherwise)
    */
   getPreferredSpeed() {
-    return this.config.settings.lastSpeed || 1.0;
+    if (this.config.settings.rememberSpeed) {
+      return this.config.settings.lastSpeed || 1.0;
+    }
+    return 1.0;
   }
 
   /**
@@ -466,14 +461,15 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 5. Always update page-scoped speed preference
-    this.config.settings.lastSpeed = numericSpeed;
+    // 5. Update lastSpeed only for user-initiated changes — external/site
+    //    speed overrides must not corrupt the user's intended speed.
+    if (source !== 'external') {
+      this.config.settings.lastSpeed = numericSpeed;
 
-    // 6. Save to storage ONLY if rememberSpeed is enabled for cross-session persistence
-    if (this.config.settings.rememberSpeed) {
-      this.config.save({
-        lastSpeed: this.config.settings.lastSpeed,
-      });
+      // 6. Persist to storage only if rememberSpeed is enabled
+      if (this.config.settings.rememberSpeed) {
+        this.config.save({ lastSpeed: numericSpeed });
+      }
     }
 
     // 7. Show controller briefly for visual feedback
