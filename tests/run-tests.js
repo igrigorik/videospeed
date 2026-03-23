@@ -146,6 +146,7 @@ async function runTests() {
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'unit/utils/logger.test.js',
+      'unit/ui/drag-and-reset.test.js',
       'unit/content/injection-bridge.test.js'
     ];
   } else if (testType === 'integration') {
@@ -174,6 +175,7 @@ async function runTests() {
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'unit/utils/logger.test.js',
+      'unit/ui/drag-and-reset.test.js',
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',
       'integration/state-manager-integration.test.js',

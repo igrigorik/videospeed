@@ -97,6 +97,7 @@ class ShadowDOMManager {
         text-align: center;
         vertical-align: middle;
         box-sizing: border-box;
+        touch-action: none;
       }
       
       .draggable:active {
