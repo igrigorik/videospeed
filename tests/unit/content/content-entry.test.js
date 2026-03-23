@@ -75,4 +75,115 @@ runner.test('enabled extension on non-blacklisted site should proceed', () => {
   assert.equal(keys.includes('lastSpeed'), true, 'lastSpeed should remain');
 });
 
+// --- Lifecycle watcher logic (mirrors content-entry.js storage.onChanged handler) ---
+
+runner.test('blacklist change matching current site should trigger teardown', () => {
+  // Simulate the logic in content-entry.js onChanged handler
+  const currentHref = 'https://www.youtube.com/watch?v=123';
+  const changes = {
+    blacklist: { newValue: 'youtube.com\nnetflix.com' }
+  };
+
+  const nowBlacklisted = 'blacklist' in changes &&
+    isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.true(nowBlacklisted, 'should detect site is now blacklisted');
+});
+
+runner.test('blacklist change NOT matching current site should not trigger teardown', () => {
+  const currentHref = 'https://www.example.com/page';
+  const changes = {
+    blacklist: { newValue: 'youtube.com\nnetflix.com' }
+  };
+
+  const nowBlacklisted = 'blacklist' in changes &&
+    isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.false(nowBlacklisted, 'should not trigger teardown for unrelated site');
+});
+
+runner.test('enabled=false change should trigger teardown', () => {
+  const changes = {
+    enabled: { newValue: false }
+  };
+
+  const nowDisabled = 'enabled' in changes && changes.enabled.newValue === false;
+
+  assert.true(nowDisabled, 'should detect extension is now disabled');
+});
+
+runner.test('enabled=true change should not trigger teardown', () => {
+  const changes = {
+    enabled: { newValue: true }
+  };
+
+  const nowDisabled = 'enabled' in changes && changes.enabled.newValue === false;
+
+  assert.false(nowDisabled, 'should not trigger teardown when re-enabled');
+});
+
+runner.test('unrelated storage change should not trigger teardown', () => {
+  const currentHref = 'https://www.example.com/page';
+  const changes = {
+    lastSpeed: { newValue: 2.5 }
+  };
+
+  const nowDisabled = 'enabled' in changes && changes.enabled.newValue === false;
+  const nowBlacklisted = 'blacklist' in changes &&
+    isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.false(nowDisabled, 'speed change should not disable');
+  assert.false(nowBlacklisted, 'speed change should not blacklist');
+});
+
+// --- Reinit logic (mirrors content-entry.js storage.onChanged handler) ---
+
+runner.test('enabled=true change should trigger reinit', () => {
+  const changes = {
+    enabled: { newValue: true }
+  };
+
+  const reEnabled = 'enabled' in changes && changes.enabled.newValue === true;
+
+  assert.true(reEnabled, 'should detect extension was re-enabled');
+});
+
+runner.test('site removed from blacklist should trigger reinit', () => {
+  const currentHref = 'https://www.youtube.com/watch?v=123';
+  const changes = {
+    blacklist: { newValue: 'netflix.com' }  // youtube removed from list
+  };
+
+  const unblacklisted = 'blacklist' in changes &&
+    !isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.true(unblacklisted, 'should detect site is no longer blacklisted');
+});
+
+runner.test('blacklist change that still includes current site should not trigger reinit', () => {
+  const currentHref = 'https://www.youtube.com/watch?v=123';
+  const changes = {
+    blacklist: { newValue: 'youtube.com\nnetflix.com' }
+  };
+
+  const unblacklisted = 'blacklist' in changes &&
+    !isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.false(unblacklisted, 'should not reinit when site is still blacklisted');
+});
+
+runner.test('unrelated storage change should not trigger reinit', () => {
+  const currentHref = 'https://www.example.com/page';
+  const changes = {
+    lastSpeed: { newValue: 2.5 }
+  };
+
+  const reEnabled = 'enabled' in changes && changes.enabled.newValue === true;
+  const unblacklisted = 'blacklist' in changes &&
+    !isBlacklisted(changes.blacklist.newValue, currentHref);
+
+  assert.false(reEnabled, 'speed change should not re-enable');
+  assert.false(unblacklisted, 'speed change should not un-blacklist');
+});
+
 export { runner };

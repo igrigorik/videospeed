@@ -27,7 +27,7 @@ export async function injectScript(scriptPath) {
 /**
  * Set up message bridge between content script and page context.
  * Handles bi-directional communication for popup and settings updates.
- * @returns {Function} cleanup - Call to remove all listeners (useful for tests)
+ * @returns {{ sendCommand: (type: string, payload?: any) => void, cleanup: () => void }}
  */
 export function setupMessageBridge() {
   // Named function so we can remove it on context invalidation
@@ -103,10 +103,17 @@ export function setupMessageBridge() {
   }
   chrome.storage.onChanged.addListener(handleStorageChanged);
 
-  // Return cleanup function for teardown (tests, extension unload)
-  return () => {
-    window.removeEventListener('message', handlePageMessage);
-    chrome.runtime.onMessage.removeListener?.(handleRuntimeMessage);
-    chrome.storage.onChanged.removeListener?.(handleStorageChanged);
+  return {
+    /** Send a command to the page context via the same channel popup messages use. */
+    sendCommand(type, payload) {
+      window.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: { type, payload } }));
+    },
+
+    /** Remove all listeners (tests, extension unload). */
+    cleanup() {
+      window.removeEventListener('message', handlePageMessage);
+      chrome.runtime.onMessage.removeListener?.(handleRuntimeMessage);
+      chrome.storage.onChanged.removeListener?.(handleStorageChanged);
+    },
   };
 }

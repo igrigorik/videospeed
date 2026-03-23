@@ -35,7 +35,31 @@ async function init() {
     await injectScript('inject.js');
 
     // Set up bi-directional message bridge for popup ↔ page communication
-    setupMessageBridge();
+    const bridge = setupMessageBridge();
+
+    // Lifecycle watcher: tear down or reinit when blacklist/enabled changes.
+    // The content script is the lifecycle owner — it gates initialization above,
+    // and it gates teardown/reinit here, using the same bridge the popup uses for commands.
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace !== 'sync') return;
+
+      const disabled = 'enabled' in changes && changes.enabled.newValue === false;
+      const blacklisted = 'blacklist' in changes &&
+        isBlacklisted(changes.blacklist.newValue, location.href);
+
+      if (disabled || blacklisted) {
+        bridge.sendCommand('VSC_TEARDOWN');
+        return;
+      }
+
+      const reEnabled = 'enabled' in changes && changes.enabled.newValue === true;
+      const unblacklisted = 'blacklist' in changes &&
+        !isBlacklisted(changes.blacklist.newValue, location.href);
+
+      if (reEnabled || unblacklisted) {
+        bridge.sendCommand('VSC_REINIT');
+      }
+    });
 
   } catch (error) {
     console.error('[VSC] Failed to initialize:', error);

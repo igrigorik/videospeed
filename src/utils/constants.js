@@ -69,6 +69,8 @@ meet.google.com`.replace(regStrip, ''),
     ADJUST_SPEED: 'VSC_ADJUST_SPEED',
     RESET_SPEED: 'VSC_RESET_SPEED',
     TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
+    TEARDOWN: 'VSC_TEARDOWN',
+    REINIT: 'VSC_REINIT',
   };
 
   const SPEED_LIMITS = {

@@ -8,7 +8,7 @@ import { SimpleTestRunner, assert, wait } from '../../helpers/test-utils.js';
 import { setupMessageBridge } from '../../../src/content/injection-bridge.js';
 
 const runner = new SimpleTestRunner();
-let cleanup;
+let bridge;
 
 runner.beforeEach(() => {
   installChromeMock();
@@ -17,8 +17,8 @@ runner.beforeEach(() => {
 });
 
 runner.afterEach(() => {
-  if (cleanup) cleanup();
-  cleanup = null;
+  if (bridge) bridge.cleanup();
+  bridge = null;
   cleanupChromeMock();
 });
 
@@ -40,7 +40,7 @@ runner.test('storage-update forwards to chrome.storage.sync.set', async () => {
   let setData = null;
   chrome.storage.sync.set = (data) => { setData = data; };
 
-  cleanup = setupMessageBridge();
+  bridge = setupMessageBridge();
   postPageMessage('storage-update', { lastSpeed: 2.5 });
   await wait(20);
 
@@ -52,7 +52,7 @@ runner.test('runtime-message filters out VSC_STATE_UPDATE', async () => {
   let sendCalled = false;
   chrome.runtime.sendMessage = () => { sendCalled = true; };
 
-  cleanup = setupMessageBridge();
+  bridge = setupMessageBridge();
   postPageMessage('runtime-message', { type: 'VSC_STATE_UPDATE' });
   await wait(20);
 
@@ -66,7 +66,7 @@ runner.test('Extension context invalidated removes the message listener', async 
     throw new Error('Extension context invalidated');
   };
 
-  cleanup = setupMessageBridge();
+  bridge = setupMessageBridge();
 
   // First message triggers invalidation — listener should self-remove
   postPageMessage('storage-update', { lastSpeed: 2.0 });
@@ -89,7 +89,7 @@ runner.test('non-invalidation errors keep the listener alive', async () => {
     if (callCount === 1) throw new Error('QUOTA_BYTES_PER_ITEM quota exceeded');
   };
 
-  cleanup = setupMessageBridge();
+  bridge = setupMessageBridge();
 
   // First message throws quota error — listener should survive
   postPageMessage('storage-update', { lastSpeed: 2.0 });
@@ -100,6 +100,38 @@ runner.test('non-invalidation errors keep the listener alive', async () => {
   await wait(20);
 
   assert.equal(callCount, 2, 'listener should still be active after non-invalidation error');
+});
+
+// --- sendCommand API ---
+
+runner.test('sendCommand dispatches VSC_MESSAGE CustomEvent to page context', async () => {
+  bridge = setupMessageBridge();
+
+  let received = null;
+  window.addEventListener('VSC_MESSAGE', (event) => {
+    received = event.detail;
+  }, { once: true });
+
+  bridge.sendCommand('VSC_TEARDOWN');
+  await wait(20);
+
+  assert.exists(received, 'VSC_MESSAGE event should have been dispatched');
+  assert.equal(received.type, 'VSC_TEARDOWN', 'type should match');
+});
+
+runner.test('sendCommand includes payload when provided', async () => {
+  bridge = setupMessageBridge();
+
+  let received = null;
+  window.addEventListener('VSC_MESSAGE', (event) => {
+    received = event.detail;
+  }, { once: true });
+
+  bridge.sendCommand('VSC_SET_SPEED', { speed: 2.0 });
+  await wait(20);
+
+  assert.exists(received, 'VSC_MESSAGE event should have been dispatched');
+  assert.equal(received.payload.speed, 2.0, 'payload should be forwarded');
 });
 
 export { runner as injectionBridgeTestRunner };

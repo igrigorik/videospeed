@@ -246,6 +246,44 @@ class VideoSpeedExtension {
   }
 
   /**
+   * Tear down the extension: remove all controllers, stop observers, clean up listeners.
+   * Counterpart to initialize() — leaves the page as if VSC was never active.
+   */
+  teardown() {
+    if (!this.initialized) return;
+
+    this.logger.info('Tearing down Video Speed Controller');
+
+    // Remove all controllers from tracked media elements
+    const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
+    for (const video of videos) {
+      if (video.vsc) video.vsc.remove();
+    }
+
+    // Stop observing DOM for new videos
+    if (this.mutationObserver) {
+      this.mutationObserver.stop();
+      this.mutationObserver = null;
+    }
+
+    // Remove keyboard/ratechange listeners
+    if (this.eventManager) {
+      this.eventManager.cleanup();
+      this.eventManager = null;
+    }
+
+    // Clean up site-specific handlers
+    if (this.siteHandlerManager) {
+      this.siteHandlerManager.cleanup();
+    }
+
+    this.actionHandler = null;
+    this.mediaObserver = null;
+    this.initialized = false;
+    window.VSC.initialized = false;
+  }
+
+  /**
    * Handle removed video element
    * @param {HTMLMediaElement} video - Video element
    */
@@ -343,6 +381,14 @@ class VideoSpeedExtension {
           if (extension.actionHandler) {
             extension.actionHandler.runAction('display', null, null);
           }
+          break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.TEARDOWN:
+          extension.teardown();
+          break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.REINIT:
+          extension.initialize();
           break;
       }
     }
