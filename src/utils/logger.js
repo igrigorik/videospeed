@@ -10,14 +10,25 @@ if (!window.VSC.logger) {
       this.verbosity = 3; // Default warning level
       this.defaultLevel = 4; // Default info level
       this.contextStack = []; // Stack for nested contexts
+      this._buffer = []; // Holds messages logged before verbosity is configured
+      this._ready = false; // True once setVerbosity() has been called with user prefs
     }
 
     /**
-     * Set logging verbosity level
+     * Set logging verbosity level and flush any buffered messages.
+     * Called once config.load() has the user's logLevel preference.
      * @param {number} level - Log level from LOG_LEVELS constants
      */
     setVerbosity(level) {
       this.verbosity = level;
+      if (!this._ready) {
+        this._ready = true;
+        const pending = this._buffer;
+        this._buffer = [];
+        for (const entry of pending) {
+          this._emit(entry.message, entry.level);
+        }
+      }
     }
 
     /**
@@ -102,32 +113,47 @@ if (!window.VSC.logger) {
      */
     log(message, level) {
       const logLevel = typeof level === 'undefined' ? this.defaultLevel : level;
-      const LOG_LEVELS = window.VSC.Constants.LOG_LEVELS;
 
-      if (this.verbosity >= logLevel) {
-        const context = this.generateContext();
-        const contextualMessage = `${context}${message}`;
-        
-        switch (logLevel) {
-          case LOG_LEVELS.ERROR:
-            console.log(`ERROR:${contextualMessage}`);
-            break;
-          case LOG_LEVELS.WARNING:
-            console.log(`WARNING:${contextualMessage}`);
-            break;
-          case LOG_LEVELS.INFO:
-            console.log(`INFO:${contextualMessage}`);
-            break;
-          case LOG_LEVELS.DEBUG:
-            console.log(`DEBUG:${contextualMessage}`);
-            break;
-          case LOG_LEVELS.VERBOSE:
-            console.log(`DEBUG (VERBOSE):${contextualMessage}`);
-            console.trace();
-            break;
-          default:
-            console.log(contextualMessage);
-        }
+      if (!this._ready) {
+        this._buffer.push({ message, level: logLevel });
+        return;
+      }
+
+      this._emit(message, logLevel);
+    }
+
+    /**
+     * Emit a log message to console (only called after verbosity is configured)
+     * @param {string} message - Message to log
+     * @param {number} logLevel - Resolved log level
+     * @private
+     */
+    _emit(message, logLevel) {
+      if (this.verbosity < logLevel) return;
+
+      const LOG_LEVELS = window.VSC.Constants.LOG_LEVELS;
+      const context = this.generateContext();
+      const contextualMessage = `${context}${message}`;
+
+      switch (logLevel) {
+        case LOG_LEVELS.ERROR:
+          console.log(`ERROR:${contextualMessage}`);
+          break;
+        case LOG_LEVELS.WARNING:
+          console.log(`WARNING:${contextualMessage}`);
+          break;
+        case LOG_LEVELS.INFO:
+          console.log(`INFO:${contextualMessage}`);
+          break;
+        case LOG_LEVELS.DEBUG:
+          console.log(`DEBUG:${contextualMessage}`);
+          break;
+        case LOG_LEVELS.VERBOSE:
+          console.log(`DEBUG (VERBOSE):${contextualMessage}`);
+          console.trace();
+          break;
+        default:
+          console.log(contextualMessage);
       }
     }
 

@@ -53,9 +53,8 @@ class VideoSpeedExtension {
       this.logger.info('Video Speed Controller initialized successfully');
       this.initialized = true;
     } catch (error) {
-      console.error(`❌ Failed to initialize Video Speed Controller: ${error.message}`);
-      console.error('📋 Full error details:', error);
-      console.error('🔍 Error stack:', error.stack);
+      this.logger.error(`Failed to initialize Video Speed Controller: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
     }
   }
 
@@ -242,7 +241,6 @@ class VideoSpeedExtension {
         shouldStartHidden
       );
     } catch (error) {
-      console.error('💥 Failed to attach controller to video:', error);
       this.logger.error(`Failed to attach controller to video: ${error.message}`);
     }
   }
@@ -358,7 +356,6 @@ class VideoSpeedExtension {
 
   // Auto-initialize
   extension.initialize().catch((error) => {
-    console.error(`Extension initialization failed: ${error.message}`);
     window.VSC.logger.error(`Extension initialization failed: ${error.message}`);
   });
 

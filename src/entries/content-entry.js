@@ -12,13 +12,11 @@ async function init() {
 
     // Early exit if extension is disabled
     if (settings.enabled === false) {
-      console.debug('[VSC] Extension disabled');
       return;
     }
 
     // Early exit if site is blacklisted
     if (isBlacklisted(settings.blacklist, location.href)) {
-      console.debug('[VSC] Site blacklisted');
       return;
     }
 
@@ -39,7 +37,6 @@ async function init() {
     // Set up bi-directional message bridge for popup ↔ page communication
     setupMessageBridge();
 
-    console.debug('[VSC] Content script initialized');
   } catch (error) {
     console.error('[VSC] Failed to initialize:', error);
   }
