@@ -385,6 +385,12 @@ class ActionHandler {
       // For relative changes, add to current speed
       const currentSpeed = video.playbackRate < 0.1 ? 0.0 : video.playbackRate;
       targetSpeed = currentSpeed + value;
+
+      // Snap to 1.0x when crossing the 1.0 boundary
+      if ((currentSpeed > 1.0 && targetSpeed < 1.0) || (currentSpeed < 1.0 && targetSpeed > 1.0)) {
+        targetSpeed = 1.0;
+      }
+
       window.VSC.logger.debug(`Relative speed calculation: currentSpeed=${currentSpeed} + ${value} = ${targetSpeed}`);
     } else {
       // For absolute changes, use value directly
