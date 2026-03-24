@@ -42,8 +42,6 @@ class ActionHandler {
         return;
       }
 
-      this.eventManager.showController(controller);
-
       if (!v.classList.contains('vsc-cancelled')) {
         this.executeAction(action, value, v, e);
       }
@@ -96,33 +94,30 @@ class ActionHandler {
           return;
         }
 
-        controller.classList.add('vsc-manual');
+        // Clear any pending flash timer before toggling
+        if (controller.flashTimer !== undefined) {
+          clearTimeout(controller.flashTimer);
+          controller.flashTimer = undefined;
+        }
+
         controller.classList.toggle('vsc-hidden');
 
-        // Clear any pending timers that might interfere with manual toggle
-        // This prevents delays when manually hiding/showing the controller
-        if (controller.blinkTimeOut !== undefined) {
-          clearTimeout(controller.blinkTimeOut);
-          controller.blinkTimeOut = undefined;
-        }
-
-        // Also clear EventManager timer if it exists
-        if (this.eventManager && this.eventManager.timer) {
-          clearTimeout(this.eventManager.timer);
-          this.eventManager.timer = null;
-        }
-
-        // Remove vsc-show class immediately when manually hiding
         if (controller.classList.contains('vsc-hidden')) {
+          // User is hiding — mark as manual, remove flash override
+          controller.classList.add('vsc-manual');
           controller.classList.remove('vsc-show');
-          window.VSC.logger.debug('Removed vsc-show class for immediate manual hide');
+        } else if (!this.config.settings.startHidden) {
+          // User is showing and startHidden=false — clear manual flag
+          // Controller returns to fully automatic behavior
+          controller.classList.remove('vsc-manual');
         }
+        // When startHidden=true and showing: vsc-manual stays (permits future flashing)
         break;
       }
 
       case 'blink':
         window.VSC.logger.debug('Showing controller momentarily');
-        this.blinkController(video.vsc.div, value);
+        this.flashController(video.vsc.div, value);
         break;
 
       case 'drag':
@@ -209,11 +204,6 @@ class ActionHandler {
    * @param {number} target - Target speed (usually 1.0)
    */
   resetSpeed(video, target) {
-    // Show controller for visual feedback (will be shown by adjustSpeed but we can show it early)
-    if (video.vsc?.div && this.eventManager) {
-      this.eventManager.showController(video.vsc.div);
-    }
-
     if (!video.vsc) {
       window.VSC.logger.warn('resetSpeed called on video without controller');
       return;
@@ -300,38 +290,45 @@ class ActionHandler {
   }
 
   /**
-   * Show controller briefly
+   * Flash controller briefly for visual feedback.
+   * Single entry point for all temporary visibility — replaces both
+   * blinkController and EventManager.showController.
    * @param {HTMLElement} controller - Controller element
-   * @param {number} duration - Duration in ms (default 1000)
+   * @param {number} duration - Duration in ms (default 2000)
    */
-  blinkController(controller, duration) {
-    // Don't hide audio controllers after blinking - audio elements are often invisible by design
-    // but should maintain visible controllers for user interaction
+  flashController(controller, duration) {
+    // When startHidden is enabled, only flash if user has manually shown
+    // this controller (vsc-manual flag). This prevents unwanted appearances.
+    if (this.config.settings.startHidden && !controller.classList.contains('vsc-manual')) {
+      window.VSC.logger.debug('flashController skipped: startHidden and no vsc-manual');
+      return;
+    }
+
     const isAudioController = this.isAudioController(controller);
 
-    // Always clear any existing timeout first
-    if (controller.blinkTimeOut !== undefined) {
-      clearTimeout(controller.blinkTimeOut);
-      controller.blinkTimeOut = undefined;
+    // Always clear any existing timer first (timer invariant: one per controller)
+    if (controller.flashTimer !== undefined) {
+      clearTimeout(controller.flashTimer);
+      controller.flashTimer = undefined;
     }
 
     // Add vsc-show class to temporarily show controller
-    // This overrides vsc-hidden via CSS specificity
+    // This overrides vsc-hidden and vsc-autohide via CSS source order
     controller.classList.add('vsc-show');
     window.VSC.logger.debug('Showing controller temporarily with vsc-show class');
 
     // For audio controllers, don't set timeout to hide again
     if (!isAudioController) {
-      controller.blinkTimeOut = setTimeout(
+      controller.flashTimer = setTimeout(
         () => {
           controller.classList.remove('vsc-show');
-          controller.blinkTimeOut = undefined;
-          window.VSC.logger.debug('Removing vsc-show class after timeout');
+          controller.flashTimer = undefined;
+          window.VSC.logger.debug('Removing vsc-show class after flash timeout');
         },
-        duration ? duration : 2500
+        duration || 2000
       );
     } else {
-      window.VSC.logger.debug('Audio controller blink - keeping vsc-show class');
+      window.VSC.logger.debug('Audio controller flash - keeping vsc-show class');
     }
   }
 
@@ -386,11 +383,6 @@ class ActionHandler {
    */
   _adjustSpeedInternal(video, value, options) {
     const { relative = false, source = 'internal' } = options;
-
-    // Show controller for visual feedback when speed is changed
-    if (video.vsc?.div && this.eventManager) {
-      this.eventManager.showController(video.vsc.div);
-    }
 
     // Calculate target speed
     let targetSpeed;
@@ -491,9 +483,9 @@ class ActionHandler {
       }
     }
 
-    // 7. Show controller briefly for visual feedback
+    // 7. Flash controller briefly for visual feedback
     if (video.vsc?.div) {
-      this.blinkController(video.vsc.div);
+      this.flashController(video.vsc.div);
     }
   }
 

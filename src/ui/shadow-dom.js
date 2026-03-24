@@ -36,14 +36,21 @@ class ShadowDOMManager {
         visibility: hidden !important;
         opacity: 0 !important;
       }
-      
+
+      /* YouTube autohide — fade with player controls */
+      :host(.vsc-autohide) #controller {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
       /* Override hiding for manual controllers (unless explicitly hidden) */
       :host(.vsc-manual:not(.vsc-hidden)) #controller {
         display: block !important;
         visibility: visible !important;
         opacity: ${opacity} !important;
       }
-      
+
       /* Show shadow DOM content when host has vsc-show class (highest priority) */
       :host(.vsc-show) #controller {
         display: block !important;

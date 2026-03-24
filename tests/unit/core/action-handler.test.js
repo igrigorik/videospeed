@@ -270,12 +270,12 @@ runner.test('ActionHandler should toggle display visibility', async () => {
   assert.true(controller.classList.contains('vsc-hidden'));
   assert.true(controller.classList.contains('vsc-manual'));
 
-  // Second toggle - should show
+  // Second toggle - should show, vsc-manual cleared (startHidden=false)
   actionHandler.runAction('display', null, null);
   assert.false(controller.classList.contains('vsc-hidden'));
-  assert.true(controller.classList.contains('vsc-manual'));
+  assert.false(controller.classList.contains('vsc-manual'));
 
-  // Third toggle - should hide again
+  // Third toggle - should hide again, vsc-manual re-added
   actionHandler.runAction('display', null, null);
   assert.true(controller.classList.contains('vsc-hidden'));
   assert.true(controller.classList.contains('vsc-manual'));

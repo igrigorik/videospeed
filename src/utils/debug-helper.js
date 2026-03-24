@@ -153,12 +153,16 @@ class DebugHelper {
       const isHidden = controller.classList.contains('vsc-hidden');
       const isManual = controller.classList.contains('vsc-manual');
       const hasNoSource = controller.classList.contains('vsc-nosource');
+      const isAutohide = controller.classList.contains('vsc-autohide');
+      const isShow = controller.classList.contains('vsc-show');
 
       console.log('VSC State:', {
         hidden: isHidden,
         manual: isManual,
         noSource: hasNoSource,
-        effectivelyVisible: !isHidden && style.display !== 'none',
+        autohide: isAutohide,
+        show: isShow,
+        effectivelyVisible: !isHidden && !isAutohide && style.display !== 'none',
       });
 
       // Find associated video
@@ -287,14 +291,9 @@ class DebugHelper {
 
     const controllers = document.querySelectorAll('vsc-controller');
     controllers.forEach((controller, index) => {
-      // Remove all hiding classes
-      controller.classList.remove('vsc-hidden', 'vsc-nosource');
+      // Remove all hiding classes and rely on vsc-show for visibility
+      controller.classList.remove('vsc-hidden', 'vsc-nosource', 'vsc-autohide');
       controller.classList.add('vsc-manual', 'vsc-show');
-
-      // Force visibility styles
-      controller.style.display = 'block !important';
-      controller.style.visibility = 'visible !important';
-      controller.style.opacity = '1 !important';
 
       console.log(`Controller #${index + 1} forced visible`);
     });
@@ -315,14 +314,9 @@ class DebugHelper {
       if (audio.vsc && audio.vsc.div) {
         const controller = audio.vsc.div;
 
-        // Remove all hiding classes
-        controller.classList.remove('vsc-hidden', 'vsc-nosource');
+        // Remove all hiding classes and rely on vsc-show for visibility
+        controller.classList.remove('vsc-hidden', 'vsc-nosource', 'vsc-autohide');
         controller.classList.add('vsc-manual', 'vsc-show');
-
-        // Force visibility styles
-        controller.style.display = 'block !important';
-        controller.style.visibility = 'visible !important';
-        controller.style.opacity = '1 !important';
 
         console.log(`Audio controller #${index + 1} forced visible`);
         controllersShown++;
@@ -377,6 +371,8 @@ class DebugHelper {
               classes: target.className,
               hidden: target.classList.contains('vsc-hidden'),
               manual: target.classList.contains('vsc-manual'),
+              autohide: target.classList.contains('vsc-autohide'),
+              show: target.classList.contains('vsc-show'),
             });
           }
         }

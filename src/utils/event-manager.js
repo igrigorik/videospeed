@@ -10,7 +10,6 @@ class EventManager {
     this.actionHandler = actionHandler;
     this.listeners = new Map();
     this.coolDown = false;
-    this.timer = null;
 
     // Event deduplication to prevent duplicate key processing
     this.lastKeyEventSignature = null;
@@ -318,37 +317,6 @@ class EventManager {
   }
 
   /**
-   * Show controller temporarily during speed changes or other automatic actions
-   * @param {Element} controller - Controller element
-   */
-  showController(controller) {
-    // When startHidden is enabled, only show temporary feedback if the user has
-    // previously interacted with this controller manually (vsc-manual class)
-    // This prevents unwanted controller appearances on pages where user wants them hidden
-    if (this.config.settings.startHidden && !controller.classList.contains('vsc-manual')) {
-      window.VSC.logger.info(
-        `Controller respecting startHidden setting - no temporary display (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
-      );
-      return;
-    }
-
-    window.VSC.logger.info(
-      `Showing controller temporarily (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
-    );
-    controller.classList.add('vsc-show');
-
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-
-    this.timer = setTimeout(() => {
-      controller.classList.remove('vsc-show');
-      this.timer = null;
-      window.VSC.logger.debug('Hiding controller');
-    }, 2000);
-  }
-
-  /**
    * Clean up all event listeners
    */
   cleanup() {
@@ -367,11 +335,6 @@ class EventManager {
     if (this.coolDown) {
       clearTimeout(this.coolDown);
       this.coolDown = false;
-    }
-
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
     }
 
     if (this.fightTimer) {

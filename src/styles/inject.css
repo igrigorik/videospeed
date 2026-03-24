@@ -18,17 +18,6 @@ vsc-controller {
   top: 10px;
 }
 
-.ytp-autohide vsc-controller {
-  visibility: hidden;
-  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-}
-
-.ytp-autohide .vsc-show {
-  visibility: visible;
-  opacity: 1;
-}
-
 /* YouTube embedded player */
 /* e.g. https://www.igvita.com/2012/09/12/web-fonts-performance-making-pretty-fast/ */
 .html5-video-player:not(.ytp-hide-info-bar) vsc-controller {
