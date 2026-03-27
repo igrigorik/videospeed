@@ -28,8 +28,10 @@
  */
 export function createRow(container, columns, data = {}, opts = {}) {
   const row = document.createElement('div');
-  row.className = 'row' + (opts.className ? ' ' + opts.className : '');
-  if (opts.id) row.id = opts.id;
+  row.className = `row${opts.className ? ` ${opts.className}` : ''}`;
+  if (opts.id) {
+    row.id = opts.id;
+  }
 
   for (const col of columns) {
     let el;
@@ -43,22 +45,26 @@ export function createRow(container, columns, data = {}, opts = {}) {
         opt.textContent = label;
         el.appendChild(opt);
       }
-      if (data[col.key] != null) el.value = data[col.key];
-
+      if (data[col.key] !== null && data[col.key] !== undefined) {
+        el.value = data[col.key];
+      }
     } else if (col.type === 'checkbox') {
       el = document.createElement('input');
       el.type = 'checkbox';
       el.className = col.className;
       el.checked = data[col.key] ?? col.default ?? false;
-
     } else {
       // 'text' or any other input type
       el = document.createElement('input');
       el.type = col.inputType || 'text';
       el.className = col.className;
-      if (col.placeholder) el.placeholder = col.placeholder;
+      if (col.placeholder) {
+        el.placeholder = col.placeholder;
+      }
       const val = data[col.key] ?? col.default;
-      if (val != null) el.value = val;
+      if (val !== null && val !== undefined) {
+        el.value = val;
+      }
     }
 
     row.appendChild(el);

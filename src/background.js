@@ -7,10 +7,10 @@ async function updateIcon(enabled) {
     const suffix = enabled ? '' : '_disabled';
     await chrome.action.setIcon({
       path: {
-        "19": `assets/icons/icon19${suffix}.png`,
-        "38": `assets/icons/icon38${suffix}.png`,
-        "48": `assets/icons/icon48${suffix}.png`
-      }
+        19: `assets/icons/icon19${suffix}.png`,
+        38: `assets/icons/icon38${suffix}.png`,
+        48: `assets/icons/icon48${suffix}.png`,
+      },
     });
     console.log(`Icon updated: ${enabled ? 'enabled' : 'disabled'}`);
   } catch (error) {
@@ -76,8 +76,11 @@ async function migrateConfig() {
 // use the legacy keyCode fallback path in event-manager.js.
 
 import {
-  PREDEFINED_CODE_MAP, KEYCODE_TO_CODE, displayKeyFromCode,
-  PREDEFINED_ACTIONS, DEFAULT_BINDINGS,
+  PREDEFINED_CODE_MAP,
+  KEYCODE_TO_CODE,
+  displayKeyFromCode,
+  PREDEFINED_ACTIONS,
+  DEFAULT_BINDINGS,
 } from './utils/key-maps.js';
 
 /**
@@ -104,7 +107,7 @@ async function migrateKeyBindingsV2() {
 
     // Idempotency: skip if already fully migrated.
     // Don't trust schemaVersion alone — verify bindings actually have code fields.
-    if (storage.schemaVersion === 2 && bindings.every(b => b.code !== undefined)) {
+    if (storage.schemaVersion === 2 && bindings.every((b) => b.code !== undefined)) {
       console.log('[VSC] Migration: already at v2, skipping');
       return;
     }
@@ -113,9 +116,11 @@ async function migrateKeyBindingsV2() {
     let customCount = 0;
     let unmappableCount = 0;
 
-    const migrated = bindings.map(binding => {
+    const migrated = bindings.map((binding) => {
       // Per-binding idempotency: skip if already has code field
-      if (binding.code !== undefined) return binding;
+      if (binding.code !== undefined) {
+        return binding;
+      }
 
       const legacyKey = binding.key;
 
@@ -145,7 +150,9 @@ async function migrateKeyBindingsV2() {
 
       // Phase 3: Unmappable keyCodes (0, null, 255, OEM-specific, etc.)
       unmappableCount++;
-      console.info(`[VSC] Migration: unmappable keyCode ${legacyKey} for action "${binding.action}"`);
+      console.info(
+        `[VSC] Migration: unmappable keyCode ${legacyKey} for action "${binding.action}"`
+      );
       return {
         ...binding,
         code: null,
@@ -155,7 +162,7 @@ async function migrateKeyBindingsV2() {
     });
 
     // Phase 4: Ensure all 9 predefined actions exist
-    const existingActions = new Set(migrated.map(b => b.action));
+    const existingActions = new Set(migrated.map((b) => b.action));
     for (const action of PREDEFINED_ACTIONS) {
       if (!existingActions.has(action)) {
         const defaults = DEFAULT_BINDINGS[action];
@@ -174,7 +181,9 @@ async function migrateKeyBindingsV2() {
       schemaVersion: 2,
     });
 
-    console.log(`[VSC] Migration: ${predefinedCount} predefined, ${customCount} custom (${unmappableCount} unmappable)`);
+    console.log(
+      `[VSC] Migration: ${predefinedCount} predefined, ${customCount} custom (${unmappableCount} unmappable)`
+    );
   } catch (error) {
     console.error('[VSC] Key binding migration failed:', error);
   }
@@ -192,7 +201,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 /**
  * Handle messages from popup
  */
-chrome.runtime.onMessage.addListener((message, sender) => {
+chrome.runtime.onMessage.addListener((message, _sender) => {
   if (message.type === 'EXTENSION_TOGGLE') {
     // Update icon when extension is toggled via popup
     updateIcon(message.enabled);
