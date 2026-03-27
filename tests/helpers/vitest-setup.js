@@ -12,6 +12,21 @@ import { loadInjectModules } from './module-loader.js';
 // Install Chrome extension API mock
 installChromeMock();
 
+// Silence console output during tests — production code logs (INFO, WARNING,
+// console.warn for bridge errors) create noise. Tests that need to verify
+// console output should spy on it explicitly.
+const noop = () => {};
+const originalConsole = { ...console };
+globalThis.console = {
+  ...originalConsole,
+  log: noop,
+  info: noop,
+  warn: noop,
+  debug: noop,
+  // Keep console.error visible — test failures should be loud
+  error: originalConsole.error,
+};
+
 // Stub APIs missing from jsdom
 if (typeof globalThis.requestIdleCallback === 'undefined') {
   globalThis.requestIdleCallback = (fn) => setTimeout(fn, 0);
