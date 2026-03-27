@@ -22,13 +22,13 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
   getControllerPosition(parent, _video) {
     // Facebook requires deep DOM traversal due to complex nesting
     // This is a monstrosity but new FB design does not have semantic handles
-    let targetParent = parent;
+    let targetParent;
 
     try {
       targetParent =
         parent.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement
           .parentElement;
-    } catch (e) {
+    } catch {
       window.VSC.logger.warn('Facebook DOM structure changed, using fallback positioning');
       targetParent = parent.parentElement;
     }

@@ -41,7 +41,7 @@ function compilePattern(raw) {
         return null;
       }
       return new RegExp(regex, flags);
-    } catch (err) {
+    } catch {
       return null;
     }
   }

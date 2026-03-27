@@ -165,7 +165,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
             const iframeVideos = iframeDoc.querySelectorAll('video');
             videos.push(...Array.from(iframeVideos));
           }
-        } catch (e) {
+        } catch {
           // Cross-origin iframe, ignore
         }
       });

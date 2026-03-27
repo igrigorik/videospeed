@@ -41,7 +41,7 @@ export function isBlacklisted(blacklist, href) {
           continue;
         }
         regexp = new RegExp(regex, flags);
-      } catch (err) {
+      } catch {
         continue;
       }
     } else {

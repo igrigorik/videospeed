@@ -138,12 +138,7 @@ export async function waitForExtension(page, timeout = 15000) {
         const hasVideoController = !!document.querySelector('video')?.vsc;
 
         // Debug logging in browser
-        if (
-          hasVSC ||
-          hasVSCController ||
-          hasController ||
-          hasVideoController
-        ) {
+        if (hasVSC || hasVSCController || hasController || hasVideoController) {
           console.log('Extension detected:', {
             hasVSC,
             hasVSCController,
@@ -152,19 +147,14 @@ export async function waitForExtension(page, timeout = 15000) {
           });
         }
 
-        return (
-          hasVSC ||
-          hasVSCController ||
-          hasController ||
-          hasVideoController
-        );
+        return hasVSC || hasVSCController || hasController || hasVideoController;
       },
       { timeout, polling: 1000 }
     );
 
     console.log('   ✅ Extension detected after waiting');
     return true;
-  } catch (error) {
+  } catch {
     console.log(`   ⚠️  Extension not detected within ${timeout}ms`);
 
     // Debug what's actually on the page
@@ -218,7 +208,7 @@ export async function waitForVideo(page, selector = 'video', timeout = 15000) {
 
     console.log('   📹 Video element found and ready');
     return true;
-  } catch (error) {
+  } catch {
     console.log(`   ⚠️  Video not ready within ${timeout}ms`);
     return false;
   }
@@ -250,7 +240,7 @@ export async function waitForController(page, timeout = 10000) {
       console.log('   ⚠️  Controller found but shadow DOM not ready');
       return false;
     }
-  } catch (error) {
+  } catch {
     console.log(`   ⚠️  Video speed controller not found within ${timeout}ms`);
     return false;
   }
@@ -309,7 +299,7 @@ export async function controlVideo(page, action) {
       console.log(`   ❌ Button not found for action: ${action}`);
       return false;
     }
-  } catch (error) {
+  } catch {
     console.log(`   ❌ Failed to perform action: ${action}`);
     return false;
   }
@@ -330,7 +320,7 @@ export async function testKeyboardShortcut(page, key) {
 
     console.log(`   ⌨️  Pressed key: ${key}`);
     return true;
-  } catch (error) {
+  } catch {
     console.log(`   ❌ Failed to press key: ${key}`);
     return false;
   }

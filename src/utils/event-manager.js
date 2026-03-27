@@ -39,7 +39,7 @@ class EventManager {
       if (window.VSC.inIframe()) {
         docs.push(window.top.document);
       }
-    } catch (e) {
+    } catch {
       // Cross-origin iframe - ignore
     }
 

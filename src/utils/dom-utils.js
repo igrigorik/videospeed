@@ -12,7 +12,7 @@ window.VSC.DomUtils = {};
 window.VSC.DomUtils.inIframe = function () {
   try {
     return window.self !== window.top;
-  } catch (e) {
+  } catch {
     return true;
   }
 };

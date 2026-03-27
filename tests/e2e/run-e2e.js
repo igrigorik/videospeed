@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 // Check if Puppeteer is available
 try {
   await import('puppeteer');
-} catch (error) {
+} catch {
   console.error('❌ Puppeteer not found. Install it with: npm install puppeteer');
   console.error('   Note: Puppeteer will download a Chrome binary (~170MB)');
   process.exit(1);
@@ -29,7 +29,7 @@ async function runE2ETests() {
 
   // Determine which tests to run based on command line argument
   const testType = process.argv[2];
-  let testFiles = [];
+  let testFiles;
 
   if (testType === 'youtube') {
     testFiles = ['youtube.e2e.js'];

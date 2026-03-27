@@ -33,7 +33,7 @@ describe('ModuleIntegration', () => {
       expect(window.VSC.EventManager).toBeDefined();
       expect(window.VSC.siteHandlerManager).toBeDefined();
     } catch (error) {
-      throw new Error(`Module import failed: ${error.message}`);
+      throw new Error(`Module import failed: ${error.message}`, { cause: error });
     }
   });
 
