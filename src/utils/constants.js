@@ -11,6 +11,7 @@ import {
 import { DEFAULT_CONTROLLER_CSS } from '../styles/controller-css-defaults.js';
 
 window.VSC = window.VSC || {};
+
 window.VSC.Constants = {};
 
 if (!window.VSC.Constants.DEFAULT_SETTINGS) {

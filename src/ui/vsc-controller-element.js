@@ -1,35 +1,10 @@
 /**
- * Custom element for the video speed controller
- * Uses Web Components to avoid CSS conflicts with page styles
+ * The <vsc-controller> element is used as an unregistered custom element.
+ * Browsers allow any hyphenated tag name via document.createElement() without
+ * calling customElements.define(). This avoids conflicts with third-party
+ * custom-elements-es5-adapter polyfills that monkey-patch customElements.define()
+ * and break native ES6 class constructors (see #1458).
+ *
+ * No registration is needed — CSS selectors, querySelector, shadow DOM, and
+ * tagName all work on unregistered hyphenated elements.
  */
-
-window.VSC = window.VSC || {};
-
-class VSCControllerElement extends HTMLElement {
-  constructor() {
-    super();
-  }
-
-  connectedCallback() {
-    window.VSC.logger?.debug('VSC custom element connected to DOM');
-  }
-
-  disconnectedCallback() {
-    // Cleanup when element is removed
-    window.VSC.logger?.debug('VSC custom element disconnected from DOM');
-  }
-
-  static register() {
-    // Define the custom element if not already defined
-    if (!customElements.get('vsc-controller')) {
-      customElements.define('vsc-controller', VSCControllerElement);
-      window.VSC.logger?.info('VSC custom element registered');
-    }
-  }
-}
-
-// Export the class
-window.VSC.VSCControllerElement = VSCControllerElement;
-
-// Auto-register when the script loads
-VSCControllerElement.register();
