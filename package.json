@@ -34,7 +34,7 @@
     "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
     "fs-extra": "^11.2.0",
-    "globals": "^13.24.0",
+    "globals": "^17.4.0",
     "husky": "^9.1.7",
     "jsdom": "^23.2.0",
     "lint-staged": "^16.4.0",
