@@ -231,7 +231,7 @@ class EventManager {
           window.VSC.logger.info(
             `Restoring speed during cooldown from external ${video.playbackRate} to authoritative ${authoritativeSpeed}`
           );
-          video.playbackRate = authoritativeSpeed;
+          window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
         }
       }
 
@@ -307,7 +307,7 @@ class EventManager {
         window.VSC.logger.info(
           `Fight detection: attempt ${this.fightCount}/${EventManager.MAX_FIGHT_COUNT}, re-applying ${authoritativeSpeed} (cooldown ${cooldown}ms)`
         );
-        video.playbackRate = authoritativeSpeed;
+        window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
         this.refreshCoolDown(cooldown);
         event.stopImmediatePropagation();
         return;

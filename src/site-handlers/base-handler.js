@@ -32,6 +32,17 @@ class BaseSiteHandler {
   }
 
   /**
+   * Handle site-specific speed change.
+   * Called whenever the extension sets playback speed (user action, fight-back, etc.).
+   * Override to sync with a site's custom player API.
+   * @param {HTMLMediaElement} video - Video element
+   * @param {number} speed - Target speed
+   */
+  handleSpeedChange(video, speed) {
+    video.playbackRate = speed;
+  }
+
+  /**
    * Handle site-specific seeking functionality
    * @param {HTMLMediaElement} video - Video element
    * @param {number} seekSeconds - Seconds to seek

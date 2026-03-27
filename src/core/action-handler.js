@@ -469,8 +469,8 @@ class ActionHandler {
       this.eventManager.refreshCoolDown();
     }
 
-    // 2. Set the actual playback rate (native ratechange fires here, blocked by cooldown)
-    video.playbackRate = numericSpeed;
+    // 2. Set the actual playback rate via site handler (native ratechange fires here, blocked by cooldown)
+    window.VSC.siteHandlerManager.handleSpeedChange(video, numericSpeed);
 
     // 3. Dispatch synthetic event with source tracking
     video.dispatchEvent(

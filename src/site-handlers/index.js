@@ -65,6 +65,16 @@ class SiteHandlerManager {
   }
 
   /**
+   * Handle speed change for current site
+   * @param {HTMLMediaElement} video - Video element
+   * @param {number} speed - Target speed
+   */
+  handleSpeedChange(video, speed) {
+    const handler = this.getCurrentHandler();
+    handler.handleSpeedChange(video, speed);
+  }
+
+  /**
    * Handle seeking for current site
    * @param {HTMLMediaElement} video - Video element
    * @param {number} seekSeconds - Seconds to seek

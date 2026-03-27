@@ -176,15 +176,6 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     return videos;
   }
 
-  /**
-   * Handle YouTube-specific player state changes
-   * @param {HTMLMediaElement} video - Video element
-   */
-  onPlayerStateChange(_video) {
-    // YouTube fires custom events we could listen to
-    // This could be used for better integration with YouTube's player
-    window.VSC.logger.debug('YouTube player state changed');
-  }
 }
 
 // Create singleton instance
