@@ -146,12 +146,6 @@ class ShadowDOMManager {
       button.rw {
         opacity: 0.65;
       }
-      
-      button.hideButton {
-        opacity: 0.65;
-        margin-left: 8px;
-        margin-right: 2px;
-      }
     `;
     shadow.appendChild(style);
 
@@ -179,7 +173,6 @@ class ShadowDOMManager {
       { action: 'slower', text: '−', class: '' },
       { action: 'faster', text: '+', class: '' },
       { action: 'advance', text: '»', class: 'rw' },
-      { action: 'display', text: '×', class: 'hideButton' },
     ];
 
     buttons.forEach((btnConfig) => {
