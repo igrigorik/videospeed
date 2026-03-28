@@ -3,16 +3,22 @@ import process from 'process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+const require = createRequire(import.meta.url);
+const pkg = require(path.join(rootDir, 'package.json'));
 
 const isWatch = process.argv.includes('--watch');
+const isRelease = process.env.RELEASE === '1';
 
 const common = {
   bundle: true,
-  sourcemap: false,  // set true locally if debugging
-  minify: false,
+  sourcemap: isRelease ? false : false, // set true locally if debugging
+  minify: isRelease,
   target: 'chrome114',
   platform: 'browser',
   legalComments: 'none',
@@ -21,16 +27,20 @@ const common = {
 };
 
 async function copyStaticFiles() {
-  const rootDir = path.resolve(__dirname, '..');
   const outDir = path.resolve(rootDir, 'dist');
 
   try {
     // Ensure the output directory exists and is clean
     await fs.emptyDir(outDir);
 
+    // Inject version from package.json into manifest
+    const manifest = await fs.readJson(path.join(rootDir, 'manifest.json'));
+    manifest.version = pkg.version;
+    await fs.writeJson(path.join(outDir, 'manifest.json'), manifest, { spaces: 2 });
+    console.log(`✅ Manifest version set to ${pkg.version}${isRelease ? ' (release)' : ''}`);
+
     // Paths to copy
     const pathsToCopy = {
-      'manifest.json': path.join(outDir, 'manifest.json'),
       'src/assets': path.join(outDir, 'assets'),
       'src/ui': path.join(outDir, 'ui'),
       'src/styles': path.join(outDir, 'styles'),

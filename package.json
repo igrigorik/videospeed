@@ -1,6 +1,6 @@
 {
   "name": "video-speed-controller",
-  "version": "0.8.0",
+  "version": "0.9.5",
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "type": "module",
   "scripts": {
@@ -17,7 +17,11 @@
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write src/**/*.js tests/**/*.js",
-    "zip": "npm run build && cd dist && zip -r videospeed.zip . && cd .. && echo 'Extension packaged at dist/videospeed.zip'",
+    "build:release": "RELEASE=1 node scripts/build.mjs",
+    "prerelease": "npm run clean && npm test",
+    "release": "npm run build:release && node scripts/package-release.js",
+    "release:github": "node scripts/github-release.js",
+    "clean": "rm -rf dist release",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -30,6 +34,7 @@
     ]
   },
   "devDependencies": {
+    "archiver": "^7.0.1",
     "@eslint/js": "^10.0.1",
     "esbuild": "^0.27.4",
     "eslint": "^10.1.0",
