@@ -1,6 +1,6 @@
 /**
  * Unit tests for injection-bridge.js
- * Focused on the context invalidation fix and core message forwarding
+ * Validates bridge message handling, input validation, and context lifecycle
  */
 
 import {
@@ -39,34 +39,105 @@ describe('InjectionBridge', () => {
     window.dispatchEvent(event);
   }
 
-  // --- Core forwarding ---
+  // --- set-speed verb ---
 
-  it('storage-update forwards to chrome.storage.sync.set', () => {
+  it('set-speed writes clamped lastSpeed to chrome.storage', () => {
     let setData = null;
     chrome.storage.sync.set = (data) => {
       setData = data;
     };
 
     bridge = setupMessageBridge();
-    postPageMessage('storage-update', { lastSpeed: 2.5 });
+    postPageMessage('set-speed', { speed: 2.5 });
 
-    expect(setData).toBeDefined();
-    expect(setData.lastSpeed).toBe(2.5);
+    expect(setData).toEqual({ lastSpeed: 2.5 });
   });
 
-  it('runtime-message filters out VSC_STATE_UPDATE', () => {
-    let sendCalled = false;
-    chrome.runtime.sendMessage = () => {
-      sendCalled = true;
+  it('set-speed clamps speed to minimum (0.07)', () => {
+    let setData = null;
+    chrome.storage.sync.set = (data) => {
+      setData = data;
     };
 
     bridge = setupMessageBridge();
-    postPageMessage('runtime-message', { type: 'VSC_STATE_UPDATE' });
+    postPageMessage('set-speed', { speed: 0.01 });
 
-    expect(sendCalled).toBe(false);
+    expect(setData).toEqual({ lastSpeed: 0.07 });
   });
 
-  // --- Context invalidation (the actual fix) ---
+  it('set-speed clamps speed to maximum (16)', () => {
+    let setData = null;
+    chrome.storage.sync.set = (data) => {
+      setData = data;
+    };
+
+    bridge = setupMessageBridge();
+    postPageMessage('set-speed', { speed: 100 });
+
+    expect(setData).toEqual({ lastSpeed: 16 });
+  });
+
+  it('set-speed requires a numeric value', () => {
+    let setCalled = false;
+    chrome.storage.sync.set = () => {
+      setCalled = true;
+    };
+
+    bridge = setupMessageBridge();
+    postPageMessage('set-speed', { speed: 'fast' });
+
+    expect(setCalled).toBe(false);
+  });
+
+  it('set-speed requires a finite value', () => {
+    let setCalled = false;
+    chrome.storage.sync.set = () => {
+      setCalled = true;
+    };
+
+    bridge = setupMessageBridge();
+    postPageMessage('set-speed', { speed: NaN });
+    expect(setCalled).toBe(false);
+
+    postPageMessage('set-speed', { speed: Infinity });
+    expect(setCalled).toBe(false);
+  });
+
+  it('set-speed requires data to be present', () => {
+    let setCalled = false;
+    chrome.storage.sync.set = () => {
+      setCalled = true;
+    };
+
+    bridge = setupMessageBridge();
+    postPageMessage('set-speed', null);
+
+    expect(setCalled).toBe(false);
+  });
+
+  // --- Only set-speed is accepted from page context ---
+
+  it('only accepts the set-speed action', () => {
+    let setCalled = false;
+    let sendCalled = false;
+    let getCalled = false;
+    chrome.storage.sync.set = () => { setCalled = true; };
+    chrome.storage.sync.get = () => { getCalled = true; };
+    chrome.runtime.sendMessage = () => { sendCalled = true; };
+
+    bridge = setupMessageBridge();
+
+    postPageMessage('storage-update', { lastSpeed: 2.5 });
+    postPageMessage('runtime-message', { type: 'EXTENSION_TOGGLE', enabled: false });
+    postPageMessage('get-storage', {});
+    postPageMessage('something-else', { payload: 'data' });
+
+    expect(setCalled).toBe(false);
+    expect(sendCalled).toBe(false);
+    expect(getCalled).toBe(false);
+  });
+
+  // --- Context invalidation ---
 
   it('Extension context invalidated removes the message listener', () => {
     chrome.storage.sync.set = () => {
@@ -76,7 +147,7 @@ describe('InjectionBridge', () => {
     bridge = setupMessageBridge();
 
     // First message triggers invalidation — listener should self-remove
-    postPageMessage('storage-update', { lastSpeed: 2.0 });
+    postPageMessage('set-speed', { speed: 2.0 });
 
     // Replace with a tracking mock — if listener was removed, this won't fire
     let calledAfter = false;
@@ -84,7 +155,7 @@ describe('InjectionBridge', () => {
       calledAfter = true;
     };
 
-    postPageMessage('storage-update', { lastSpeed: 3.0 });
+    postPageMessage('set-speed', { speed: 3.0 });
 
     expect(calledAfter).toBe(false);
   });
@@ -100,10 +171,46 @@ describe('InjectionBridge', () => {
 
     bridge = setupMessageBridge();
 
-    postPageMessage('storage-update', { lastSpeed: 2.0 });
-    postPageMessage('storage-update', { lastSpeed: 3.0 });
+    postPageMessage('set-speed', { speed: 2.0 });
+    postPageMessage('set-speed', { speed: 3.0 });
 
     expect(callCount).toBe(2);
+  });
+
+  // --- Message source filtering ---
+
+  it('requires vsc-page source prefix', () => {
+    let setCalled = false;
+    chrome.storage.sync.set = () => {
+      setCalled = true;
+    };
+
+    bridge = setupMessageBridge();
+
+    const event = new MessageEvent('message', {
+      data: { source: 'other', action: 'set-speed', data: { speed: 2.0 } },
+    });
+    Object.defineProperty(event, 'source', { value: window });
+    window.dispatchEvent(event);
+
+    expect(setCalled).toBe(false);
+  });
+
+  it('only processes messages from vsc-page, not vsc-content', () => {
+    let setCalled = false;
+    chrome.storage.sync.set = () => {
+      setCalled = true;
+    };
+
+    bridge = setupMessageBridge();
+
+    const event = new MessageEvent('message', {
+      data: { source: 'vsc-content', action: 'set-speed', data: { speed: 2.0 } },
+    });
+    Object.defineProperty(event, 'source', { value: window });
+    window.dispatchEvent(event);
+
+    expect(setCalled).toBe(false);
   });
 
   // --- sendCommand API ---

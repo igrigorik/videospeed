@@ -86,17 +86,28 @@ if (!window.VSC.StorageManager) {
           });
         });
       } else {
-        // Page context - send save request to content script via message bridge
-        window.VSC.logger.debug('Sending storage update to content script');
+        // Page context — only speed updates are bridged to the content script.
+        // All other settings writes go through extension contexts with direct
+        // chrome.storage access (options page, popup, background).
+        const keys = Object.keys(data);
+        if (keys.length === 1 && keys[0] === 'lastSpeed') {
+          const speed = data.lastSpeed;
+          if (typeof speed === 'number' && Number.isFinite(speed)) {
+            window.postMessage({
+              source: 'vsc-page',
+              action: 'set-speed',
+              data: { speed }
+            }, '*');
+          } else {
+            window.VSC.logger.warn('StorageManager.set: invalid lastSpeed value, ignoring');
+          }
+        } else {
+          window.VSC.logger.warn(
+            `StorageManager.set: only lastSpeed can be bridged from page context. Keys: ${keys.join(', ')}`
+          );
+        }
 
-        // Post message to content script
-        window.postMessage({
-          source: 'vsc-page',
-          action: 'storage-update',
-          data: data
-        }, '*');
-
-        // Update local settings cache
+        // Update local settings cache regardless (keeps in-memory state current)
         window.VSC_settings = { ...window.VSC_settings, ...data };
 
         return Promise.resolve();
