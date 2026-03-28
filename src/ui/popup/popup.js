@@ -47,18 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update tooltip
     disableBtn.title = enabled ? 'Disable Extension' : 'Enable Extension';
-
-    const suffix = enabled ? '' : '_disabled';
-    chrome.action.setIcon({
-      path: {
-        19: chrome.runtime.getURL(`assets/icons/icon19${suffix}.png`),
-        38: chrome.runtime.getURL(`assets/icons/icon38${suffix}.png`),
-        48: chrome.runtime.getURL(`assets/icons/icon48${suffix}.png`),
-      },
-    });
-
-    // Notify background script of state change
-    chrome.runtime.sendMessage({ type: 'EXTENSION_TOGGLE', enabled: enabled });
   }
 
   function settingsSavedReloadMessage(enabled) {

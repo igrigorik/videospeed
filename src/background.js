@@ -199,16 +199,6 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 /**
- * Handle messages from popup
- */
-chrome.runtime.onMessage.addListener((message, _sender) => {
-  if (message.type === 'EXTENSION_TOGGLE') {
-    // Update icon when extension is toggled via popup
-    updateIcon(message.enabled);
-  }
-});
-
-/**
  * Initialize on install/update
  */
 chrome.runtime.onInstalled.addListener(async () => {
