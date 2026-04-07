@@ -170,6 +170,7 @@ class VideoController {
 
     // Store speed indicator reference
     this.speedIndicator = window.VSC.ShadowDOMManager.getSpeedIndicator(shadow);
+    this.feedbackIndicator = window.VSC.ShadowDOMManager.getFeedbackIndicator(shadow);
 
     // Insert into DOM FIRST — position calculation needs the wrapper in the DOM
     this.insertIntoDOM(document, wrapper);
@@ -184,6 +185,11 @@ class VideoController {
       const innerController = window.VSC.ShadowDOMManager.getController(shadow);
       innerController.style.top = position.top;
       innerController.style.left = position.left;
+
+      if (this.feedbackIndicator) {
+        this.feedbackIndicator.style.top = `calc(${position.top} + 14px)`;
+        this.feedbackIndicator.style.left = `calc(${position.left} + 14px)`;
+      }
     }
 
     window.VSC.logger.debug('initializeControls End');

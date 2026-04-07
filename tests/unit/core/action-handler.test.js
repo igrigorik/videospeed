@@ -57,6 +57,44 @@ describe('ActionHandler', () => {
     return mockVideo;
   }
 
+  function installAudioContextMock() {
+    const originalAudioContext = globalThis.AudioContext;
+
+    class MockAudioContext {
+      constructor() {
+        this.destination = {};
+        this.state = 'running';
+      }
+
+      createMediaElementSource() {
+        return {
+          connect: () => {},
+        };
+      }
+
+      createGain() {
+        return {
+          gain: { value: 1 },
+          connect: () => {},
+        };
+      }
+
+      resume() {
+        return Promise.resolve();
+      }
+    }
+
+    globalThis.AudioContext = MockAudioContext;
+
+    return () => {
+      if (originalAudioContext) {
+        globalThis.AudioContext = originalAudioContext;
+      } else {
+        delete globalThis.AudioContext;
+      }
+    };
+  }
+
   afterEach(() => {
     cleanupChromeMock();
     if (mockDOM) {
@@ -166,6 +204,56 @@ describe('ActionHandler', () => {
 
     actionHandler.runAction('softer', 0.2);
     expect(mockVideo.volume).toBe(0.4);
+  });
+
+  it('ActionHandler should boost volume above the native 100% cap', async () => {
+    const restoreAudioContext = installAudioContextMock();
+
+    try {
+      const config = window.VSC.videoSpeedConfig;
+      await config.load();
+
+      const eventManager = new window.VSC.EventManager(config, null);
+      const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+      const mockVideo = createTestVideoWithController(config, actionHandler, { volume: 0.9 });
+      actionHandler.runAction('louder', 0.4);
+
+      expect(mockVideo.volume).toBe(1);
+      expect(actionHandler.getVolumeLevel(mockVideo)).toBe(1.3);
+
+      actionHandler.runAction('softer', 0.5);
+      expect(mockVideo.volume).toBe(0.8);
+      expect(actionHandler.getVolumeLevel(mockVideo)).toBe(0.8);
+    } finally {
+      restoreAudioContext();
+    }
+  });
+
+  it('volume shortcuts should briefly show the current volume percentage', async () => {
+    const restoreAudioContext = installAudioContextMock();
+
+    try {
+      const config = window.VSC.videoSpeedConfig;
+      await config.load();
+
+      const eventManager = new window.VSC.EventManager(config, null);
+      const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+      const mockVideo = createTestVideoWithController(config, actionHandler, { volume: 0.5 });
+      mockVideo.playbackRate = 1.25;
+      const originalIndicatorText = mockVideo.vsc.speedIndicator.textContent;
+
+      actionHandler.runAction('louder', 0.1);
+      expect(mockVideo.vsc.feedbackIndicator.textContent).toBe('60%');
+      expect(mockVideo.vsc.div.classList.contains('vsc-feedback-show')).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 1250));
+      expect(mockVideo.vsc.div.classList.contains('vsc-feedback-show')).toBe(false);
+      expect(mockVideo.vsc.speedIndicator.textContent).toBe(originalIndicatorText);
+    } finally {
+      restoreAudioContext();
+    }
   });
 
   it('ActionHandler should handle seek actions', async () => {

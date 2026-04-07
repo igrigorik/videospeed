@@ -17,7 +17,6 @@ import { matchSiteRule } from '../utils/site-pattern.js';
 // Duplicated from constants.js (ISOLATED world can't import page modules).
 const SPEED_MIN = 0.07;
 const SPEED_MAX = 16;
-
 const docEl = document.documentElement;
 let bridgeInitialized = false;
 
@@ -110,7 +109,60 @@ async function init() {
     });
 
     // --- Ongoing: popup/background message relay ---
-    chrome.runtime.onMessage.addListener((request) => {
+    chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+      if (request?.type === 'VSC_GET_VOLUME_STATE') {
+        const requestId = `vsc-volume-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        let settled = false;
+
+        const cleanup = () => {
+          docEl.removeEventListener('VSC_MESSAGE_RESPONSE', handleResponse);
+          clearTimeout(timeoutId);
+        };
+
+        const handleResponse = (event) => {
+          if (settled || event.detail?.requestId !== requestId) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          sendResponse(
+            event.detail.payload || {
+              hasMedia: false,
+              level: 1,
+              percent: 100,
+              maxLevel: 4,
+            }
+          );
+        };
+
+        const timeoutId = setTimeout(() => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          sendResponse({
+            hasMedia: false,
+            level: 1,
+            percent: 100,
+            maxLevel: 4,
+          });
+        }, 500);
+
+        docEl.addEventListener('VSC_MESSAGE_RESPONSE', handleResponse);
+        docEl.dispatchEvent(
+          new CustomEvent('VSC_MESSAGE', {
+            detail: {
+              ...request,
+              requestId,
+            },
+          })
+        );
+        return true;
+      }
+
       docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: request }));
     });
 

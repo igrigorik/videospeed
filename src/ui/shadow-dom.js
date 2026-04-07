@@ -59,6 +59,11 @@ class ShadowDOMManager {
         visibility: visible !important;
         opacity: ${opacity} !important;
       }
+
+      :host(.vsc-feedback-show) #feedback {
+        opacity: 1 !important;
+        transform: translateY(0) scale(1) !important;
+      }
       
       #controller {
         position: absolute;
@@ -72,6 +77,25 @@ class ShadowDOMManager {
         cursor: default;
         z-index: 9999999;
         white-space: nowrap;
+      }
+
+      #feedback {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: rgba(0, 0, 0, 0.82);
+        color: white;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 15px;
+        font-weight: bold;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 10000000;
       }
       
       #controller:hover {
@@ -164,6 +188,11 @@ class ShadowDOMManager {
     draggable.textContent = speed;
     controller.appendChild(draggable);
 
+    const feedback = document.createElement('div');
+    feedback.id = 'feedback';
+    feedback.setAttribute('aria-hidden', 'true');
+    shadow.appendChild(feedback);
+
     // Create controls span
     const controls = document.createElement('span');
     controls.id = 'controls';
@@ -219,6 +248,15 @@ class ShadowDOMManager {
    */
   static getSpeedIndicator(shadow) {
     return shadow.querySelector('.draggable');
+  }
+
+  /**
+   * Get transient feedback badge from shadow DOM.
+   * @param {ShadowRoot} shadow - Shadow root
+   * @returns {HTMLElement} Feedback element
+   */
+  static getFeedbackIndicator(shadow) {
+    return shadow.querySelector('#feedback');
   }
 
   /**

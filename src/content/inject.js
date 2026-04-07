@@ -309,6 +309,7 @@ class VideoSpeedExtension {
     // Remove all controllers from tracked media elements
     const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
     for (const video of videos) {
+      this.actionHandler?.resetVolumeBoost(video);
       if (video.vsc) {
         video.vsc.remove();
       }
@@ -364,14 +365,26 @@ class VideoSpeedExtension {
 (function () {
   const extension = new VideoSpeedExtension();
 
+  function getPopupTargetMedia() {
+    const trackedMedia = window.VSC.stateManager
+      ? window.VSC.stateManager.getAllMediaElements()
+      : [];
+    const discoveredMedia = Array.from(document.querySelectorAll('video, audio'));
+
+    if (trackedMedia.length === 0) {
+      return discoveredMedia;
+    }
+
+    return Array.from(new Set([...trackedMedia, ...discoveredMedia]));
+  }
+
   // Lifecycle commands from bridge (popup, background, storage changes)
   document.documentElement.addEventListener('VSC_MESSAGE', (event) => {
     const message = event.detail;
 
     // Handle namespaced VSC message types
     if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
-      // Use state manager for complete media element discovery (includes shadow DOM)
-      const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
+      const videos = getPopupTargetMedia();
 
       switch (message.type) {
         case window.VSC.Constants.MESSAGE_TYPES.SET_SPEED:
@@ -424,6 +437,66 @@ class VideoSpeedExtension {
 
           window.VSC.logger?.debug(`Reset speed on ${videos.length} media elements`);
           break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.SET_VOLUME:
+          if (message.payload && typeof message.payload.level === 'number') {
+            const { MIN, MAX } = window.VSC.Constants.VOLUME_LIMITS;
+            const targetLevel = Math.min(Math.max(message.payload.level, MIN), MAX);
+            videos.forEach((video) => {
+              if (extension.actionHandler) {
+                extension.actionHandler.setVolumeLevel(video, targetLevel);
+              } else {
+                video.volume = Math.min(targetLevel, 1);
+              }
+            });
+
+            window.VSC.logger?.debug(
+              `Set volume to ${targetLevel} on ${videos.length} media elements`
+            );
+          }
+          break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.ADJUST_VOLUME:
+          if (message.payload && typeof message.payload.delta === 'number') {
+            const delta = message.payload.delta;
+            videos.forEach((video) => {
+              if (extension.actionHandler) {
+                extension.actionHandler.setVolumeLevel(
+                  video,
+                  extension.actionHandler.getVolumeLevel(video) + delta
+                );
+              } else {
+                video.volume = Math.min(Math.max(video.volume + delta, 0), 1);
+              }
+            });
+
+            window.VSC.logger?.debug(
+              `Adjusted volume by ${delta} on ${videos.length} media elements`
+            );
+          }
+          break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.GET_VOLUME_STATE: {
+          const primaryMedia = videos[0] || null;
+          const payload = extension.actionHandler
+            ? extension.actionHandler.getVolumeState(primaryMedia)
+            : {
+                hasMedia: false,
+                level: 1,
+                percent: 100,
+                maxLevel: window.VSC.Constants.VOLUME_LIMITS.MAX,
+              };
+
+          document.documentElement.dispatchEvent(
+            new CustomEvent('VSC_MESSAGE_RESPONSE', {
+              detail: {
+                requestId: message.requestId,
+                payload,
+              },
+            })
+          );
+          break;
+        }
 
         case window.VSC.Constants.MESSAGE_TYPES.TOGGLE_DISPLAY:
           if (extension.actionHandler) {

@@ -9,6 +9,7 @@ class ActionHandler {
   constructor(config, eventManager) {
     this.config = config;
     this.eventManager = eventManager;
+    this.audioContext = null;
   }
 
   /**
@@ -254,7 +255,8 @@ class ActionHandler {
    * @param {number} value - Amount to increase
    */
   volumeUp(video, value) {
-    video.volume = Math.min(1, (video.volume + value).toFixed(2));
+    this.setVolumeLevel(video, this.getVolumeLevel(video) + value);
+    this.showVolumeFeedback(video);
   }
 
   /**
@@ -263,7 +265,182 @@ class ActionHandler {
    * @param {number} value - Amount to decrease
    */
   volumeDown(video, value) {
-    video.volume = Math.max(0, (video.volume - value).toFixed(2));
+    this.setVolumeLevel(video, this.getVolumeLevel(video) - value);
+    this.showVolumeFeedback(video);
+  }
+
+  /**
+   * Show temporary volume percentage feedback in the controller indicator.
+   * @param {HTMLMediaElement} video - Media element
+   */
+  showVolumeFeedback(video) {
+    const controller = video?.vsc?.div;
+    const feedbackIndicator = video?.vsc?.feedbackIndicator;
+    if (!controller || !feedbackIndicator) {
+      return;
+    }
+
+    const volumePercent = Math.round(this.getVolumeLevel(video) * 100);
+    feedbackIndicator.textContent = `${volumePercent}%`;
+
+    if (controller?.volumeFeedbackTimer) {
+      clearTimeout(controller.volumeFeedbackTimer);
+    }
+
+    controller?.classList.add('vsc-volume-feedback');
+    controller?.classList.add('vsc-feedback-show');
+
+    controller.volumeFeedbackTimer = setTimeout(() => {
+      controller?.classList.remove('vsc-volume-feedback');
+      controller?.classList.remove('vsc-feedback-show');
+      controller.volumeFeedbackTimer = undefined;
+    }, 1200);
+  }
+
+  /**
+   * Return the current effective volume level for a media element.
+   * Above 1.0 uses a GainNode-backed boost chain.
+   * @param {HTMLMediaElement} video - Media element
+   * @returns {number} Current volume level
+   */
+  getVolumeLevel(video) {
+    const state = this.getVolumeStateRecord(video);
+    if (typeof state.level === 'number') {
+      return state.level;
+    }
+    return Number((video.volume ?? 1).toFixed(2));
+  }
+
+  /**
+   * Get popup-friendly volume state for a media element.
+   * @param {HTMLMediaElement|null} video - Media element
+   * @returns {Object} Volume info
+   */
+  getVolumeState(video) {
+    const fallback = {
+      hasMedia: false,
+      level: 1,
+      percent: 100,
+      maxLevel: window.VSC.Constants.VOLUME_LIMITS.MAX,
+    };
+
+    if (!video) {
+      return fallback;
+    }
+
+    const level = this.getVolumeLevel(video);
+    return {
+      hasMedia: true,
+      level: Number(level.toFixed(2)),
+      percent: Math.round(level * 100),
+      maxLevel: window.VSC.Constants.VOLUME_LIMITS.MAX,
+    };
+  }
+
+  /**
+   * Set effective volume, allowing boosted output above the native 1.0 cap.
+   * @param {HTMLMediaElement} video - Media element
+   * @param {number} level - Target effective volume
+   * @returns {number} Applied volume level
+   */
+  setVolumeLevel(video, level) {
+    if (!video) {
+      return 1;
+    }
+
+    const { MIN, MAX } = window.VSC.Constants.VOLUME_LIMITS;
+    const targetLevel = Number(Math.min(Math.max(level, MIN), MAX).toFixed(2));
+    const state = this.getVolumeStateRecord(video);
+    state.level = targetLevel;
+
+    if (targetLevel <= 1 || !this.ensureBoostChain(video, state)) {
+      if (state.gainNode) {
+        state.gainNode.gain.value = 1;
+      }
+      video.volume = targetLevel;
+      return targetLevel;
+    }
+
+    video.volume = 1;
+    state.gainNode.gain.value = targetLevel;
+    return targetLevel;
+  }
+
+  /**
+   * Reset any active volume boost when the extension is torn down.
+   * @param {HTMLMediaElement} video - Media element
+   */
+  resetVolumeBoost(video) {
+    if (!video || !video._vscVolumeState) {
+      return;
+    }
+
+    const state = video._vscVolumeState;
+    const normalizedLevel = Math.min(this.getVolumeLevel(video), 1);
+    state.level = normalizedLevel;
+
+    if (state.gainNode) {
+      state.gainNode.gain.value = 1;
+    }
+
+    video.volume = normalizedLevel;
+  }
+
+  /**
+   * Get or initialize per-media volume state.
+   * @param {HTMLMediaElement} video - Media element
+   * @returns {Object} Mutable state record
+   * @private
+   */
+  getVolumeStateRecord(video) {
+    if (!video._vscVolumeState) {
+      video._vscVolumeState = {
+        level: Number((video.volume ?? 1).toFixed(2)),
+        sourceNode: null,
+        gainNode: null,
+      };
+    }
+
+    return video._vscVolumeState;
+  }
+
+  /**
+   * Lazily create the Web Audio boost chain for a media element.
+   * @param {HTMLMediaElement} video - Media element
+   * @param {Object} state - Volume state record
+   * @returns {boolean} True when boost is available
+   * @private
+   */
+  ensureBoostChain(video, state) {
+    if (state.gainNode) {
+      return true;
+    }
+
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) {
+      return false;
+    }
+
+    if (!this.audioContext) {
+      this.audioContext = new AudioContextCtor();
+    }
+
+    try {
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume?.().catch(() => {});
+      }
+
+      state.sourceNode = this.audioContext.createMediaElementSource(video);
+      state.gainNode = this.audioContext.createGain();
+      state.sourceNode.connect(state.gainNode);
+      state.gainNode.connect(this.audioContext.destination);
+      return true;
+    } catch (error) {
+      window.VSC.logger.warn(`Unable to initialize boosted volume: ${error.message}`);
+      state.sourceNode = null;
+      state.gainNode = null;
+      return false;
+    }
   }
 
   /**

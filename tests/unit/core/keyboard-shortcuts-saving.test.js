@@ -50,6 +50,15 @@ describe('KeyboardShortcutsSaving', () => {
     expectedActions.forEach((action) => {
       expect(actualActions.includes(action)).toBe(true);
     });
+
+    expect(defaults.rememberSpeed).toBe(false);
+    expect(defaults.audioBoolean).toBe(true);
+
+    const preferredBinding = defaults.keyBindings.find((b) => b.action === 'fast' && b.predefined);
+    expect(preferredBinding.value).toBe(1.8);
+
+    const slowerBinding = defaults.keyBindings.find((b) => b.action === 'slower' && b.predefined);
+    expect(slowerBinding.key).toBe(83);
   });
 
   it('DEFAULT_SETTINGS keyBindings should have proper structure', () => {
