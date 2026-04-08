@@ -340,4 +340,31 @@ describe('VideoController', () => {
     const initCall = adjustSpeedCalls.find((call) => call.value === 1.5);
     expect(initCall).toBeDefined();
   });
+
+  it('play event restoration should not overwrite lastSpeed', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = true;
+    config.settings.lastSpeed = 1.5;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentSrc: 'https://example.com/video.mp4',
+      playbackRate: 1.5,
+    });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    expect(controller).toBeDefined();
+
+    // Simulate player reset during idle/resume, then a play lifecycle event.
+    mockVideo.playbackRate = 1.0;
+    controller.handlePlay({ type: 'play', target: mockVideo });
+
+    // Lifecycle restoration should not replace user-authoritative lastSpeed.
+    expect(config.settings.lastSpeed).toBe(1.5);
+    expect(mockVideo.playbackRate).toBe(1.5);
+  });
 });

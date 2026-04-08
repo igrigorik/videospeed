@@ -408,17 +408,31 @@ class ActionHandler {
     // Calculate target speed
     let targetSpeed;
     if (relative) {
-      // For relative changes, add to current speed
+      // For relative changes, add to current speed. If the player has silently
+      // reset to 1.0 after idle, but we still have a non-1.0 in-memory speed,
+      // use that remembered baseline for the first relative step.
       const currentSpeed = video.playbackRate < 0.1 ? 0.0 : video.playbackRate;
-      targetSpeed = currentSpeed + value;
+      let baseSpeed = currentSpeed;
+      const rememberedSpeed = this.config?.settings?.lastSpeed;
+      const absDelta = Math.abs(value);
+      const isTypicalStepDelta = absDelta >= 0.05 && absDelta <= 0.5;
+      if (
+        isTypicalStepDelta &&
+        Math.abs(currentSpeed - 1.0) < 0.01 &&
+        typeof rememberedSpeed === 'number' &&
+        Math.abs(rememberedSpeed - 1.0) > 0.01
+      ) {
+        baseSpeed = rememberedSpeed;
+      }
+      targetSpeed = baseSpeed + value;
 
       // Snap to 1.0x when crossing the 1.0 boundary
-      if ((currentSpeed > 1.0 && targetSpeed < 1.0) || (currentSpeed < 1.0 && targetSpeed > 1.0)) {
+      if ((baseSpeed > 1.0 && targetSpeed < 1.0) || (baseSpeed < 1.0 && targetSpeed > 1.0)) {
         targetSpeed = 1.0;
       }
 
       window.VSC.logger.debug(
-        `Relative speed calculation: currentSpeed=${currentSpeed} + ${value} = ${targetSpeed}`
+        `Relative speed calculation: baseSpeed=${baseSpeed} (current=${currentSpeed}) + ${value} = ${targetSpeed}`
       );
     } else {
       // For absolute changes, use value directly
@@ -507,7 +521,7 @@ class ActionHandler {
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
     // 6. Persist to storage only if rememberSpeed is enabled
-    if (source !== 'external' && this.config.settings.rememberSpeed) {
+    if (source !== 'external' && source !== 'init' && this.config.settings.rememberSpeed) {
       this.config.save({ lastSpeed: numericSpeed });
     }
 

@@ -410,6 +410,26 @@ describe('ActionHandler', () => {
     expect(mockVideo.playbackRate).toBe(16); // Clamped to max
   });
 
+  it('relative increase should use remembered speed baseline after idle reset to 1.0', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = true;
+    config.settings.lastSpeed = 1.5;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+    mockVideo.vsc = {
+      div: mockDOM.container,
+      speedIndicator: { textContent: '1.00' },
+    };
+
+    actionHandler.adjustSpeed(mockVideo, 0.1, { relative: true });
+    expect(mockVideo.playbackRate).toBe(1.6);
+    expect(config.settings.lastSpeed).toBe(1.6);
+  });
+
   it('adjustSpeed should not corrupt lastSpeed on external changes', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
