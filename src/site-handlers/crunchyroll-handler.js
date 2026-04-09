@@ -58,11 +58,11 @@ class CrunchyrollHandler extends window.VSC.BaseSiteHandler {
     }
 
     if (!this.videoListeners.has(video)) {
-      const onPause = () => {
+      const saveSpeed = () => {
         this.savedSpeed = video.playbackRate;
       };
 
-      const onPlaying = () => {
+      const restoreSpeed = () => {
         if (this.savedSpeed && this.savedSpeed !== video.playbackRate) {
           const speed = this.savedSpeed;
           if (video.vsc) {
@@ -71,9 +71,11 @@ class CrunchyrollHandler extends window.VSC.BaseSiteHandler {
         }
       };
 
-      video.addEventListener('pause', onPause);
-      video.addEventListener('playing', onPlaying);
-      this.videoListeners.set(video, { onPause, onPlaying });
+      video.addEventListener('pause', saveSpeed);
+      video.addEventListener('seeking', saveSpeed);
+      video.addEventListener('playing', restoreSpeed);
+      video.addEventListener('seeked', restoreSpeed);
+      this.videoListeners.set(video, { saveSpeed, restoreSpeed });
     }
   }
 
@@ -87,9 +89,11 @@ class CrunchyrollHandler extends window.VSC.BaseSiteHandler {
 
   cleanup() {
     super.cleanup();
-    this.videoListeners.forEach(({ onPause, onPlaying }, video) => {
-      video.removeEventListener('pause', onPause);
-      video.removeEventListener('playing', onPlaying);
+    this.videoListeners.forEach(({ saveSpeed, restoreSpeed }, video) => {
+      video.removeEventListener('pause', saveSpeed);
+      video.removeEventListener('seeking', saveSpeed);
+      video.removeEventListener('playing', restoreSpeed);
+      video.removeEventListener('seeked', restoreSpeed);
     });
     this.videoListeners.clear();
   }
