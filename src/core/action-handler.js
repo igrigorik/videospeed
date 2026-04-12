@@ -471,6 +471,11 @@ class ActionHandler {
     //    default; let the first real user/site action establish authority.
     if (source !== 'external' && source !== 'init') {
       this.config.settings.lastSpeed = numericSpeed;
+      // Mark that the user has made a deliberate speed choice this session.
+      // getTargetSpeed() uses this to distinguish "user chose 1.0" from
+      // "1.0 is just the unset default", so site-rule baselines don't
+      // override an explicit reset.
+      this.config.settings.userSpeedOverride = true;
     }
 
     // 2. Start cooldown — the playbackRate assignment below triggers a

@@ -147,4 +147,30 @@ describe('SpeedResolution', () => {
     const ctrl = makeController(config);
     expect(ctrl.getTargetSpeed()).toBe(1.0);
   });
+
+  // --- Bug fix: user reset to 1.0 should stick on sites with per-site default ---
+  it('user reset to 1.0 on site with siteDefaultSpeed=2.0 → 1.0 (not overridden)', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false;
+    config.settings.lastSpeed = 1.0;
+    config.settings.siteDefaultSpeed = 2.0;
+    config.settings.userSpeedOverride = true; // user explicitly chose 1.0
+
+    const ctrl = makeController(config);
+    expect(ctrl.getTargetSpeed()).toBe(1.0);
+  });
+
+  // --- userSpeedOverride=false on fresh load still uses site baseline ---
+  it('fresh load (no user action) with siteDefaultSpeed=2.0 → 2.0', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false;
+    config.settings.lastSpeed = 1.0;
+    config.settings.siteDefaultSpeed = 2.0;
+    config.settings.userSpeedOverride = false;
+
+    const ctrl = makeController(config);
+    expect(ctrl.getTargetSpeed()).toBe(2.0);
+  });
 });

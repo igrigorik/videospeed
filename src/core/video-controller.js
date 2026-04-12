@@ -108,6 +108,15 @@ class VideoController {
     // current session intent regardless of rememberSpeed (which only controls
     // cross-session STORAGE persistence, not in-memory behavior).
     const last = this.config.settings.lastSpeed;
+    //
+    // userSpeedOverride distinguishes "user explicitly chose 1.0 (e.g. reset)"
+    // from "1.0 is the unset default on fresh load". Without it, pressing reset
+    // on a site with siteDefaultSpeed > 1 gets undone by the next play/seeked
+    // event because getTargetSpeed() falls back to the site baseline.
+    if (this.config.settings.userSpeedOverride) {
+      window.VSC.logger.debug(`Using lastSpeed ${last} (user override, baseline=${baseline})`);
+      return last;
+    }
     if (last && last !== 1.0) {
       window.VSC.logger.debug(`Using lastSpeed ${last} (baseline=${baseline})`);
       return last;
