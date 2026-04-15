@@ -175,9 +175,17 @@ class ShadowDOMManager {
       { action: 'advance', text: '»', class: 'rw' },
     ];
 
+    buttons.splice(2, 0, { speed: '1', text: '1x', class: '' });
+
     buttons.forEach((btnConfig) => {
       const button = document.createElement('button');
-      button.setAttribute('data-action', btnConfig.action);
+      if (btnConfig.action) {
+        button.setAttribute('data-action', btnConfig.action);
+      }
+      if (btnConfig.speed) {
+        button.setAttribute('data-speed', btnConfig.speed);
+        button.setAttribute('aria-label', 'Set playback speed to 1x');
+      }
       if (btnConfig.class) {
         button.className = btnConfig.class;
       }
