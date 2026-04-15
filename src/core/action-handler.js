@@ -505,6 +505,11 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
+    const speedSlider = video.vsc?.speedSlider;
+    if (speedSlider) {
+      speedSlider.value = numericSpeed.toFixed(2);
+    }
+
     // 6. Persist to storage only if rememberSpeed is enabled
     if (source !== 'external' && this.config.settings.rememberSpeed) {
       this.config.save({ lastSpeed: numericSpeed });

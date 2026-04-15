@@ -167,6 +167,7 @@ class VideoController {
 
     // Store speed indicator reference
     this.speedIndicator = window.VSC.ShadowDOMManager.getSpeedIndicator(shadow);
+    this.speedSlider = window.VSC.ShadowDOMManager.getSpeedSlider(shadow);
 
     // Insert into DOM FIRST — position calculation needs the wrapper in the DOM
     this.insertIntoDOM(document, wrapper);

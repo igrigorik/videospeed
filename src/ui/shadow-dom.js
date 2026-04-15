@@ -84,7 +84,21 @@ class ShadowDOMManager {
         display: none;
         vertical-align: middle;
       }
-      
+
+      .slider-row {
+        display: block;
+        margin: 0 2px 4px 2px;
+        width: 7.5em;
+      }
+
+      .speed-slider {
+        display: block;
+        width: 100%;
+        margin: 0;
+        accent-color: #2196f3;
+        cursor: pointer;
+      }
+
       #controller.dragging {
         cursor: -webkit-grabbing;
         opacity: 0.7;
@@ -146,6 +160,11 @@ class ShadowDOMManager {
       button.rw {
         opacity: 0.65;
       }
+
+      .button-row {
+        display: inline-flex;
+        align-items: center;
+      }
     `;
     shadow.appendChild(style);
 
@@ -167,6 +186,24 @@ class ShadowDOMManager {
     controls.id = 'controls';
     controls.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
 
+    const sliderRow = document.createElement('div');
+    sliderRow.className = 'slider-row';
+
+    const speedSlider = document.createElement('input');
+    speedSlider.type = 'range';
+    speedSlider.className = 'speed-slider';
+    speedSlider.min = '0.5';
+    speedSlider.max = '4';
+    speedSlider.step = '0.1';
+    speedSlider.value = speed;
+    speedSlider.setAttribute('aria-label', 'Playback speed');
+    sliderRow.appendChild(speedSlider);
+
+    controls.appendChild(sliderRow);
+
+    const buttonRow = document.createElement('span');
+    buttonRow.className = 'button-row';
+
     // Create buttons
     const buttons = [
       { action: 'rewind', text: '«', class: 'rw' },
@@ -182,8 +219,10 @@ class ShadowDOMManager {
         button.className = btnConfig.class;
       }
       button.textContent = btnConfig.text;
-      controls.appendChild(button);
+      buttonRow.appendChild(button);
     });
+
+    controls.appendChild(buttonRow);
 
     controller.appendChild(controls);
     shadow.appendChild(controller);
@@ -217,6 +256,15 @@ class ShadowDOMManager {
    */
   static getSpeedIndicator(shadow) {
     return shadow.querySelector('.draggable');
+  }
+
+  /**
+   * Get speed slider from shadow DOM
+   * @param {ShadowRoot} shadow - Shadow root
+   * @returns {HTMLInputElement | null} Speed slider element
+   */
+  static getSpeedSlider(shadow) {
+    return shadow.querySelector('.speed-slider');
   }
 
   /**
