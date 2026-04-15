@@ -79,6 +79,7 @@ describe('ActionHandler', () => {
     expect(mockVideo.playbackRate).toBe(2.0);
     expect(mockVideo.vsc.speedIndicator.textContent).toBe('2.00');
     expect(config.settings.lastSpeed).toBe(2.0);
+    expect(mockVideo.vsc.speedSlider.value).toBe('2.00');
   });
 
   it('ActionHandler should handle faster action', async () => {
@@ -428,14 +429,17 @@ describe('ActionHandler', () => {
     actionHandler.adjustSpeed(mockVideo, 1.5);
     expect(mockVideo.playbackRate).toBe(1.5);
     expect(mockVideo.vsc.speedIndicator.textContent).toBe('1.50');
+    expect(mockVideo.vsc.speedSlider.value).toBe('1.50');
     expect(config.settings.lastSpeed).toBe(1.5);
 
     // Test speed limits
     actionHandler.adjustSpeed(mockVideo, 20); // Above max
     expect(mockVideo.playbackRate).toBe(16); // Clamped to max
+    expect(mockVideo.vsc.speedSlider.value).toBe('16.00');
 
     actionHandler.adjustSpeed(mockVideo, 0.01); // Below min
     expect(mockVideo.playbackRate).toBe(0.07); // Clamped to min
+    expect(mockVideo.vsc.speedSlider.value).toBe('0.07');
   });
 
   it('adjustSpeed should handle relative speed changes', async () => {

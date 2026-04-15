@@ -144,4 +144,45 @@ describe('DragAndReset', () => {
     const style = controller.div.shadowRoot.querySelector('style');
     expect(style.textContent.includes('touch-action: none')).toBe(true);
   });
+
+  it('controller renders a speed slider above the existing buttons', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.25 });
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    const controls = controller.div.shadowRoot.querySelector('#controls');
+    const speedSliderRow = controls.firstElementChild;
+    const buttonRow = controls.lastElementChild;
+    const slider = controller.div.shadowRoot.querySelector('.speed-slider');
+
+    expect(slider).toBeTruthy();
+    expect(speedSliderRow.className).toBe('speed-slider-row');
+    expect(buttonRow.className).toBe('button-row');
+    expect(slider.value).toBe('1.25');
+    expect(slider.min).toBe('0.5');
+    expect(buttonRow.querySelectorAll('button')).toHaveLength(4);
+  });
+
+  it('speed slider changes playback speed without affecting drag behavior', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    const slider = controller.div.shadowRoot.querySelector('.speed-slider');
+    slider.value = '1.75';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(mockVideo.playbackRate).toBe(1.75);
+    expect(controller.speedIndicator.textContent).toBe('1.75');
+  });
 });
