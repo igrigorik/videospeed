@@ -156,12 +156,12 @@ describe('DragAndReset', () => {
     const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     const controls = controller.div.shadowRoot.querySelector('#controls');
-    const sliderRow = controls.firstElementChild;
+    const speedSliderRow = controls.firstElementChild;
     const buttonRow = controls.lastElementChild;
     const slider = controller.div.shadowRoot.querySelector('.speed-slider');
 
     expect(slider).toBeTruthy();
-    expect(sliderRow.className).toBe('slider-row');
+    expect(speedSliderRow.className).toBe('speed-slider-row');
     expect(buttonRow.className).toBe('button-row');
     expect(slider.value).toBe('1.25');
     expect(slider.min).toBe('0.5');

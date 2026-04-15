@@ -85,7 +85,7 @@ class ShadowDOMManager {
         vertical-align: middle;
       }
 
-      .slider-row {
+      .speed-slider-row {
         display: block;
         margin: 0 2px 4px 2px;
         width: 7.5em;
@@ -186,8 +186,8 @@ class ShadowDOMManager {
     controls.id = 'controls';
     controls.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
 
-    const sliderRow = document.createElement('div');
-    sliderRow.className = 'slider-row';
+    const speedSliderRow = document.createElement('div');
+    speedSliderRow.className = 'speed-slider-row';
 
     const speedSlider = document.createElement('input');
     speedSlider.type = 'range';
@@ -197,9 +197,9 @@ class ShadowDOMManager {
     speedSlider.step = '0.1';
     speedSlider.value = speed;
     speedSlider.setAttribute('aria-label', 'Playback speed');
-    sliderRow.appendChild(speedSlider);
+    speedSliderRow.appendChild(speedSlider);
 
-    controls.appendChild(sliderRow);
+    controls.appendChild(speedSliderRow);
 
     const buttonRow = document.createElement('span');
     buttonRow.className = 'button-row';
