@@ -17,7 +17,7 @@ class ControlsManager {
    */
   setupControlEvents(shadow, video) {
     this.setupDragHandler(shadow);
-    this.setupButtonHandlers(shadow);
+    this.setupButtonHandlers(shadow, video);
     this.setupWheelHandler(shadow, video);
     this.setupClickPrevention(shadow);
   }
@@ -60,17 +60,28 @@ class ControlsManager {
    * @param {ShadowRoot} shadow - Shadow root
    * @private
    */
-  setupButtonHandlers(shadow) {
+  setupButtonHandlers(shadow, video) {
     shadow.querySelectorAll('button').forEach((button) => {
       // Click handler
       button.addEventListener(
         'click',
         (e) => {
+          const directSpeed = button.dataset['speed'];
+          if (directSpeed !== undefined) {
+            this.actionHandler.adjustSpeed(video, Number.parseFloat(directSpeed), {
+              source: 'internal',
+            });
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+
           this.actionHandler.runAction(
-            e.target.dataset['action'],
-            this.config.getKeyBinding(e.target.dataset['action']),
+            button.dataset['action'],
+            this.config.getKeyBinding(button.dataset['action']),
             e
           );
+          e.preventDefault();
           e.stopPropagation();
         },
         true
@@ -89,15 +100,15 @@ class ControlsManager {
 
   /**
    * Set up mouse wheel handler for speed control with touchpad filtering
-   * 
+   *
    * Cross-browser wheel event behavior:
    * - Chrome/Safari/Edge: ALL devices use DOM_DELTA_PIXEL (mouse wheels ~100px, touchpads ~1-15px)
    * - Firefox: Mouse wheels use DOM_DELTA_LINE, touchpads use DOM_DELTA_PIXEL
-   * 
+   *
    * Detection strategy: Use magnitude threshold in DOM_DELTA_PIXEL mode to distinguish
    * mouse wheels (±100px typical) from touchpads (±1-15px typical). Threshold of 50px
    * provides safety margin based on empirical browser testing.
-   * 
+   *
    * @param {ShadowRoot} shadow - Shadow root
    * @param {HTMLVideoElement} video - Video element
    * @private
@@ -134,7 +145,9 @@ class ControlsManager {
           // Chrome/Safari/Edge: Use magnitude to distinguish mouse wheel (>50px) from touchpad (<50px)
           const TOUCHPAD_THRESHOLD = 50;
           if (Math.abs(event.deltaY) < TOUCHPAD_THRESHOLD) {
-            window.VSC.logger.debug(`Touchpad scroll detected (deltaY: ${event.deltaY}) - ignoring`);
+            window.VSC.logger.debug(
+              `Touchpad scroll detected (deltaY: ${event.deltaY}) - ignoring`
+            );
             return;
           }
         }
@@ -148,7 +161,9 @@ class ControlsManager {
 
         this.actionHandler.adjustSpeed(video, speedDelta, { relative: true });
 
-        window.VSC.logger.debug(`Wheel control: adjusting speed by ${speedDelta} (deltaMode: ${event.deltaMode}, deltaY: ${event.deltaY})`);
+        window.VSC.logger.debug(
+          `Wheel control: adjusting speed by ${speedDelta} (deltaMode: ${event.deltaMode}, deltaY: ${event.deltaY})`
+        );
       },
       { passive: false }
     );

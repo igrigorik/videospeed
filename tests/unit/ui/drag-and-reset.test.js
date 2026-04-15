@@ -144,4 +144,41 @@ describe('DragAndReset', () => {
     const style = controller.div.shadowRoot.querySelector('style');
     expect(style.textContent.includes('touch-action: none')).toBe(true);
   });
+
+  it('controller renders a 1x button between slower and faster', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.25 });
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    const buttons = controller.div.shadowRoot.querySelectorAll('#controls button');
+    const quickSpeedButton = controller.div.shadowRoot.querySelector('button[data-speed="1"]');
+
+    expect(quickSpeedButton).toBeTruthy();
+    expect(buttons).toHaveLength(5);
+    expect(buttons[1].dataset.action).toBe('slower');
+    expect(buttons[2].textContent).toBe('1x');
+    expect(buttons[3].dataset.action).toBe('faster');
+  });
+
+  it('quick 1x button restores normal playback speed', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 2.0 });
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    const quickSpeedButton = controller.div.shadowRoot.querySelector('button[data-speed="1"]');
+    quickSpeedButton.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(controller.speedIndicator.textContent).toBe('1.00');
+  });
 });
