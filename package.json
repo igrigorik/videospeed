@@ -43,7 +43,7 @@
     "husky": "^9.1.7",
     "jsdom": "^29.0.1",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.1.0",
+    "prettier": "^3.8.3",
     "puppeteer": "^24.10.2",
     "vitest": "^4.1.1"
   },
