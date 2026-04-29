@@ -18,10 +18,9 @@ class EventManager {
     this.fightCount = 0;
     this.fightTimer = null;
 
-    // User gesture tracking: timestamp of the last user interaction we did NOT
-    // handle (click on page UI, unhandled key). A ratechange arriving within
-    // USER_GESTURE_WINDOW_MS of this is treated as intentional and accepted
-    // immediately rather than fought — handles native site speed controls.
+    // User gesture tracking: timestamp of the last likely native speed control
+    // interaction. A ratechange arriving within USER_GESTURE_WINDOW_MS of this
+    // is treated as intentional and accepted immediately rather than fought.
     this.lastUserInteractionAt = 0;
   }
 
@@ -119,9 +118,11 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      // Unhandled key — could be a site shortcut (e.g. YouTube's < > speed keys).
-      // Mark as user interaction so an immediately-following ratechange is accepted.
-      this.lastUserInteractionAt = event.timeStamp;
+      // Some sites expose native speed shortcuts (e.g. YouTube's < > keys).
+      // Track only those so seek/navigation keys do not bless a 1x reset.
+      if (EventManager.isLikelyNativeSpeedShortcut(event)) {
+        this.lastUserInteractionAt = event.timeStamp;
+      }
       window.VSC.logger.verbose(
         `No key binding found for code=${event.code}, keyCode=${event.keyCode}`
       );
@@ -211,11 +212,10 @@ class EventManager {
   }
 
   /**
-   * Track user interactions that originate outside the VSC controller.
-   * Clicks on YouTube's speed menu (or any site's native speed UI) land here.
-   * Unhandled keyboard events (e.g. YouTube's < > shortcuts) land in handleKeydown.
-   * Both update lastUserInteractionAt so handleRateChange can distinguish
-   * intentional speed changes from automatic site-initiated resets.
+   * Track native speed-control interactions that originate outside the VSC
+   * controller. Generic clicks are intentionally ignored because YouTube can
+   * reset playbackRate to 1x while seeking; accepting every click-adjacent
+   * ratechange would store that reset as the user's chosen speed.
    * @param {Document} document
    * @private
    */
@@ -223,6 +223,9 @@ class EventManager {
     const clickHandler = (event) => {
       // Skip clicks on our own controller (shadow host retargeted at boundary)
       if (event.target?.closest?.('vsc-controller')) {
+        return;
+      }
+      if (!EventManager.isLikelyNativeSpeedControl(event)) {
         return;
       }
       this.lastUserInteractionAt = event.timeStamp;
@@ -327,29 +330,35 @@ class EventManager {
     // are accepted immediately — this allows native site controls (e.g. YouTube's
     // speed menu or < > shortcuts) to coexist with our fight-back logic.
     const authoritativeSpeed = this.config.settings.lastSpeed;
+    const hasAuthoritativeSpeed =
+      typeof authoritativeSpeed === 'number' && Number.isFinite(authoritativeSpeed);
+    const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
+    const isUserGesture =
+      this.lastUserInteractionAt > 0 &&
+      typeof event.timeStamp === 'number' &&
+      timeSinceGesture >= 0 &&
+      timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
 
-    if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
-      const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
-      const isUserGesture = timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
-
-      if (isUserGesture) {
-        // User interacted with the site's native controls — accept immediately.
-        // Treat as internal so lastSpeed and storage are updated to match intent.
-        window.VSC.logger.info(
-          `Accepting site speed change as user-intentional (gesture ${timeSinceGesture}ms ago): ${video.playbackRate}`
-        );
-        this.fightCount = 0;
-        if (this.fightTimer) {
-          clearTimeout(this.fightTimer);
-          this.fightTimer = null;
-        }
-        this.lastUserInteractionAt = 0;
-        if (this.actionHandler) {
-          this.actionHandler.adjustSpeed(video, video.playbackRate);
-        }
-        return;
+    if (isUserGesture) {
+      // User interacted with the site's native speed controls — accept immediately.
+      // Treat as internal so lastSpeed and storage are updated to match intent,
+      // even when there was no previous authoritative speed this session.
+      window.VSC.logger.info(
+        `Accepting site speed change as user-intentional (gesture ${timeSinceGesture}ms ago): ${video.playbackRate}`
+      );
+      this.fightCount = 0;
+      if (this.fightTimer) {
+        clearTimeout(this.fightTimer);
+        this.fightTimer = null;
       }
+      this.lastUserInteractionAt = 0;
+      if (this.actionHandler) {
+        this.actionHandler.adjustSpeed(video, video.playbackRate);
+      }
+      return;
+    }
 
+    if (hasAuthoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
       this.fightCount++;
 
       // Reset fight count after a quiet period
@@ -443,6 +452,94 @@ class EventManager {
  */
 EventManager.modifiersMatch = function (mods, ctrl, alt, meta, shift) {
   return mods.ctrl === ctrl && mods.alt === alt && mods.meta === meta && mods.shift === shift;
+};
+
+/**
+ * Detect native site speed shortcuts that should be accepted as user intent
+ * when they produce an immediate ratechange.
+ *
+ * @param {KeyboardEvent} event
+ * @returns {boolean}
+ */
+EventManager.isLikelyNativeSpeedShortcut = function (event) {
+  const key = event.key || '';
+  const code = event.code || '';
+  const keyCode = event.keyCode;
+
+  return (
+    key === '<' ||
+    key === '>' ||
+    (event.shiftKey && (code === 'Comma' || code === 'Period')) ||
+    (event.shiftKey && (keyCode === 188 || keyCode === 190))
+  );
+};
+
+/**
+ * Detect clicks/taps that likely target a site's native playback speed UI.
+ *
+ * @param {Event} event
+ * @returns {boolean}
+ */
+EventManager.isLikelyNativeSpeedControl = function (event) {
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+
+  return path.some((node) => {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) {
+      return false;
+    }
+
+    const tagName = node.tagName;
+    if (tagName === 'HTML' || tagName === 'BODY') {
+      return false;
+    }
+
+    try {
+      if (
+        node.matches?.(
+          [
+            '[aria-label*="speed" i]',
+            '[aria-label*="playback rate" i]',
+            '[title*="speed" i]',
+            '[title*="playback rate" i]',
+            '[class*="speed" i]',
+            '[id*="speed" i]',
+          ].join(',')
+        )
+      ) {
+        return true;
+      }
+    } catch {
+      // Some host elements may reject selector matching; fall back to text checks.
+    }
+
+    const className =
+      typeof node.className === 'string' ? node.className : node.className?.baseVal || '';
+    const role = node.getAttribute?.('role') || '';
+    const structuralDescriptor = [
+      node.getAttribute?.('aria-label'),
+      node.getAttribute?.('title'),
+      role,
+      node.id,
+      className,
+    ]
+      .filter(Boolean)
+      .map(String)
+      .join(' ')
+      .toLowerCase();
+
+    if (/\b(playback\s+speed|playback\s+rate|speed)\b/.test(structuralDescriptor)) {
+      return true;
+    }
+
+    const shouldInspectText = /\b(menu|panel|popup|control|button|item)\b/i.test(
+      `${role} ${className}`
+    );
+    if (!shouldInspectText) {
+      return false;
+    }
+
+    return /\b(playback\s+speed|playback\s+rate)\b/i.test(node.textContent || '');
+  });
 };
 
 // Time window (ms) after a user interaction in which an external ratechange is
