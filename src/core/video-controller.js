@@ -60,6 +60,20 @@ class VideoController {
    * @private
    */
   initializeSpeed() {
+    // No authoritative target: don't force a baseline. Symmetric with
+    // mediaEventAction's guard — when the extension has no opinion, leave
+    // whatever rate the player or a pre-init site script set.
+    if (
+      this.config.settings.lastSpeed === null &&
+      (this.config.settings.siteDefaultSpeed === null ||
+        this.config.settings.siteDefaultSpeed === undefined)
+    ) {
+      window.VSC.logger.debug(
+        `initializeSpeed: no authoritative target, leaving playbackRate=${this.video.playbackRate}`
+      );
+      return;
+    }
+
     const targetSpeed = this.getTargetSpeed();
 
     window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
@@ -230,6 +244,20 @@ class VideoController {
    */
   setupEventHandlers() {
     const mediaEventAction = (event) => {
+      // No authoritative target: with lastSpeed=null and no per-site rule,
+      // forcing getTargetSpeed()'s 1.0 baseline would silently undo native
+      // speed changes the user just made via HTML5 controls.
+      if (
+        this.config.settings.lastSpeed === null &&
+        (this.config.settings.siteDefaultSpeed === null ||
+          this.config.settings.siteDefaultSpeed === undefined)
+      ) {
+        window.VSC.logger.debug(
+          `Media event ${event.type}: no authoritative target, leaving playbackRate=${event.target.playbackRate}`
+        );
+        return;
+      }
+
       const targetSpeed = this.getTargetSpeed(event.target);
 
       // Lifecycle restore, not a user choice — don't persist to lastSpeed.
