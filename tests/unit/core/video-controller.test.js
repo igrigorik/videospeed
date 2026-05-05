@@ -341,6 +341,115 @@ describe('VideoController', () => {
     expect(initCall).toBeDefined();
   });
 
+  it('initializeSpeed is no-op when lastSpeed is null and no per-site rule (deferred init path)', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false;
+    config.settings.lastSpeed = null;
+    config.settings.siteDefaultSpeed = undefined;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    // Site set playbackRate before metadata loaded — controller is constructed
+    // while readyState=0. Without the guard, initializeSpeed would defer to
+    // loadedmetadata and force-reset to baseline 1.0.
+    const mockVideo = createMockVideo({
+      currentSrc: 'https://example.com/video.mp4',
+      playbackRate: 1.5,
+    });
+    Object.defineProperty(mockVideo, 'readyState', { value: 0, configurable: true });
+    mockDOM.container.appendChild(mockVideo);
+
+    const calls = [];
+    const originalAdjustSpeed = actionHandler.adjustSpeed;
+    actionHandler.adjustSpeed = function (video, value, options) {
+      calls.push({ value, options });
+      return originalAdjustSpeed.call(this, video, value, options);
+    };
+
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    // Fire loadedmetadata — guard should have prevented any deferred handler.
+    mockVideo.dispatchEvent(new Event('loadedmetadata'));
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(calls.length).toBe(0);
+    expect(config.settings.lastSpeed).toBeNull();
+  });
+
+  it('play event is no-op when lastSpeed is null and no per-site rule', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false;
+    config.settings.lastSpeed = null;
+    config.settings.siteDefaultSpeed = undefined;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentSrc: 'https://example.com/video.mp4',
+      playbackRate: 1.0,
+    });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    // Real-world flow: extension loads (rate may be touched during init), THEN user
+    // changes speed via native controls, THEN play/seek fires. Snapshot after
+    // construction so init-time calls don't confound the assertion.
+    mockVideo.playbackRate = 1.5;
+    const callsAfterInit = [];
+    const originalAdjustSpeed = actionHandler.adjustSpeed;
+    actionHandler.adjustSpeed = function (video, value, options) {
+      callsAfterInit.push({ value, options });
+      return originalAdjustSpeed.call(this, video, value, options);
+    };
+
+    controller.handlePlay({ type: 'play', target: mockVideo });
+
+    // No authoritative target → mediaEventAction returns early.
+    // playbackRate must not be touched, adjustSpeed must not be called.
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(callsAfterInit.length).toBe(0);
+    expect(config.settings.lastSpeed).toBeNull();
+  });
+
+  it('seeked event is no-op when lastSpeed is null and no per-site rule', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false;
+    config.settings.lastSpeed = null;
+    config.settings.siteDefaultSpeed = undefined;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentSrc: 'https://example.com/video.mp4',
+      playbackRate: 1.0,
+    });
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    mockVideo.playbackRate = 1.5;
+    const callsAfterInit = [];
+    const originalAdjustSpeed = actionHandler.adjustSpeed;
+    actionHandler.adjustSpeed = function (video, value, options) {
+      callsAfterInit.push({ value, options });
+      return originalAdjustSpeed.call(this, video, value, options);
+    };
+
+    controller.handleSeek({ type: 'seeked', target: mockVideo });
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(callsAfterInit.length).toBe(0);
+    expect(config.settings.lastSpeed).toBeNull();
+  });
+
   it('play event restore does not overwrite lastSpeed (#1494)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
