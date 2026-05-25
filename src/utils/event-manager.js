@@ -23,6 +23,12 @@ class EventManager {
     // USER_GESTURE_WINDOW_MS of this is treated as intentional and accepted
     // immediately rather than fought — handles native site speed controls.
     this.lastUserInteractionAt = 0;
+
+    // User gesture tracking: whether a click is currently being held down.
+    // This is used in combination with lastUserInteractionAt to accept intentional
+    // rate changes during click-and-hold interactions with site controls that
+    // would otherwise fail to update lastUserInteractionAt until click release.
+    this.isClickHeld = false;
   }
 
   /**
@@ -225,14 +231,25 @@ class EventManager {
       if (event.target?.closest?.('vsc-controller')) {
         return;
       }
+
+      // Click events are fired on release, so pointerdown = held; click = not-held
+      this.isClickHeld = event.type === 'pointerdown';
       this.lastUserInteractionAt = event.timeStamp;
     };
+
+    document.addEventListener('pointerdown', clickHandler, true);
     document.addEventListener('click', clickHandler, true);
 
     if (!this.listeners.has(document)) {
       this.listeners.set(document, []);
     }
-    this.listeners.get(document).push({ type: 'click', handler: clickHandler, useCapture: true });
+
+    this.listeners
+      .get(document)
+      .push(
+        { type: 'pointerdown', handler: clickHandler, useCapture: true },
+        { type: 'click', handler: clickHandler, useCapture: true }
+      );
   }
 
   /**
@@ -330,7 +347,8 @@ class EventManager {
 
     if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
       const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
-      const isUserGesture = timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
+      const isUserGesture =
+        timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS || this.isClickHeld;
 
       if (isUserGesture) {
         // User interacted with the site's native controls — accept immediately.
