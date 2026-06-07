@@ -119,9 +119,12 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      // Unhandled key — could be a site shortcut (e.g. YouTube's < > speed keys).
-      // Mark as user interaction so an immediately-following ratechange is accepted.
-      this.lastUserInteractionAt = event.timeStamp;
+      // Unhandled native speed shortcuts (e.g. YouTube's < > keys) should be
+      // accepted as intentional site speed changes. Other unhandled keys can
+      // trigger unrelated player behavior, such as YouTube arrow-key seeking.
+      if (EventManager.isNativeSpeedShortcutKey(event)) {
+        this.lastUserInteractionAt = event.timeStamp;
+      }
       window.VSC.logger.verbose(
         `No key binding found for code=${event.code}, keyCode=${event.keyCode}`
       );
@@ -443,6 +446,19 @@ class EventManager {
  */
 EventManager.modifiersMatch = function (mods, ctrl, alt, meta, shift) {
   return mods.ctrl === ctrl && mods.alt === alt && mods.meta === meta && mods.shift === shift;
+};
+
+/**
+ * @param {KeyboardEvent} event
+ * @returns {boolean} True if the key is commonly used by site-native speed controls.
+ */
+EventManager.isNativeSpeedShortcutKey = function (event) {
+  return (
+    event.key === '<' ||
+    event.key === '>' ||
+    ((event.code === 'Comma' || event.keyCode === 188) && event.shiftKey) ||
+    ((event.code === 'Period' || event.keyCode === 190) && event.shiftKey)
+  );
 };
 
 // Time window (ms) after a user interaction in which an external ratechange is

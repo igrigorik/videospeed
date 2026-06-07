@@ -9,7 +9,7 @@ import {
   cleanupChromeMock,
   resetMockStorage,
 } from '../../helpers/chrome-mock.js';
-import { createMockVideo } from '../../helpers/test-utils.js';
+import { createMockKeyboardEvent, createMockVideo } from '../../helpers/test-utils.js';
 describe('EventManager', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -381,6 +381,100 @@ describe('EventManager', () => {
     expect(eventManager.fightCount).toBe(0);
     expect(eventManager.lastUserInteractionAt).toBe(0); // consumed
     expect(eventStopped).toBe(false);
+  });
+
+  it('should not accept YouTube arrow-key seek resets as intentional speed changes', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 2.0;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 2.0 });
+    mockVideo.vsc = { speedIndicator: { textContent: '2.00' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    const originalStateManager = window.VSC.stateManager;
+    window.VSC.stateManager = {
+      getControlledElements: () => [mockVideo],
+    };
+
+    const arrowEvent = createMockKeyboardEvent('keydown', 39, {
+      code: 'ArrowRight',
+      key: 'ArrowRight',
+    });
+    Object.defineProperty(arrowEvent, 'timeStamp', { value: 1000 });
+    Object.defineProperty(arrowEvent, 'target', { value: document.body });
+
+    try {
+      eventManager.handleKeydown(arrowEvent);
+    } finally {
+      window.VSC.stateManager = originalStateManager;
+    }
+
+    mockVideo.playbackRate = 1.0;
+
+    let eventStopped = false;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      timeStamp: 1050,
+      stopImmediatePropagation: () => {
+        eventStopped = true;
+      },
+    });
+
+    expect(eventManager.lastUserInteractionAt).toBe(0);
+    expect(mockVideo.playbackRate).toBe(2.0);
+    expect(config.settings.lastSpeed).toBe(2.0);
+    expect(eventStopped).toBe(true);
+  });
+
+  it('should accept native keyboard speed shortcuts as intentional speed changes', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.5;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.5 });
+    mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.50' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    const originalStateManager = window.VSC.stateManager;
+    window.VSC.stateManager = {
+      getControlledElements: () => [mockVideo],
+    };
+
+    const speedShortcutEvent = createMockKeyboardEvent('keydown', 190, {
+      code: 'Period',
+      key: '>',
+      shiftKey: true,
+    });
+    Object.defineProperty(speedShortcutEvent, 'timeStamp', { value: 1000 });
+    Object.defineProperty(speedShortcutEvent, 'target', { value: document.body });
+
+    try {
+      eventManager.handleKeydown(speedShortcutEvent);
+    } finally {
+      window.VSC.stateManager = originalStateManager;
+    }
+
+    mockVideo.playbackRate = 1.75;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      timeStamp: 1050,
+      stopImmediatePropagation: () => {},
+    });
+
+    expect(mockVideo.playbackRate).toBe(1.75);
+    expect(config.settings.lastSpeed).toBe(1.75);
+    expect(eventManager.lastUserInteractionAt).toBe(0);
   });
 
   it('should fight back when external speed change has no preceding user gesture', async () => {
