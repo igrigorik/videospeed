@@ -423,6 +423,7 @@ describe('ActionHandler', () => {
     mockVideo.vsc = {
       div: mockDOM.container,
       speedIndicator: { textContent: '1.00' },
+      speedSlider: { value: '1.00' },
     };
 
     // Test absolute speed change

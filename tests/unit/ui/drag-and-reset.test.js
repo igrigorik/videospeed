@@ -148,6 +148,7 @@ describe('DragAndReset', () => {
   it('controller renders a speed slider above the existing buttons', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
+    config.settings.lastSpeed = 1.25;
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
