@@ -64,6 +64,43 @@
           >
           <input id="exclusiveKeys" type="checkbox" />
         </div>
+        <div class="row">
+          <label for="liveCatchUpEnabled"
+            >Catch up to live<br />
+            <em
+              >On live streams, speed up automatically until playback reaches the live edge.</em
+            ></label
+          >
+          <input id="liveCatchUpEnabled" type="checkbox" />
+        </div>
+        <div class="row">
+          <label for="liveCatchUpSpeed"
+            >Live catch-up speed<br />
+            <em>Playback speed used while catching up. Default: 1.5</em></label
+          >
+          <input id="liveCatchUpSpeed" type="text" />
+        </div>
+        <div class="row">
+          <label for="liveCatchUpStartThreshold"
+            >Live catch-up start<br />
+            <em>Seconds behind live before catch-up starts. Default: 10</em></label
+          >
+          <input id="liveCatchUpStartThreshold" type="text" />
+        </div>
+        <div class="row">
+          <label for="liveCatchUpStopThreshold"
+            >Live edge threshold<br />
+            <em>Seconds from live where speed returns to 1x. Default: 3</em></label
+          >
+          <input id="liveCatchUpStopThreshold" type="text" />
+        </div>
+        <div class="row">
+          <label for="liveResetSpeedAtEdge"
+            >Reset speed at live edge<br />
+            <em>On live streams, return manual speeds above 1x to 1x near the live edge.</em></label
+          >
+          <input id="liveResetSpeedAtEdge" type="checkbox" />
+        </div>
       </section>
     </div>
 

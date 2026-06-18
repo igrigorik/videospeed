@@ -53,6 +53,15 @@ export function createMockVideo(options = {}) {
       writable: true,
       configurable: true,
     },
+    seekable: {
+      value: options.seekable || {
+        length: 0,
+        start: () => 0,
+        end: () => 0,
+      },
+      writable: true,
+      configurable: true,
+    },
     ownerDocument: {
       value: document,
       writable: true,

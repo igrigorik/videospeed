@@ -199,6 +199,80 @@ class ActionHandler {
   }
 
   /**
+   * Get how far playback is from the end of a live stream's seekable range.
+   * Returns null for normal on-demand videos to avoid treating "time left" as
+   * live latency.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {number|null} Seconds behind the live edge, or null if not live
+   */
+  getLiveLatency(video) {
+    const ranges = video.seekable;
+    const isProbablyLive =
+      video.duration === Infinity || video.duration === undefined || Number.isNaN(video.duration);
+
+    if (!isProbablyLive || !ranges || ranges.length === 0) {
+      return null;
+    }
+
+    const liveEdge = ranges.end(ranges.length - 1);
+    if (!Number.isFinite(liveEdge)) {
+      return null;
+    }
+
+    return Math.max(0, liveEdge - video.currentTime);
+  }
+
+  /**
+   * Automatically catch up to the live edge, and optionally reset manual
+   * speeds above 1x once playback reaches the live edge.
+   * @param {HTMLMediaElement} video - Video element
+   */
+  updateLiveCatchUp(video) {
+    const settings = this.config.settings;
+    const controller = video.vsc;
+    const catchUpEnabled = Boolean(settings.liveCatchUpEnabled);
+    const resetAtEdge = Boolean(settings.liveResetSpeedAtEdge);
+
+    if (!controller || (!catchUpEnabled && !resetAtEdge)) {
+      return;
+    }
+
+    const latency = this.getLiveLatency(video);
+    if (latency === null || video.paused) {
+      return;
+    }
+
+    const numericSetting = (value, fallback) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : fallback;
+    };
+    const catchUpSpeed = numericSetting(settings.liveCatchUpSpeed, 1.5);
+    const startThreshold = numericSetting(settings.liveCatchUpStartThreshold, 10);
+    const stopThreshold = numericSetting(settings.liveCatchUpStopThreshold, 3);
+    const isNearLive = latency <= stopThreshold;
+
+    if (catchUpEnabled && latency > startThreshold) {
+      controller.liveCatchUpActive = true;
+      if (Math.abs(video.playbackRate - catchUpSpeed) > 0.01) {
+        window.VSC.logger.info(`Live catch-up active: ${latency.toFixed(1)}s behind live`);
+        this.adjustSpeed(video, catchUpSpeed, { source: 'liveCatchUp' });
+      }
+      return;
+    }
+
+    if ((controller.liveCatchUpActive || resetAtEdge) && isNearLive && video.playbackRate > 1.0) {
+      window.VSC.logger.info('Live edge reached; restoring speed to 1x');
+      controller.liveCatchUpActive = false;
+      this.adjustSpeed(video, 1.0, { source: 'liveCatchUp' });
+      return;
+    }
+
+    if (controller.liveCatchUpActive && !catchUpEnabled) {
+      controller.liveCatchUpActive = false;
+    }
+  }
+
+  /**
    * Reset speed with memory toggle functionality.
    *
    * Behavior:
@@ -468,7 +542,7 @@ class ActionHandler {
     //    undoes the very change we're making.
     //    'init' source: skip — don't arm fight-back with the initialization
     //    default; let the first real user/site action establish authority.
-    if (source !== 'external' && source !== 'init') {
+    if (source !== 'external' && source !== 'init' && source !== 'liveCatchUp') {
       this.config.settings.lastSpeed = numericSpeed;
     }
 
@@ -506,7 +580,7 @@ class ActionHandler {
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
     // 6. Persist to storage only if rememberSpeed is enabled
-    if (source !== 'external' && this.config.settings.rememberSpeed) {
+    if (source !== 'external' && source !== 'liveCatchUp' && this.config.settings.rememberSpeed) {
       this.config.save({ lastSpeed: numericSpeed });
     }
 

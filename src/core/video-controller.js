@@ -235,6 +235,7 @@ class VideoController {
       // Lifecycle restore, not a user choice — don't persist to lastSpeed.
       window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
       this.actionHandler.adjustSpeed(event.target, targetSpeed, { source: 'init' });
+      this.actionHandler.updateLiveCatchUp(event.target);
     };
 
     // Bind event handlers
@@ -247,12 +248,17 @@ class VideoController {
       }
       mediaEventAction.call(this, event);
     };
+    this.handleLiveProgress = (event) => {
+      this.actionHandler.updateLiveCatchUp(event.target);
+    };
 
     // Add essential event listeners for speed restoration
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
+    this.video.addEventListener('timeupdate', this.handleLiveProgress);
+    this.video.addEventListener('progress', this.handleLiveProgress);
 
-    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
+    window.VSC.logger.debug('Added essential media event handlers: play, seeked, timeupdate');
   }
 
   /**
@@ -299,6 +305,10 @@ class VideoController {
     }
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
+    }
+    if (this.handleLiveProgress) {
+      this.video.removeEventListener('timeupdate', this.handleLiveProgress);
+      this.video.removeEventListener('progress', this.handleLiveProgress);
     }
 
     // Disconnect mutation observer
