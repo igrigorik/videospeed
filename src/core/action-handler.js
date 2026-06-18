@@ -207,15 +207,34 @@ class ActionHandler {
    */
   getLiveLatency(video) {
     const ranges = video.seekable;
-    const isProbablyLive =
-      video.duration === Infinity || video.duration === undefined || Number.isNaN(video.duration);
 
-    if (!isProbablyLive || !ranges || ranges.length === 0) {
+    if (!ranges || ranges.length === 0) {
       return null;
     }
 
-    const liveEdge = ranges.end(ranges.length - 1);
+    const firstRange = 0;
+    const lastRange = ranges.length - 1;
+    const liveStart = ranges.start(firstRange);
+    const liveEdge = ranges.end(lastRange);
     if (!Number.isFinite(liveEdge)) {
+      return null;
+    }
+
+    const isUnboundedDuration =
+      video.duration === Infinity || video.duration === undefined || Number.isNaN(video.duration);
+    const hasSlidingSeekableWindow = Number.isFinite(liveStart) && liveStart > 0;
+    const isYouTubeLive =
+      window.location.hostname.endsWith('youtube.com') &&
+      Boolean(video.ownerDocument.querySelector('.ytp-live-badge, .ytp-live'));
+    const previousLiveEdge = video.vsc?.lastLiveEdge;
+    const liveEdgeAdvanced =
+      Number.isFinite(previousLiveEdge) && liveEdge > previousLiveEdge + 0.25;
+
+    if (video.vsc) {
+      video.vsc.lastLiveEdge = liveEdge;
+    }
+
+    if (!isUnboundedDuration && !hasSlidingSeekableWindow && !isYouTubeLive && !liveEdgeAdvanced) {
       return null;
     }
 
@@ -233,12 +252,27 @@ class ActionHandler {
     const catchUpEnabled = Boolean(settings.liveCatchUpEnabled);
     const resetAtEdge = Boolean(settings.liveResetSpeedAtEdge);
 
-    if (!controller || (!catchUpEnabled && !resetAtEdge)) {
+    if (!controller) {
+      window.VSC.logger.debug('Live catch-up skipped: no controller attached');
+      return;
+    }
+
+    if (!catchUpEnabled && !resetAtEdge) {
       return;
     }
 
     const latency = this.getLiveLatency(video);
-    if (latency === null || video.paused) {
+    if (latency === null) {
+      window.VSC.logger.debug(
+        `Live catch-up skipped: not detected as live (duration=${video.duration}, seekable=${video.seekable?.length || 0})`
+      );
+      return;
+    }
+
+    if (video.paused) {
+      window.VSC.logger.debug(
+        `Live catch-up skipped: video paused (${latency.toFixed(1)}s behind)`
+      );
       return;
     }
 
@@ -250,6 +284,14 @@ class ActionHandler {
     const startThreshold = numericSetting(settings.liveCatchUpStartThreshold, 10);
     const stopThreshold = numericSetting(settings.liveCatchUpStopThreshold, 3);
     const isNearLive = latency <= stopThreshold;
+    const now = Date.now();
+
+    if (!controller.lastLiveCatchUpLogAt || now - controller.lastLiveCatchUpLogAt > 2000) {
+      controller.lastLiveCatchUpLogAt = now;
+      window.VSC.logger.debug(
+        `Live catch-up check: latency=${latency.toFixed(1)}s, speed=${video.playbackRate}, start=${startThreshold}s, stop=${stopThreshold}s, active=${Boolean(controller.liveCatchUpActive)}`
+      );
+    }
 
     if (catchUpEnabled && latency > startThreshold) {
       controller.liveCatchUpActive = true;

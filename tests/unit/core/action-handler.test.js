@@ -244,6 +244,31 @@ describe('ActionHandler', () => {
     expect(mockVideo.vsc.liveCatchUpActive).toBeUndefined();
   });
 
+  it('ActionHandler should catch up finite-duration live streams with a sliding seekable window', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.liveCatchUpEnabled = true;
+    config.settings.liveCatchUpSpeed = 1.5;
+    config.settings.liveCatchUpStartThreshold = 10;
+    config.settings.liveCatchUpStopThreshold = 3;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: 100,
+      seekable: {
+        length: 1,
+        start: () => 30,
+        end: () => 100,
+      },
+    });
+
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
+  });
+
   it('ActionHandler should reset manual speed at the live edge when configured', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
