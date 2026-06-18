@@ -269,6 +269,71 @@ describe('ActionHandler', () => {
     expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
   });
 
+  it('ActionHandler should not pin catch-up speed after the initial live catch-up suggestion', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.liveCatchUpEnabled = true;
+    config.settings.liveCatchUpSpeed = 1.5;
+    config.settings.liveCatchUpStartThreshold = 10;
+    config.settings.liveCatchUpStopThreshold = 3;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 100,
+      },
+    });
+
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+
+    mockVideo.playbackRate = 1.0;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.0);
+
+    mockVideo.playbackRate = 2.0;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(2.0);
+  });
+
+  it('ActionHandler should reset the catch-up cycle at live edge without forcing slow speeds to 1x', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.liveCatchUpEnabled = true;
+    config.settings.liveCatchUpSpeed = 1.5;
+    config.settings.liveCatchUpStartThreshold = 10;
+    config.settings.liveCatchUpStopThreshold = 3;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 100,
+      },
+    });
+
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
+
+    mockVideo.currentTime = 98;
+    mockVideo.playbackRate = 0.75;
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(0.75);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+
+    mockVideo.currentTime = 80;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+  });
+
   it('ActionHandler should reset manual speed at the live edge when configured', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();

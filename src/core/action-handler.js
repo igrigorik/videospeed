@@ -259,6 +259,10 @@ class ActionHandler {
       return;
     }
 
+    if (!catchUpEnabled) {
+      controller.liveCatchUpActive = false;
+    }
+
     if (!catchUpEnabled && !resetAtEdge) {
       return;
     }
@@ -296,6 +300,10 @@ class ActionHandler {
     }
 
     if (catchUpEnabled && latency > startThreshold) {
+      if (controller.liveCatchUpActive) {
+        return;
+      }
+
       controller.liveCatchUpActive = true;
       if (Math.abs(video.playbackRate - catchUpSpeed) > 0.01) {
         window.VSC.logger.info(`Live catch-up active: ${latency.toFixed(1)}s behind live`);
@@ -304,10 +312,16 @@ class ActionHandler {
       return;
     }
 
-    if ((controller.liveCatchUpActive || resetAtEdge) && isNearLive && video.playbackRate > 1.0) {
-      window.VSC.logger.info('Live edge reached; restoring speed to 1x');
+    if (isNearLive) {
+      const shouldResetSpeed =
+        (controller.liveCatchUpActive || resetAtEdge) && video.playbackRate > 1.0;
+
       controller.liveCatchUpActive = false;
-      this.adjustSpeed(video, 1.0, { source: 'liveCatchUp' });
+
+      if (shouldResetSpeed) {
+        window.VSC.logger.info('Live edge reached; restoring speed to 1x');
+        this.adjustSpeed(video, 1.0, { source: 'liveCatchUp' });
+      }
       return;
     }
 
