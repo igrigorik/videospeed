@@ -163,6 +163,9 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.liveCatchUpSpeed = Number(storage.liveCatchUpSpeed);
         this.settings.liveCatchUpStartThreshold = Number(storage.liveCatchUpStartThreshold);
         this.settings.liveCatchUpStopThreshold = Number(storage.liveCatchUpStopThreshold);
+        this.settings.liveCatchUpPauseNearLiveThreshold = Number(
+          storage.liveCatchUpPauseNearLiveThreshold
+        );
         this.settings.liveResetSpeedAtEdge = Boolean(storage.liveResetSpeedAtEdge);
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);

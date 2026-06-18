@@ -180,6 +180,7 @@ class ActionHandler {
    * @param {number} seekSeconds - Seconds to seek
    */
   seek(video, seekSeconds) {
+    this.handleLiveSeek(video);
     // Use site-specific seeking (handlers return true if they handle it)
     window.VSC.siteHandlerManager.handleSeek(video, seekSeconds);
   }
@@ -244,6 +245,138 @@ class ActionHandler {
   }
 
   /**
+   * Parse a numeric setting with a fallback.
+   * @param {*} value - Setting value
+   * @param {number} fallback - Default value
+   * @returns {number}
+   * @private
+   */
+  numericSetting(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  /**
+   * Clear all transient live catch-up state for a media element.
+   * @param {HTMLMediaElement} video - Video element
+   */
+  clearLiveCatchUpState(video) {
+    const controller = video?.vsc;
+    if (!controller) {
+      return;
+    }
+
+    controller.liveCatchUpActive = false;
+    controller.liveCatchUpPauseCandidate = null;
+    controller.liveCatchUpResumeCandidate = null;
+  }
+
+  /**
+   * Record whether a pause happened close enough to live to allow catch-up after resume.
+   * @param {HTMLMediaElement} video - Video element
+   */
+  handleLivePause(video) {
+    const controller = video?.vsc;
+    if (!controller || !this.config.settings.liveCatchUpEnabled) {
+      this.clearLiveCatchUpState(video);
+      return;
+    }
+
+    const latency = this.getLiveLatency(video);
+    if (latency === null) {
+      this.clearLiveCatchUpState(video);
+      return;
+    }
+
+    const nearLiveThreshold = this.numericSetting(
+      this.config.settings.liveCatchUpPauseNearLiveThreshold,
+      900
+    );
+    const wasCatchUpActive = Boolean(controller.liveCatchUpActive);
+
+    if (!wasCatchUpActive && latency > nearLiveThreshold) {
+      this.clearLiveCatchUpState(video);
+      return;
+    }
+
+    controller.liveCatchUpPauseCandidate = {
+      pausedAt: Date.now(),
+      latencyAtPause: latency,
+      seekGeneration: controller.liveCatchUpSeekGeneration,
+      wasCatchUpActive,
+    };
+    controller.liveCatchUpResumeCandidate = null;
+  }
+
+  /**
+   * Convert a valid pause candidate into a short-lived resume candidate.
+   * @param {HTMLMediaElement} video - Video element
+   */
+  handleLivePlay(video) {
+    const controller = video?.vsc;
+    if (!controller || !this.config.settings.liveCatchUpEnabled) {
+      this.clearLiveCatchUpState(video);
+      return;
+    }
+
+    const pauseCandidate = controller.liveCatchUpPauseCandidate;
+    if (!pauseCandidate || pauseCandidate.seekGeneration !== controller.liveCatchUpSeekGeneration) {
+      this.clearLiveCatchUpState(video);
+      return;
+    }
+
+    controller.liveCatchUpResumeCandidate = {
+      resumedAt: Date.now(),
+      seekGeneration: controller.liveCatchUpSeekGeneration,
+      latencyAtPause: pauseCandidate.latencyAtPause,
+    };
+    controller.liveCatchUpPauseCandidate = null;
+
+    if (pauseCandidate.wasCatchUpActive) {
+      controller.liveCatchUpActive = false;
+    }
+  }
+
+  /**
+   * Invalidate catch-up intent when the user seeks manually.
+   * @param {HTMLMediaElement} video - Video element
+   */
+  handleLiveSeek(video) {
+    const controller = video?.vsc;
+    if (!controller) {
+      return;
+    }
+
+    controller.liveCatchUpSeekGeneration = (controller.liveCatchUpSeekGeneration || 0) + 1;
+    this.clearLiveCatchUpState(video);
+  }
+
+  /**
+   * Check whether catch-up may be started for this resume window.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {boolean}
+   * @private
+   */
+  hasValidLiveCatchUpResumeCandidate(video) {
+    const controller = video?.vsc;
+    const candidate = controller?.liveCatchUpResumeCandidate;
+    if (!controller || !candidate) {
+      return false;
+    }
+
+    const maxAgeMs = 30000;
+    const isValid =
+      candidate.seekGeneration === controller.liveCatchUpSeekGeneration &&
+      Date.now() - candidate.resumedAt <= maxAgeMs;
+
+    if (!isValid) {
+      controller.liveCatchUpResumeCandidate = null;
+    }
+
+    return isValid;
+  }
+
+  /**
    * Automatically catch up to the live edge, and optionally reset manual
    * speeds above 1x once playback reaches the live edge.
    * @param {HTMLMediaElement} video - Video element
@@ -260,7 +393,7 @@ class ActionHandler {
     }
 
     if (!catchUpEnabled) {
-      controller.liveCatchUpActive = false;
+      this.clearLiveCatchUpState(video);
     }
 
     if (!catchUpEnabled && !resetAtEdge) {
@@ -269,6 +402,7 @@ class ActionHandler {
 
     const latency = this.getLiveLatency(video);
     if (latency === null) {
+      this.clearLiveCatchUpState(video);
       window.VSC.logger.debug(
         `Live catch-up skipped: not detected as live (duration=${video.duration}, seekable=${video.seekable?.length || 0})`
       );
@@ -282,13 +416,9 @@ class ActionHandler {
       return;
     }
 
-    const numericSetting = (value, fallback) => {
-      const number = Number(value);
-      return Number.isFinite(number) ? number : fallback;
-    };
-    const catchUpSpeed = numericSetting(settings.liveCatchUpSpeed, 1.5);
-    const startThreshold = numericSetting(settings.liveCatchUpStartThreshold, 10);
-    const stopThreshold = numericSetting(settings.liveCatchUpStopThreshold, 3);
+    const catchUpSpeed = this.numericSetting(settings.liveCatchUpSpeed, 1.5);
+    const startThreshold = this.numericSetting(settings.liveCatchUpStartThreshold, 10);
+    const stopThreshold = this.numericSetting(settings.liveCatchUpStopThreshold, 3);
     const isNearLive = latency <= stopThreshold;
     const now = Date.now();
 
@@ -304,7 +434,12 @@ class ActionHandler {
         return;
       }
 
+      if (!this.hasValidLiveCatchUpResumeCandidate(video)) {
+        return;
+      }
+
       controller.liveCatchUpActive = true;
+      controller.liveCatchUpResumeCandidate = null;
       if (Math.abs(video.playbackRate - catchUpSpeed) > 0.01) {
         window.VSC.logger.info(`Live catch-up active: ${latency.toFixed(1)}s behind live`);
         this.adjustSpeed(video, catchUpSpeed, { source: 'liveCatchUp' });
@@ -316,17 +451,12 @@ class ActionHandler {
       const shouldResetSpeed =
         (controller.liveCatchUpActive || resetAtEdge) && video.playbackRate > 1.0;
 
-      controller.liveCatchUpActive = false;
+      this.clearLiveCatchUpState(video);
 
       if (shouldResetSpeed) {
         window.VSC.logger.info('Live edge reached; restoring speed to 1x');
         this.adjustSpeed(video, 1.0, { source: 'liveCatchUp' });
       }
-      return;
-    }
-
-    if (controller.liveCatchUpActive && !catchUpEnabled) {
-      controller.liveCatchUpActive = false;
     }
   }
 
@@ -602,6 +732,7 @@ class ActionHandler {
     //    default; let the first real user/site action establish authority.
     if (source !== 'external' && source !== 'init' && source !== 'liveCatchUp') {
       this.config.settings.lastSpeed = numericSpeed;
+      this.clearLiveCatchUpState(video);
     }
 
     // 2. Start cooldown — the playbackRate assignment below triggers a

@@ -32,6 +32,7 @@ describe('Settings', () => {
     expect(config.settings.enabled).toBe(true);
     expect(config.settings.lastSpeed).toBe(1.0);
     expect(config.settings.logLevel).toBe(3);
+    expect(config.settings.liveCatchUpPauseNearLiveThreshold).toBe(900);
   });
 
   it('VideoSpeedConfig should load settings from storage', async () => {
@@ -41,6 +42,7 @@ describe('Settings', () => {
     expect(settings).toBeDefined();
     expect(settings.enabled).toBe(true);
     expect(settings.lastSpeed).toBeNull(); // no user choice yet
+    expect(settings.liveCatchUpPauseNearLiveThreshold).toBe(900);
   });
 
   it('VideoSpeedConfig should save settings to storage', async () => {

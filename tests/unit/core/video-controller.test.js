@@ -47,6 +47,25 @@ describe('VideoController', () => {
     }
   });
 
+  function configureLiveCatchUp(config, overrides = {}) {
+    Object.assign(config.settings, {
+      liveCatchUpEnabled: true,
+      liveCatchUpSpeed: 1.5,
+      liveCatchUpStartThreshold: 10,
+      liveCatchUpStopThreshold: 3,
+      liveCatchUpPauseNearLiveThreshold: 900,
+      ...overrides,
+    });
+  }
+
+  function createLiveSeekable(start = 0, end = 100) {
+    return {
+      length: 1,
+      start: () => start,
+      end: () => end,
+    };
+  }
+
   it('VideoController should initialize with video element', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
@@ -302,6 +321,9 @@ describe('VideoController', () => {
 
     // Should have added media event listeners
     expect(addedListeners.length > 0).toBe(true); // Should have added some listeners
+    expect(addedListeners.map(({ type }) => type)).toEqual(
+      expect.arrayContaining(['pause', 'play', 'seeking', 'seeked', 'timeupdate', 'progress'])
+    );
 
     // Should have proper vsc structure with speedIndicator
     expect(mockVideo.vsc).toBeDefined();
@@ -366,5 +388,92 @@ describe('VideoController', () => {
     // Lifecycle restore should re-apply speed but NOT corrupt lastSpeed
     expect(mockVideo.playbackRate).toBe(1.8);
     expect(config.settings.lastSpeed).toBe(1.8);
+  });
+
+  it('pause/play events should arm live catch-up after pausing near live', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    mockVideo.paused = true;
+    mockVideo.dispatchEvent({ type: 'pause' });
+    expect(controller.liveCatchUpPauseCandidate).not.toBeNull();
+
+    mockVideo.paused = false;
+    mockVideo.dispatchEvent({ type: 'play' });
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(controller.liveCatchUpActive).toBe(true);
+  });
+
+  it('pause/play events should not arm live catch-up when pause starts too far behind live', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentTime: 0,
+      duration: Infinity,
+      seekable: createLiveSeekable(0, 1000),
+    });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    mockVideo.paused = true;
+    mockVideo.dispatchEvent({ type: 'pause' });
+    mockVideo.paused = false;
+    mockVideo.dispatchEvent({ type: 'play' });
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(controller.liveCatchUpActive).toBe(false);
+    expect(controller.liveCatchUpPauseCandidate).toBeNull();
+    expect(controller.liveCatchUpResumeCandidate).toBeNull();
+  });
+
+  it('seeking event should invalidate a pending live catch-up pause intent', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+    mockDOM.container.appendChild(mockVideo);
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    mockVideo.paused = true;
+    mockVideo.dispatchEvent({ type: 'pause' });
+    expect(controller.liveCatchUpPauseCandidate).not.toBeNull();
+
+    mockVideo.dispatchEvent({ type: 'seeking' });
+    mockVideo.paused = false;
+    mockVideo.dispatchEvent({ type: 'play' });
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(controller.liveCatchUpActive).toBe(false);
+    expect(controller.liveCatchUpPauseCandidate).toBeNull();
+    expect(controller.liveCatchUpResumeCandidate).toBeNull();
   });
 });
