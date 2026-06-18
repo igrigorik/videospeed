@@ -206,6 +206,11 @@ class ActionHandler {
    * @returns {number|null} Seconds behind the live edge, or null if not live
    */
   getLiveLatency(video) {
+    const siteLatency = window.VSC.siteHandlerManager?.getLiveLatency(video);
+    if (siteLatency !== null && siteLatency !== undefined) {
+      return siteLatency;
+    }
+
     const ranges = video.seekable;
 
     if (!ranges || ranges.length === 0) {
@@ -223,9 +228,6 @@ class ActionHandler {
     const isUnboundedDuration =
       video.duration === Infinity || video.duration === undefined || Number.isNaN(video.duration);
     const hasSlidingSeekableWindow = Number.isFinite(liveStart) && liveStart > 0;
-    const isYouTubeLive =
-      window.location.hostname.endsWith('youtube.com') &&
-      Boolean(video.ownerDocument.querySelector('.ytp-live-badge, .ytp-live'));
     const previousLiveEdge = video.vsc?.lastLiveEdge;
     const liveEdgeAdvanced =
       Number.isFinite(previousLiveEdge) && liveEdge > previousLiveEdge + 0.25;
@@ -234,7 +236,7 @@ class ActionHandler {
       video.vsc.lastLiveEdge = liveEdge;
     }
 
-    if (!isUnboundedDuration && !hasSlidingSeekableWindow && !isYouTubeLive && !liveEdgeAdvanced) {
+    if (!isUnboundedDuration && !hasSlidingSeekableWindow && !liveEdgeAdvanced) {
       return null;
     }
 

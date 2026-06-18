@@ -8,6 +8,7 @@ import {
   cleanupChromeMock,
   resetMockStorage,
 } from '../../helpers/chrome-mock.js';
+import { createMockVideo } from '../../helpers/test-utils.js';
 
 describe('YouTubeHandler', () => {
   beforeEach(() => {
@@ -81,5 +82,57 @@ describe('YouTubeHandler', () => {
     expect(result.insertionPoint).toBe(parent);
 
     grandparent.remove();
+  });
+
+  it('returns zero live latency when YouTube reports playback is at live head', () => {
+    const handler = new window.VSC.YouTubeHandler();
+    const video = createMockVideo({
+      currentTime: 11355,
+      duration: 14610,
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 14610,
+      },
+    });
+    const player = document.createElement('div');
+    player.id = 'movie_player';
+    player.getVideoData = () => ({ isLive: true });
+    player.getProgressState = () => ({
+      current: 11355,
+      seekableEnd: 11355,
+      isAtLiveHead: true,
+    });
+    document.body.appendChild(player);
+
+    expect(handler.getLiveLatency(video)).toBe(0);
+
+    player.remove();
+  });
+
+  it('uses YouTube progress state instead of native seekable end for live latency', () => {
+    const handler = new window.VSC.YouTubeHandler();
+    const video = createMockVideo({
+      currentTime: 11355,
+      duration: 14610,
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 14610,
+      },
+    });
+    const player = document.createElement('div');
+    player.id = 'movie_player';
+    player.getVideoData = () => ({ isLive: true });
+    player.getProgressState = () => ({
+      current: 11355,
+      seekableEnd: 11435,
+      isAtLiveHead: false,
+    });
+    document.body.appendChild(player);
+
+    expect(handler.getLiveLatency(video)).toBe(80);
+
+    player.remove();
   });
 });

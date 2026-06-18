@@ -61,6 +61,16 @@ class BaseSiteHandler {
   }
 
   /**
+   * Get site-specific live latency when the native media timeline is unreliable.
+   * Return null when the site has no better live-edge signal.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {number|null} Seconds behind live edge
+   */
+  getLiveLatency(_video) {
+    return null;
+  }
+
+  /**
    * Handle site-specific initialization
    * @param {Document} document - Document object
    */

@@ -66,6 +66,40 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
   }
 
   /**
+   * YouTube live streams expose the reliable live edge through their player
+   * progress state. The native HTMLMediaElement seekable range can point at
+   * the full manifest timeline and overstate latency by hours.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {number|null} Seconds behind live edge
+   */
+  getLiveLatency(video) {
+    const player = video.ownerDocument.getElementById('movie_player');
+    if (!player || typeof player.getProgressState !== 'function') {
+      return null;
+    }
+
+    const progressState = player.getProgressState();
+    const videoData =
+      typeof player.getVideoData === 'function' ? player.getVideoData() : { isLive: false };
+
+    if (!videoData?.isLive) {
+      return null;
+    }
+
+    if (progressState?.isAtLiveHead) {
+      return 0;
+    }
+
+    const current = Number(progressState?.current ?? video.currentTime);
+    const liveEdge = Number(progressState?.seekableEnd);
+    if (!Number.isFinite(current) || !Number.isFinite(liveEdge)) {
+      return null;
+    }
+
+    return Math.max(0, liveEdge - current);
+  }
+
+  /**
    * Get YouTube-specific video container selectors
    * @returns {Array<string>} CSS selectors
    */
