@@ -739,7 +739,7 @@ class ActionHandler {
     //    native ratechange event synchronously. Without cooldown active,
     //    handleRateChange would misclassify it as an external site change.
     if (this.eventManager) {
-      this.eventManager.refreshCoolDown();
+      this.eventManager.refreshCoolDown(undefined, numericSpeed);
     }
 
     // 3. Set the actual playback rate via site handler (native ratechange fires here, blocked by cooldown)

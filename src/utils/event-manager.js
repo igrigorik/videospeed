@@ -10,6 +10,7 @@ class EventManager {
     this.actionHandler = actionHandler;
     this.listeners = new Map();
     this.coolDown = false;
+    this.coolDownExpectedSpeed = null;
 
     // Event deduplication to prevent duplicate key processing
     this.lastKeyEventSignature = null;
@@ -23,6 +24,26 @@ class EventManager {
     // USER_GESTURE_WINDOW_MS of this is treated as intentional and accepted
     // immediately rather than fought — handles native site speed controls.
     this.lastUserInteractionAt = 0;
+  }
+
+  /**
+   * Get the speed value that should be protected from automatic site resets.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {number|null} Authoritative speed, or null when no value should be protected
+   * @private
+   */
+  getAuthoritativeSpeed(video) {
+    if (Number.isFinite(this.coolDownExpectedSpeed)) {
+      return this.coolDownExpectedSpeed;
+    }
+
+    if (video?.vsc?.liveCatchUpActive && this.config.settings.liveCatchUpEnabled) {
+      const catchUpSpeed = Number(this.config.settings.liveCatchUpSpeed);
+      return Number.isFinite(catchUpSpeed) ? catchUpSpeed : null;
+    }
+
+    const lastSpeed = Number(this.config.settings.lastSpeed);
+    return Number.isFinite(lastSpeed) ? lastSpeed : null;
   }
 
   /**
@@ -274,8 +295,8 @@ class EventManager {
       }
 
       // RESTORE our authoritative value since external change already happened
-      if (video.vsc && this.config.settings.lastSpeed !== null) {
-        const authoritativeSpeed = this.config.settings.lastSpeed;
+      const authoritativeSpeed = this.getAuthoritativeSpeed(video);
+      if (video.vsc && authoritativeSpeed !== null) {
         if (Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
           window.VSC.logger.info(
             `Restoring speed during cooldown from external ${video.playbackRate} to authoritative ${authoritativeSpeed}`
@@ -326,9 +347,9 @@ class EventManager {
     // to fight back or accept. User-initiated changes (detected via gesture window)
     // are accepted immediately — this allows native site controls (e.g. YouTube's
     // speed menu or < > shortcuts) to coexist with our fight-back logic.
-    const authoritativeSpeed = this.config.settings.lastSpeed;
+    const authoritativeSpeed = this.getAuthoritativeSpeed(video);
 
-    if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
+    if (authoritativeSpeed !== null && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
       const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
       const isUserGesture = timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
 
@@ -378,7 +399,7 @@ class EventManager {
           `Fight detection: attempt ${this.fightCount}/${EventManager.MAX_FIGHT_COUNT}, re-applying ${authoritativeSpeed} (cooldown ${cooldown}ms)`
         );
         window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
-        this.refreshCoolDown(cooldown);
+        this.refreshCoolDown(cooldown, authoritativeSpeed);
         event.stopImmediatePropagation();
         return;
       }
@@ -394,15 +415,17 @@ class EventManager {
   /**
    * Start cooldown period to prevent event spam
    */
-  refreshCoolDown(duration = EventManager.BASE_COOLDOWN_MS) {
+  refreshCoolDown(duration = EventManager.BASE_COOLDOWN_MS, expectedSpeed = null) {
     window.VSC.logger.debug(`Begin refreshCoolDown (${duration}ms)`);
 
     if (this.coolDown) {
       clearTimeout(this.coolDown);
     }
 
+    this.coolDownExpectedSpeed = Number.isFinite(expectedSpeed) ? expectedSpeed : null;
     this.coolDown = setTimeout(() => {
       this.coolDown = false;
+      this.coolDownExpectedSpeed = null;
     }, duration);
 
     window.VSC.logger.debug('End refreshCoolDown');
@@ -428,6 +451,7 @@ class EventManager {
       clearTimeout(this.coolDown);
       this.coolDown = false;
     }
+    this.coolDownExpectedSpeed = null;
 
     if (this.fightTimer) {
       clearTimeout(this.fightTimer);
