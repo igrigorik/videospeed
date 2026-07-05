@@ -361,8 +361,9 @@ describe('EventManager', () => {
     mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.50' } };
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
-    // Gesture at t=1000ms, ratechange at t=1050ms → delta=50ms < USER_GESTURE_WINDOW_MS(300ms)
+    // Speed gesture at t=1000ms, ratechange at t=1050ms → delta=50ms < USER_GESTURE_WINDOW_MS(300ms)
     eventManager.lastUserInteractionAt = 1000;
+    eventManager.lastUserInteractionSpeedIntent = true;
 
     let eventStopped = false;
     eventManager.handleRateChange({
@@ -380,7 +381,74 @@ describe('EventManager', () => {
     expect(config.settings.lastSpeed).toBe(2.0);
     expect(eventManager.fightCount).toBe(0);
     expect(eventManager.lastUserInteractionAt).toBe(0); // consumed
+    expect(eventManager.lastUserInteractionSpeedIntent).toBe(false);
     expect(eventStopped).toBe(false);
+  });
+
+  it('should fight back when a recent user interaction was not speed-related', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.75;
+    config.settings.rememberSpeed = true;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+    mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.75' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    eventManager.lastUserInteractionAt = 1000;
+    eventManager.lastUserInteractionSpeedIntent = false;
+
+    let eventStopped = false;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      timeStamp: 1050,
+      stopImmediatePropagation: () => {
+        eventStopped = true;
+      },
+    });
+
+    expect(mockVideo.playbackRate).toBe(1.75);
+    expect(config.settings.lastSpeed).toBe(1.75);
+    expect(eventManager.fightCount).toBe(1);
+    expect(eventStopped).toBe(true);
+  });
+
+  it('should not accept a paused 1x reset as a user-intentional speed change', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.75;
+    config.settings.rememberSpeed = true;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0, paused: true });
+    mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.75' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    eventManager.lastUserInteractionAt = 1000;
+
+    let eventStopped = false;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      timeStamp: 1050,
+      stopImmediatePropagation: () => {
+        eventStopped = true;
+      },
+    });
+
+    expect(mockVideo.playbackRate).toBe(1.75);
+    expect(config.settings.lastSpeed).toBe(1.75);
+    expect(eventManager.fightCount).toBe(0);
+    expect(eventManager.lastUserInteractionAt).toBe(0);
+    expect(eventStopped).toBe(true);
   });
 
   it('should fight back when external speed change has no preceding user gesture', async () => {

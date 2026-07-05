@@ -23,6 +23,7 @@ class EventManager {
     // USER_GESTURE_WINDOW_MS of this is treated as intentional and accepted
     // immediately rather than fought — handles native site speed controls.
     this.lastUserInteractionAt = 0;
+    this.lastUserInteractionSpeedIntent = false;
   }
 
   /**
@@ -119,9 +120,9 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      // Unhandled key — could be a site shortcut (e.g. YouTube's < > speed keys).
-      // Mark as user interaction so an immediately-following ratechange is accepted.
-      this.lastUserInteractionAt = event.timeStamp;
+      // Only speed-looking site shortcuts should authorize an external ratechange.
+      // Space/arrow keys often pause or seek and must not reset VSC's speed.
+      this.recordUserInteraction(event, this.isSpeedIntentKey(event));
       window.VSC.logger.verbose(
         `No key binding found for code=${event.code}, keyCode=${event.keyCode}`
       );
@@ -225,7 +226,7 @@ class EventManager {
       if (event.target?.closest?.('vsc-controller')) {
         return;
       }
-      this.lastUserInteractionAt = event.timeStamp;
+      this.recordUserInteraction(event, this.isSpeedIntentTarget(event));
     };
     document.addEventListener('click', clickHandler, true);
 
@@ -233,6 +234,75 @@ class EventManager {
       this.listeners.set(document, []);
     }
     this.listeners.get(document).push({ type: 'click', handler: clickHandler, useCapture: true });
+  }
+
+  /**
+   * Record the latest non-VSC interaction and whether it looks speed-related.
+   * @param {Event} event
+   * @param {boolean} speedIntent
+   * @private
+   */
+  recordUserInteraction(event, speedIntent = false) {
+    this.lastUserInteractionAt = event.timeStamp;
+    this.lastUserInteractionSpeedIntent = Boolean(speedIntent);
+  }
+
+  /**
+   * Clear consumed interaction state.
+   * @private
+   */
+  clearUserInteraction() {
+    this.lastUserInteractionAt = 0;
+    this.lastUserInteractionSpeedIntent = false;
+  }
+
+  /**
+   * Detect clicks on native speed menus/buttons without treating normal player
+   * controls (pause, seek, next episode) as speed changes.
+   * @param {Event} event
+   * @returns {boolean}
+   * @private
+   */
+  isSpeedIntentTarget(event) {
+    const path = event.composedPath ? event.composedPath() : [event.target];
+    const speedPattern =
+      /speed|playback[-_\s]*rate|倍速|速度|播放速度|速率|再生速度|velocidad|vitesse|geschwindigkeit/i;
+
+    return path.some((node) => {
+      if (!node || node === window || node === document || node.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+      }
+
+      const className = typeof node.className === 'string' ? node.className : '';
+      const textContent = node.textContent && node.textContent.length <= 80 ? node.textContent : '';
+      const textParts = [
+        node.getAttribute?.('aria-label'),
+        node.getAttribute?.('title'),
+        node.getAttribute?.('data-title-no-tooltip'),
+        node.getAttribute?.('data-tooltip-target-id'),
+        node.getAttribute?.('data-testid'),
+        node.id,
+        className,
+        textContent,
+      ];
+
+      return speedPattern.test(textParts.filter(Boolean).join(' '));
+    });
+  }
+
+  /**
+   * Detect common native player speed shortcuts.
+   * @param {KeyboardEvent} event
+   * @returns {boolean}
+   * @private
+   */
+  isSpeedIntentKey(event) {
+    return (
+      event.key === '<' ||
+      event.key === '>' ||
+      ((event.key === ',' || event.key === '.') && event.shiftKey) ||
+      ((event.code === 'Comma' || event.code === 'Period') && event.shiftKey)
+    );
   }
 
   /**
@@ -329,11 +399,33 @@ class EventManager {
     const authoritativeSpeed = this.config.settings.lastSpeed;
 
     if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
+      if (
+        video.paused &&
+        Math.abs(video.playbackRate - 1.0) <= 0.01 &&
+        Math.abs(authoritativeSpeed - 1.0) > 0.01
+      ) {
+        window.VSC.logger.info(
+          `Ignoring paused 1x reset; restoring authoritative speed ${authoritativeSpeed}`
+        );
+        this.fightCount = 0;
+        if (this.fightTimer) {
+          clearTimeout(this.fightTimer);
+          this.fightTimer = null;
+        }
+        this.clearUserInteraction();
+        window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
+        this.refreshCoolDown();
+        event.stopImmediatePropagation();
+        return;
+      }
+
       const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
-      const isUserGesture = timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
+      const isUserGesture =
+        this.lastUserInteractionSpeedIntent &&
+        timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
 
       if (isUserGesture) {
-        // User interacted with the site's native controls — accept immediately.
+        // User interacted with the site's native speed controls — accept immediately.
         // Treat as internal so lastSpeed and storage are updated to match intent.
         window.VSC.logger.info(
           `Accepting site speed change as user-intentional (gesture ${timeSinceGesture}ms ago): ${video.playbackRate}`
@@ -343,7 +435,7 @@ class EventManager {
           clearTimeout(this.fightTimer);
           this.fightTimer = null;
         }
-        this.lastUserInteractionAt = 0;
+        this.clearUserInteraction();
         if (this.actionHandler) {
           this.actionHandler.adjustSpeed(video, video.playbackRate);
         }
@@ -434,6 +526,7 @@ class EventManager {
       this.fightTimer = null;
     }
     this.fightCount = 0;
+    this.clearUserInteraction();
   }
 }
 
