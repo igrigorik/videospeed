@@ -122,6 +122,34 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
 
       docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
     });
+
+    it('retains contextUrl from successful and aborted bridge responses', async () => {
+      const contextUrls = ['https://parent.example/video', 'https://blocked.example/video'];
+      let requestCount = 0;
+      const responder = () => {
+        const contextUrl = contextUrls[requestCount++];
+        docEl.dispatchEvent(
+          new CustomEvent('VSC_SETTINGS_READY', {
+            detail:
+              requestCount === 1
+                ? { settings: { lastSpeed: 2.0 }, contextUrl }
+                : { abort: true, contextUrl },
+          })
+        );
+      };
+      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder);
+
+      const settings = await StorageManager.get({ lastSpeed: 1.0 });
+      expect(settings.lastSpeed).toBe(2.0);
+      expect(StorageManager.contextUrl).toBe(contextUrls[0]);
+      expect(StorageManager.getContextHostname()).toBe('parent.example');
+
+      const aborted = await StorageManager.get({ lastSpeed: 1.0 });
+      expect(aborted).toBeNull();
+      expect(StorageManager.contextUrl).toBe(contextUrls[1]);
+
+      docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
+    });
   });
 
   // ---------------------------------------------------------------------------

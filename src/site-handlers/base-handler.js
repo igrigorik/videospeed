@@ -5,8 +5,8 @@
 window.VSC = window.VSC || {};
 
 class BaseSiteHandler {
-  constructor() {
-    this.hostname = location.hostname;
+  constructor(hostname = location.hostname) {
+    this.hostname = hostname;
   }
 
   /**

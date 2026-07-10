@@ -35,15 +35,16 @@ class SiteHandlerManager {
    * @private
    */
   detectHandler() {
+    const hostname = window.VSC.StorageManager.getContextHostname();
     for (const HandlerClass of this.availableHandlers) {
-      if (HandlerClass.matches()) {
-        window.VSC.logger.info(`Using ${HandlerClass.name} for ${location.hostname}`);
-        return new HandlerClass();
+      if (HandlerClass.matches(hostname)) {
+        window.VSC.logger.info(`Using ${HandlerClass.name} for ${hostname}`);
+        return new HandlerClass(hostname);
       }
     }
 
-    window.VSC.logger.debug(`Using BaseSiteHandler for ${location.hostname}`);
-    return new window.VSC.BaseSiteHandler();
+    window.VSC.logger.debug(`Using BaseSiteHandler for ${hostname}`);
+    return new window.VSC.BaseSiteHandler(hostname);
   }
 
   /**

@@ -9,8 +9,8 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
    * Check if this handler applies to Netflix
    * @returns {boolean} True if on Netflix
    */
-  static matches() {
-    return location.hostname === 'www.netflix.com';
+  static matches(hostname = location.hostname) {
+    return hostname === 'www.netflix.com';
   }
 
   /**

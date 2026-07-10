@@ -193,7 +193,7 @@ class VideoSpeedExtension {
    * non-matching rules never reach the browser's style invalidation engine.
    */
   preprocessDomainCSS(css) {
-    const hostname = location.hostname.replace(/^www\./, '');
+    const hostname = window.VSC.StorageManager.getContextHostname().replace(/^www\./, '');
     return css.replace(
       /:root\[style\*='--vsc-domain:\s*"([^"]+)"'\]([^{]*)\{([^}]*)\}/g,
       (match, domain, selector, body) => (domain === hostname ? `${selector.trim()} {${body}}` : '')

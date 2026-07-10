@@ -6,7 +6,7 @@
  *   - Blacklist correctness: domain-boundary matching, invalid regex handling
  *   - Settings handshake: request/response protocol
  *   - Lifecycle: teardown/reinit dispatch on storage changes
- *   - Early exit: disabled/blacklisted sites skip initialization
+ *   - Disabled/blacklisted sites abort MAIN-world initialization
  *
  * The bridge auto-inits at module load. Each test uses vi.resetModules() +
  * dynamic import for fresh state. Chrome mock must be configured BEFORE import.
@@ -123,6 +123,7 @@ describe('content-bridge', () => {
       cleanupIntercept = null;
     }
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.useRealTimers();
     cleanupChromeMock();
   });
@@ -217,7 +218,7 @@ describe('content-bridge', () => {
       expect(events[0].detail.settings.rememberSpeed).toBe(true);
     });
 
-    it('strips sensitive keys, passes customCSS, includes hostname', async () => {
+    it('strips sensitive keys, passes customCSS, and includes contextUrl', async () => {
       getMockStorage().blacklist = 'some.site';
       getMockStorage().enabled = true;
       getMockStorage().customCSS = 'vsc-controller { top: 42px; }';
@@ -228,14 +229,129 @@ describe('content-bridge', () => {
 
       docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
 
-      const { settings, hostname } = events[0].detail;
+      const { settings, contextUrl } = events[0].detail;
       // Stripped from settings
       expect(settings.blacklist).toBeUndefined();
       expect(settings.enabled).toBeUndefined();
       // customCSS passes through (inject.js reads it from config.settings)
       expect(settings.customCSS).toBe('vsc-controller { top: 42px; }');
-      expect(typeof hostname).toBe('string');
+      expect(contextUrl).toBe(window.location.href);
     });
+
+    it('responds to every settings request with the latest storage values', async () => {
+      getMockStorage().customCSS = 'vsc-controller { top: 1px; }';
+      await loadBridge();
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      expect(events).toHaveLength(1);
+      expect(events[0].detail.settings.customCSS).toContain('top: 1px');
+
+      globalThis.chrome.storage.sync.set({
+        customCSS: 'vsc-controller { top: 2px; }',
+        keyBindings: [{ action: 'faster', key: 68, value: 0.25 }],
+      });
+      await vi.advanceTimersByTimeAsync(20);
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      expect(events).toHaveLength(2);
+      expect(events[1].detail.settings.customCSS).toContain('top: 2px');
+      expect(events[1].detail.settings.keyBindings[0].value).toBe(0.25);
+    });
+
+    it('does not lose a settings request while the initial storage read is pending', async () => {
+      let resolveSettings;
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSettings = resolve;
+          })
+      );
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      expect(events).toHaveLength(0);
+
+      resolveSettings({ ...getMockStorage(), customCSS: 'vsc-controller { top: 9px; }' });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].detail.settings.customCSS).toContain('top: 9px');
+    });
+
+    it('coalesces settings requests while the initial storage read is pending', async () => {
+      let resolveSettings;
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSettings = resolve;
+          })
+      );
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      resolveSettings({ ...getMockStorage(), customCSS: 'vsc-controller { top: 9px; }' });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].detail.settings.customCSS).toContain('top: 9px');
+    });
+
+    it('resolves the current URL again for each settings request', async () => {
+      let href = 'https://example.test/course/a';
+      vi.stubGlobal('location', {
+        get href() {
+          return href;
+        },
+        hostname: 'example.test',
+      });
+      await loadBridge();
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      href = 'https://example.test/course/b';
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events.map((event) => event.detail.contextUrl)).toEqual([
+        'https://example.test/course/a',
+        'https://example.test/course/b',
+      ]);
+    });
+
+    it.each(['about:blank', 'about:blank#child', 'about:srcdoc'])(
+      'inherits site rules for %s from document.referrer',
+      async (frameUrl) => {
+        vi.stubGlobal('location', { href: frameUrl, hostname: '' });
+        vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://parent.example/video');
+        getMockStorage().siteRules = [{ pattern: 'parent.example', enabled: false, speed: null }];
+
+        const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+        eventCleanup = cleanup;
+        await loadBridge();
+
+        docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+
+        expect(events).toHaveLength(1);
+        expect(events[0].detail).toEqual({
+          abort: true,
+          contextUrl: 'https://parent.example/video',
+        });
+      }
+    );
   });
 
   // =========================================================================
@@ -246,6 +362,7 @@ describe('content-bridge', () => {
     it('writes valid lastSpeed to chrome.storage and clamps to range', async () => {
       await loadBridge();
       const storage = getMockStorage();
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
 
       // Valid speed
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
@@ -267,6 +384,7 @@ describe('content-bridge', () => {
       await loadBridge();
       const storage = getMockStorage();
       const originalSpeed = storage.lastSpeed;
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
 
       // Non-number
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 'fast' } }));
@@ -287,6 +405,24 @@ describe('content-bridge', () => {
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: null }));
       await vi.advanceTimersByTimeAsync(20);
       expect(storage.lastSpeed).toBe(originalSpeed);
+    });
+
+    it('blocks writes while disabled and accepts them after re-enable', async () => {
+      getMockStorage().enabled = false;
+      const onChanged = await loadBridge();
+      const storage = getMockStorage();
+      const originalSpeed = storage.lastSpeed;
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(storage.lastSpeed).toBe(originalSpeed);
+
+      onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
+      await vi.advanceTimersByTimeAsync(20);
+      expect(storage.lastSpeed).toBe(2.5);
     });
   });
 
@@ -311,13 +447,133 @@ describe('content-bridge', () => {
     });
 
     it('dispatches VSC_REINIT when re-enabled via popup toggle', async () => {
+      getMockStorage().enabled = false;
       const onChanged = await loadBridge();
-      const { events, cleanup } = collectEvents('VSC_MESSAGE');
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY', 'VSC_MESSAGE');
       eventCleanup = cleanup;
 
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
       onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
       const reinits = events.filter((e) => e.detail?.type === 'VSC_REINIT');
       expect(reinits).toHaveLength(1);
+    });
+
+    it('re-enables after an initially-disabled load with current custom settings', async () => {
+      getMockStorage().enabled = false;
+      getMockStorage().customCSS = 'vsc-controller { top: 1px; }';
+      const onChanged = await loadBridge();
+      expect(onChanged).not.toBeNull();
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY', 'VSC_MESSAGE');
+      eventCleanup = cleanup;
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      expect(events[0].detail.abort).toBe(true);
+
+      globalThis.chrome.storage.sync.set({
+        enabled: true,
+        customCSS: 'vsc-controller { top: 42px; }',
+        keyBindings: [{ action: 'faster', key: 68, value: 0.5 }],
+      });
+      await vi.advanceTimersByTimeAsync(20);
+
+      expect(events.some((event) => event.detail?.type === 'VSC_REINIT')).toBe(true);
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      const readyEvents = events.filter((event) => event.type === 'VSC_SETTINGS_READY');
+      expect(readyEvents).toHaveLength(2);
+      expect(readyEvents[1].detail.settings.customCSS).toContain('top: 42px');
+      expect(readyEvents[1].detail.settings.keyBindings[0].value).toBe(0.5);
+      expect(readyEvents[1].detail.settings.enabled).toBeUndefined();
+      expect(readyEvents[1].detail.settings.blacklist).toBeUndefined();
+    });
+
+    it('does not dispatch a duplicate reinit while the first handshake is pending', async () => {
+      let resolveSettings;
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSettings = resolve;
+          })
+      );
+
+      let onChanged;
+      vi.spyOn(globalThis.chrome.storage.onChanged, 'addListener').mockImplementation(
+        (listener) => {
+          onChanged = listener;
+        }
+      );
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY', 'VSC_MESSAGE');
+      eventCleanup = cleanup;
+
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
+
+      expect(events.some((event) => event.detail?.type === 'VSC_REINIT')).toBe(false);
+
+      resolveSettings({ ...getMockStorage(), enabled: false });
+      await vi.advanceTimersByTimeAsync(0);
+
+      const readyEvents = events.filter((event) => event.type === 'VSC_SETTINGS_READY');
+      expect(readyEvents).toHaveLength(1);
+      expect(readyEvents[0].detail.abort).toBeUndefined();
+      expect(events.some((event) => event.detail?.type === 'VSC_REINIT')).toBe(false);
+    });
+
+    it('keeps runtime message relay registered but blocks it until re-enabled', async () => {
+      getMockStorage().enabled = false;
+      let runtimeMessageListener;
+      vi.spyOn(globalThis.chrome.runtime.onMessage, 'addListener').mockImplementation(
+        (listener) => {
+          runtimeMessageListener = listener;
+        }
+      );
+      const onChanged = await loadBridge();
+      const { events, cleanup } = collectEvents('VSC_MESSAGE');
+      eventCleanup = cleanup;
+      const request = { type: 'VSC_SET_SPEED', payload: { speed: 2 } };
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      runtimeMessageListener(request);
+      expect(events.some((event) => event.detail?.type === request.type)).toBe(false);
+
+      onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      runtimeMessageListener(request);
+      expect(events.filter((event) => event.detail?.type === request.type)).toHaveLength(1);
+    });
+
+    it('keeps the active bridge live until reload after a site-rule change', async () => {
+      let runtimeMessageListener;
+      vi.spyOn(globalThis.chrome.runtime.onMessage, 'addListener').mockImplementation(
+        (listener) => {
+          runtimeMessageListener = listener;
+        }
+      );
+      const onChanged = await loadBridge();
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY', 'VSC_MESSAGE');
+      eventCleanup = cleanup;
+      const request = { type: 'VSC_SET_SPEED', payload: { speed: 2 } };
+
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      onChanged(
+        {
+          siteRules: {
+            oldValue: [],
+            newValue: [{ pattern: 'localhost', enabled: false, speed: null }],
+          },
+        },
+        'sync'
+      );
+
+      runtimeMessageListener(request);
+      docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
+      await vi.advanceTimersByTimeAsync(20);
+
+      expect(events.filter((event) => event.detail?.type === request.type)).toHaveLength(1);
+      expect(getMockStorage().lastSpeed).toBe(2.5);
     });
 
     it('does NOT lifecycle on blacklist changes (takes effect on reload)', async () => {
@@ -396,9 +652,4 @@ describe('content-bridge', () => {
       expect(events[0].detail.blacklist).toBeUndefined();
     });
   });
-
-  // Runtime message relay: chrome mock doesn't expose onMessage listeners,
-  // so we can't unit-test the relay without enhancing the mock. The relay is
-  // a trivial one-liner (line 119 of content-bridge.js) — tested via manual
-  // popup interaction rather than unit tests.
 });

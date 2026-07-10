@@ -18,6 +18,8 @@ describe('ModuleIntegration', () => {
   });
 
   afterEach(() => {
+    window.VSC.StorageManager.contextUrl = window.location.href;
+    window.VSC.siteHandlerManager.refresh();
     cleanupChromeMock();
     if (mockDOM) {
       mockDOM.cleanup();
@@ -48,6 +50,16 @@ describe('ModuleIntegration', () => {
     const positioning = siteHandlerManager.getControllerPosition(mockDOM.container, mockVideo);
     expect(positioning).toBeDefined();
     expect(positioning.insertionPoint).toBeDefined();
+  });
+
+  it('selects site handlers using an inherited frame context hostname', () => {
+    window.VSC.StorageManager.contextUrl = 'https://www.youtube.com/watch?v=test';
+    window.VSC.siteHandlerManager.refresh();
+
+    const handler = window.VSC.siteHandlerManager.getCurrentHandler();
+
+    expect(handler).toBeInstanceOf(window.VSC.YouTubeHandler);
+    expect(handler.hostname).toBe('www.youtube.com');
   });
 
   it('Settings should integrate with ActionHandler', async () => {

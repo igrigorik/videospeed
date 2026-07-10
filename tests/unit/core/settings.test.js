@@ -18,6 +18,7 @@ describe('Settings', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     installChromeMock();
     resetMockStorage();
+    window.VSC.StorageManager.contextUrl = window.location.href;
   });
 
   afterEach(() => {
@@ -217,6 +218,55 @@ describe('Settings', () => {
     expect(config.settings.siteDefaultSpeed).toBe(2.3);
 
     window.VSC.matchSiteRule = original;
+  });
+
+  it('matches site speed against StorageManager contextUrl', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    const original = window.VSC.matchSiteRule;
+    const inheritedUrl = 'https://parent.example/video';
+    const matchSiteRule = vi.fn(() => ({
+      pattern: 'parent.example',
+      enabled: true,
+      speed: 2.3,
+    }));
+    window.VSC.StorageManager.contextUrl = inheritedUrl;
+    window.VSC.matchSiteRule = matchSiteRule;
+
+    await config.load();
+
+    expect(matchSiteRule).toHaveBeenCalledWith(config.settings.siteRules, inheritedUrl);
+    expect(config.settings.siteDefaultSpeed).toBe(2.3);
+
+    window.VSC.matchSiteRule = original;
+  });
+
+  it('clears an initial abort and loads current custom settings after re-enable', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    const defaults = {
+      ...window.VSC.Constants.DEFAULT_SETTINGS,
+      controllerCSS: null,
+    };
+    const keyBindings = defaults.keyBindings.map((binding) =>
+      binding.action === 'faster' ? { ...binding, value: 0.25 } : binding
+    );
+    const getSpy = vi
+      .spyOn(window.VSC.StorageManager, 'get')
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        ...defaults,
+        customCSS: 'vsc-controller { top: 42px; }',
+        keyBindings,
+      });
+
+    await config.load();
+    expect(config.settings._abort).toBe(true);
+
+    await config.load();
+    expect(config.settings._abort).toBeUndefined();
+    expect(config.settings.customCSS).toContain('top: 42px');
+    expect(config.getKeyBinding('faster')).toBe(0.25);
+
+    getSpy.mockRestore();
   });
 
   it('siteDefaultSpeed is not set when siteRule matches with speed=null', async () => {

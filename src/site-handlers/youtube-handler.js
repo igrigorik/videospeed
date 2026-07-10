@@ -9,8 +9,8 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
    * Check if this handler applies to YouTube
    * @returns {boolean} True if on YouTube
    */
-  static matches() {
-    return location.hostname === 'www.youtube.com';
+  static matches(hostname = location.hostname) {
+    return hostname === 'www.youtube.com';
   }
 
   /**

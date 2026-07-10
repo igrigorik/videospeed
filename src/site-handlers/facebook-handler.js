@@ -9,8 +9,8 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
    * Check if this handler applies to Facebook
    * @returns {boolean} True if on Facebook
    */
-  static matches() {
-    return location.hostname === 'www.facebook.com';
+  static matches(hostname = location.hostname) {
+    return hostname === 'www.facebook.com';
   }
 
   /**

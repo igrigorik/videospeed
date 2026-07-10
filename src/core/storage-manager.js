@@ -15,6 +15,19 @@ if (!window.VSC.StorageManager) {
 
   class StorageManager {
     static errorCallback = null;
+    static contextUrl = window.location.href;
+
+    /**
+     * Resolve the hostname used by site-specific behavior in inherited frames.
+     * @returns {string}
+     */
+    static getContextHostname() {
+      try {
+        return new URL(this.contextUrl, window.location.href).hostname;
+      } catch {
+        return window.location.hostname;
+      }
+    }
 
     /**
      * Register error callback for monitoring storage failures
@@ -50,6 +63,12 @@ if (!window.VSC.StorageManager) {
             window.VSC.logger?.error?.('StorageManager: bridge response is null (clone failed?)');
             resolve(defaults);
             return;
+          }
+
+          // Site rules in inherited about:blank frames must use the creator's
+          // URL rather than window.location.href from the MAIN world.
+          if (typeof detail.contextUrl === 'string' && detail.contextUrl) {
+            this.contextUrl = detail.contextUrl;
           }
 
           // Bridge signals abort for blacklisted/disabled sites

@@ -11,8 +11,8 @@
 window.VSC = window.VSC || {};
 
 class FrameHandler extends window.VSC.BaseSiteHandler {
-  static matches() {
-    return location.hostname === 'next.frame.io';
+  static matches(hostname = location.hostname) {
+    return hostname === 'next.frame.io';
   }
 
   getControllerPosition(parent, video) {

@@ -84,6 +84,7 @@ if (!window.VSC.VideoSpeedConfig) {
           return;
         }
 
+        delete this.settings._abort;
         this._loaded = true;
 
         // Handle key bindings migration/initialization
@@ -125,12 +126,14 @@ if (!window.VSC.VideoSpeedConfig) {
         // Apply siteRules
         this.settings.siteRules =
           storage.siteRules || window.VSC.Constants.DEFAULT_SETTINGS.siteRules;
+        delete this.settings.siteDefaultSpeed;
 
         // Match current URL against site rules to derive per-site default speed.
         // matchSiteRule is exposed on window.VSC by inject-entry.js; guard for
         // test environments where it may not be available.
         if (window.VSC.matchSiteRule) {
-          const matched = window.VSC.matchSiteRule(this.settings.siteRules, window.location.href);
+          const contextUrl = window.VSC.StorageManager.contextUrl || window.location.href;
+          const matched = window.VSC.matchSiteRule(this.settings.siteRules, contextUrl);
           if (matched && matched.speed !== null && matched.speed !== undefined) {
             this.settings.siteDefaultSpeed = matched.speed;
             window.VSC.logger.info(

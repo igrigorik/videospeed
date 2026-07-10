@@ -9,8 +9,8 @@ class AppleHandler extends window.VSC.BaseSiteHandler {
    * Check if this handler applies to Apple TV+
    * @returns {boolean} True if on Apple TV+
    */
-  static matches() {
-    return location.hostname === 'tv.apple.com';
+  static matches(hostname = location.hostname) {
+    return hostname === 'tv.apple.com';
   }
 
   /**

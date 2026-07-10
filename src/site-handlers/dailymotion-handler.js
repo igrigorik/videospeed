@@ -11,8 +11,8 @@
 window.VSC = window.VSC || {};
 
 class DailymotionHandler extends window.VSC.BaseSiteHandler {
-  static matches() {
-    return location.hostname.includes('dailymotion.com');
+  static matches(hostname = location.hostname) {
+    return hostname.includes('dailymotion.com');
   }
 
   getControllerPosition(parent, _video) {

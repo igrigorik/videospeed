@@ -26,6 +26,7 @@ describe('ControllerCSS', () => {
   });
 
   afterEach(() => {
+    window.VSC.StorageManager.contextUrl = window.location.href;
     cleanupChromeMock();
   });
 
@@ -51,6 +52,16 @@ describe('ControllerCSS', () => {
     expect(css.includes('--vsc-domain: "netflix.com"')).toBe(true);
     expect(css.includes('--vsc-domain: "chatgpt.com"')).toBe(true);
     expect(css.includes('--vsc-domain: "drive.google.com"')).toBe(true);
+  });
+
+  it('preprocesses domain CSS using an inherited frame context hostname', () => {
+    window.VSC.StorageManager.contextUrl = 'https://www.netflix.com/watch/123';
+    const processed = window.VSC_controller.preprocessDomainCSS(
+      window.VSC.Constants.DEFAULT_CONTROLLER_CSS
+    );
+
+    expect(processed).toContain('vsc-controller {\n  position: relative;\n  top: 85px;');
+    expect(processed).not.toContain('--vsc-domain: "netflix.com"');
   });
 
   it('inject.css pins the absolute controller host origin', () => {

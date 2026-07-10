@@ -21,59 +21,146 @@ const SPEED_MAX = 16;
 const docEl = document.documentElement;
 let bridgeInitialized = false;
 
+/** @returns {boolean} Whether the URL inherits its creator's origin. */
+function isInheritedAboutUrl(url) {
+  return /^about:(?:blank|srcdoc)(?:[?#].*)?$/.test(url);
+}
+
+/**
+ * Resolve the URL whose site settings should apply to this frame.
+ * Inherited about: frames prefer a non-about referrer and then the first
+ * safely-readable non-about ancestor before falling back to their own URL.
+ *
+ * @returns {string}
+ */
+function resolveContextUrl() {
+  const currentUrl = location.href;
+  if (!isInheritedAboutUrl(currentUrl)) {
+    return currentUrl;
+  }
+
+  if (document.referrer && !isInheritedAboutUrl(document.referrer)) {
+    return document.referrer;
+  }
+
+  try {
+    let ancestor = window.parent;
+    while (ancestor && ancestor !== window) {
+      const ancestorUrl = ancestor.location.href;
+      if (ancestorUrl && !isInheritedAboutUrl(ancestorUrl)) {
+        return ancestorUrl;
+      }
+
+      if (ancestor.parent === ancestor) {
+        break;
+      }
+      ancestor = ancestor.parent;
+    }
+  } catch {
+    // Cross-origin parent access is expected to fail; use the frame URL below.
+  }
+
+  return currentUrl;
+}
+
 async function init() {
   try {
-    // Skip about:blank frames — they share the parent window
-    if (location.href === 'about:blank') {
-      return;
-    }
-
     // Double-injection guard (module-level flag resets on page navigation)
     if (bridgeInitialized) {
       return;
     }
     bridgeInitialized = true;
 
-    const settings = await chrome.storage.sync.get(null);
+    const settings = {};
+    const pendingSettingsChanges = [];
+    let initialSettingsLoaded = false;
+    let hasCompletedSettingsHandshake = false;
+    let bridgeActive = false;
+    let pendingSettingsResponse = false;
 
-    const disabled = settings.enabled === false;
-    // Legacy blacklist: only checked when siteRules hasn't been initialized yet
-    // (pre-migration devices). Once migration runs, siteRules is the source of
-    // truth. The blacklist is preserved in storage for sync compat with older
-    // extension versions but must not shadow siteRules edits.
-    const blacklisted = !settings.siteRules && isBlacklisted(settings.blacklist, location.href);
-    const siteRuleMatch = matchSiteRule(settings.siteRules, location.href);
-    const siteDisabled = siteRuleMatch && siteRuleMatch.enabled === false;
-    const shouldAbort = disabled || blacklisted || siteDisabled;
+    const applySettingsChanges = (changes) => {
+      for (const [key, change] of Object.entries(changes)) {
+        if (change.newValue === undefined) {
+          delete settings[key];
+        } else {
+          settings[key] = change.newValue;
+        }
+      }
+    };
 
-    // Always respond — inject.js runs unconditionally and needs the abort
-    // signal to skip init. { once: true } limits event forgery exposure.
-    if (shouldAbort) {
-      docEl.addEventListener(
-        'VSC_REQUEST_SETTINGS',
-        () => {
-          docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail: { abort: true } }));
-        },
-        { once: true }
+    // Start loading immediately, but register every bridge listener before it
+    // completes. MAIN can request settings as soon as document_idle fires.
+    const initialSettingsReady = chrome.storage.sync
+      .get(null)
+      .then((storedSettings) => {
+        Object.assign(settings, storedSettings);
+      })
+      .catch((error) => {
+        console.error('[VSC] Initial settings load failed:', error);
+      })
+      .then(() => {
+        for (const changes of pendingSettingsChanges) {
+          applySettingsChanges(changes);
+        }
+        pendingSettingsChanges.length = 0;
+        initialSettingsLoaded = true;
+      });
+
+    const shouldAbortForContext = (contextUrl) => {
+      const disabled = settings.enabled === false;
+      // Legacy blacklist: only checked when siteRules hasn't been initialized yet
+      // (pre-migration devices). Once migration runs, siteRules is the source of
+      // truth. The blacklist is preserved in storage for sync compat with older
+      // extension versions but must not shadow siteRules edits.
+      const blacklisted = !settings.siteRules && isBlacklisted(settings.blacklist, contextUrl);
+      const siteRuleMatch = matchSiteRule(settings.siteRules, contextUrl);
+      const siteDisabled = siteRuleMatch && siteRuleMatch.enabled === false;
+      return disabled || blacklisted || siteDisabled;
+    };
+
+    const respondWithSettings = () => {
+      const contextUrl = resolveContextUrl();
+      hasCompletedSettingsHandshake = true;
+
+      if (shouldAbortForContext(contextUrl)) {
+        bridgeActive = false;
+        docEl.dispatchEvent(
+          new CustomEvent('VSC_SETTINGS_READY', { detail: { abort: true, contextUrl } })
+        );
+        return;
+      }
+
+      // Strip keys the MAIN world shouldn't see without mutating the snapshot.
+      const publicSettings = { ...settings };
+      delete publicSettings.blacklist;
+      delete publicSettings.enabled;
+      bridgeActive = true;
+      docEl.dispatchEvent(
+        new CustomEvent('VSC_SETTINGS_READY', {
+          detail: { settings: publicSettings, contextUrl },
+        })
       );
-      return;
-    }
+    };
 
-    const hostname = location.hostname.replace(/^www\./, '');
+    // Keep this listener reusable. Reinitialization in MAIN world performs a
+    // fresh handshake, and the settings snapshot below is updated by onChanged.
+    docEl.addEventListener('VSC_REQUEST_SETTINGS', () => {
+      if (initialSettingsLoaded) {
+        respondWithSettings();
+        return;
+      }
 
-    // Strip keys the MAIN world shouldn't see
-    delete settings.blacklist;
-    delete settings.enabled;
-
-    const settingsPayload = { settings, hostname };
-
-    docEl.addEventListener(
-      'VSC_REQUEST_SETTINGS',
-      () => {
-        docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail: settingsPayload }));
-      },
-      { once: true }
-    );
+      // The event channel has no request ID, so coalesce requests while the
+      // initial read is pending. One response resolves every active listener
+      // and cannot leave an older response to be consumed by a later reload.
+      if (!pendingSettingsResponse) {
+        pendingSettingsResponse = true;
+        initialSettingsReady.then(() => {
+          pendingSettingsResponse = false;
+          respondWithSettings();
+        });
+      }
+    });
 
     // --- Ongoing: storage change relay + lifecycle ---
     chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -81,15 +168,31 @@ async function init() {
         return;
       }
 
+      // Preserve changes that race the initial storage read, then keep the
+      // response snapshot current before dispatching lifecycle events.
+      if (initialSettingsLoaded) {
+        applySettingsChanges(changes);
+      } else {
+        pendingSettingsChanges.push(changes);
+      }
+
       // Lifecycle: only the popup's enabled toggle triggers teardown/reinit.
       // Options page never writes `enabled`, so saving options can't trigger
       // lifecycle — it only relays settings via VSC_STORAGE_CHANGED below.
       // siteRules/blacklist changes take effect on next page load.
       if (changes.enabled?.newValue === false) {
+        bridgeActive = false;
         docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: { type: 'VSC_TEARDOWN' } }));
         return;
       }
-      if (changes.enabled?.oldValue === false && changes.enabled?.newValue !== false) {
+      if (
+        hasCompletedSettingsHandshake &&
+        changes.enabled?.oldValue === false &&
+        changes.enabled?.newValue !== false
+      ) {
+        // Stay inactive until the reinitializing MAIN world completes a fresh
+        // settings handshake (which may still abort due to a site rule).
+        bridgeActive = false;
         docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: { type: 'VSC_REINIT' } }));
       }
 
@@ -104,12 +207,19 @@ async function init() {
 
     // --- Ongoing: popup/background message relay ---
     chrome.runtime.onMessage.addListener((request) => {
+      if (!initialSettingsLoaded || !bridgeActive) {
+        return;
+      }
       docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: request }));
     });
 
     // --- Ongoing: speed write-back from MAIN world ---
     const handleWriteStorage = (e) => {
       try {
+        if (!initialSettingsLoaded || !bridgeActive) {
+          return;
+        }
+
         const data = e.detail;
         if (!data || typeof data !== 'object') {
           return;
