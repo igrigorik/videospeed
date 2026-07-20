@@ -210,6 +210,19 @@ if (!window.VSC.VideoSpeedConfig) {
      * @param {Object} newSettings - Settings to save (only these keys are written)
      * @returns {Promise<boolean>} true if persisted (or debounced), false on storage failure
      */
+    /**
+     * Null the SESSION speed authority (in-memory lastSpeed) without
+     * touching storage. Executes the arbiter's CLEAR_AUTHORITY effect
+     * (cell 9, surrender): VSC stands down for this session; the
+     * remembered speed in storage still seeds authority on the next page
+     * load. A pending debounced save is deliberately left alone — it
+     * carries an earlier user choice that should still reach storage.
+     */
+    clearSessionAuthority() {
+      this.settings.lastSpeed = null;
+      window.VSC.logger.info('Session speed authority cleared (surrender)');
+    }
+
     async save(newSettings = {}) {
       const keys = Object.keys(newSettings);
       if (keys.length === 0) {

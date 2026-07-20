@@ -19,10 +19,13 @@
 
 window.VSC = window.VSC || {};
 
+// Two modes only. An explicit SURRENDERED mode existed in earlier contract
+// drafts, but once cell 2 adopts user intent from any mode it is
+// behaviorally identical to NO_OPINION in every cell — surrender is simply
+// standing down to no-opinion (see docs/speed-arbitration.md, cell 9).
 const MODES = Object.freeze({
   NO_OPINION: 'NO_OPINION',
   HOLDING: 'HOLDING',
-  SURRENDERED: 'SURRENDERED',
 });
 
 const ARBITER_EVENTS = Object.freeze({
@@ -42,6 +45,9 @@ const ARBITER_EFFECTS = Object.freeze({
   WRITE: 'WRITE', // set video.playbackRate
   PERSIST: 'PERSIST', // update lastSpeed (memory + debounced storage)
   SYNC_UI: 'SYNC_UI', // update the speed indicator only
+  // Null the SESSION authority projection (in-memory lastSpeed), leaving
+  // persisted storage untouched. Emitted only by cell 9 (surrender).
+  CLEAR_AUTHORITY: 'CLEAR_AUTHORITY',
   // Exists ONLY to mirror finding F1 (setSpeed step-6 writes storage on
   // source:'init' while skipping in-memory lastSpeed) under legacy compat,
   // so the differential harness can match current behavior exactly. The
@@ -141,7 +147,7 @@ function step(state, event, options = {}) {
   const maxFight = options.maxFight ?? DEFAULT_MAX_FIGHT;
 
   switch (event.type) {
-    // Cells 5, 12, 16: the user spoke through VSC — unconditional authority.
+    // Cells 5, 12: the user spoke through VSC — unconditional authority.
     case ARBITER_EVENTS.USER_SET: {
       return {
         state: makeState(MODES.HOLDING, event.speed, 0, state.baseline, state.rememberEnabled),
@@ -153,7 +159,7 @@ function step(state, event, options = {}) {
       };
     }
 
-    // Cells 1, 6, 14: play / seeked / deferred loadedmetadata.
+    // Cells 1, 6: play / seeked / deferred loadedmetadata.
     case ARBITER_EVENTS.LIFECYCLE: {
       if (state.mode === MODES.HOLDING) {
         // Cell 6: re-assert; never persist (#1494). Legacy F1: the restore
@@ -188,16 +194,16 @@ function step(state, event, options = {}) {
         }
         return { state, effects: [effect(ARBITER_EFFECTS.WRITE, state.baseline)] };
       }
-      // Cells 1 (target), 14: no opinion / stood down => no writes.
+      // Cell 1 (target): no opinion (incl. post-surrender) => no writes.
       return { state, effects: [] };
     }
 
-    // Cells 2, 3, 4, 7, 8, 9, 10, 11, 15: a classified external ratechange.
+    // Cells 2, 3, 4, 7, 8, 9, 10, 11: a classified external ratechange.
     case ARBITER_EVENTS.EXT_RATE: {
       const rate = event.speed;
 
       switch (event.rateClass) {
-        // Cells 4, 11 (and the SURRENDERED analog): ignore init churn.
+        // Cells 4, 11: ignore init churn.
         case RATE_CLASSES.INIT_NOISE:
           return { state, effects: [] };
 
@@ -214,7 +220,7 @@ function step(state, event, options = {}) {
           };
         }
 
-        // Cells 3, 8, 9, 10, 15: the site acted on its own.
+        // Cells 3, 8, 9, 10: the site acted on its own.
         case RATE_CLASSES.AUTONOMOUS: {
           if (state.mode === MODES.HOLDING && rate !== state.desired) {
             if (state.fightCount < maxFight) {
@@ -224,7 +230,8 @@ function step(state, event, options = {}) {
                   MODES.HOLDING,
                   state.desired,
                   state.fightCount + 1,
-                  state.baseline
+                  state.baseline,
+                  state.rememberEnabled
                 ),
                 effects: [effect(ARBITER_EFFECTS.WRITE, state.desired)],
               };
@@ -243,14 +250,21 @@ function step(state, event, options = {}) {
                 effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)],
               };
             }
-            // Cell 9: surrender AND stand down — authority is dropped; only
-            // the user can restart the war (cell 16).
+            // Cell 9: surrender = stand down to NO_OPINION. A separate
+            // SURRENDERED mode proved behaviorally identical to NO_OPINION
+            // once cell 2 adopts user intent from any mode, so it was
+            // eliminated. CLEAR_AUTHORITY tells the effect executor to null
+            // the session authority projection (in-memory lastSpeed only;
+            // storage keeps the remembered speed for the next page load).
             return {
-              state: makeState(MODES.SURRENDERED, null, 0, state.baseline, state.rememberEnabled),
-              effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)],
+              state: makeState(MODES.NO_OPINION, null, 0, state.baseline, state.rememberEnabled),
+              effects: [
+                effect(ARBITER_EFFECTS.CLEAR_AUTHORITY, null),
+                effect(ARBITER_EFFECTS.SYNC_UI, rate),
+              ],
             };
           }
-          // Cells 3, 10, 15: no diverging authority — observe only.
+          // Cells 3, 10: no diverging authority — observe only.
           return { state, effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)] };
         }
 

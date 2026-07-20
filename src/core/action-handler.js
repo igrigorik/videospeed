@@ -434,8 +434,15 @@ class ActionHandler {
     // Round to 2 decimal places to avoid floating point issues
     targetSpeed = Number(targetSpeed.toFixed(2));
 
-    // Fight detection is enforced upstream in event-manager.js.
+    // Fight detection is enforced upstream in the arbitration adapter.
     // External changes that reach here have already been approved (fight surrendered or speed matched).
+
+    // A user action claims authority with a clean fight budget (contract
+    // cells 5/12) — inform the adapter before the write lands.
+    if (source === 'internal' && this.eventManager?.arbitration) {
+      this.eventManager.arbitration.noteUserSet();
+    }
+
     this.setSpeed(video, targetSpeed, source);
   }
 

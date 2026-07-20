@@ -17,12 +17,15 @@ const { MODES, EVENTS, RATE_CLASSES, EFFECTS } = A;
 const noOpinion = () => A.loadState({});
 const holding = (v) => A.loadState({ rememberEnabled: true, rememberedSpeed: v });
 const surrendered = () => {
-  // Reach SURRENDERED honestly: exhaust the fight budget.
+  // Reach the post-surrender state honestly: exhaust the fight budget.
+  // Surrender stands down to NO_OPINION (cell 9) — there is no separate
+  // surrendered mode, because with cell-2 adoption it would be
+  // behaviorally identical to NO_OPINION in every cell.
   let s = holding(1.5);
   for (let i = 0; i <= A.DEFAULT_MAX_FIGHT; i++) {
     s = A.step(s, { type: EVENTS.EXT_RATE, speed: 1.0, rateClass: RATE_CLASSES.AUTONOMOUS }).state;
   }
-  expect(s.mode).toBe(MODES.SURRENDERED);
+  expect(s.mode).toBe(MODES.NO_OPINION);
   return s;
 };
 
@@ -114,8 +117,8 @@ describe('SpeedArbiter transition table (target contract)', () => {
       speed: 1.0,
       rateClass: RATE_CLASSES.AUTONOMOUS,
     });
-    expect(state).toMatchObject({ mode: MODES.SURRENDERED, desired: null, fightCount: 0 });
-    expect(types(effects)).toEqual([EFFECTS.SYNC_UI]);
+    expect(state).toMatchObject({ mode: MODES.NO_OPINION, desired: null, fightCount: 0 });
+    expect(types(effects)).toEqual([EFFECTS.CLEAR_AUTHORITY, EFFECTS.SYNC_UI]);
   });
 
   it('cell 10: HOLDING + AUTONOMOUS confirming our value => no fight', () => {
@@ -155,26 +158,31 @@ describe('SpeedArbiter transition table (target contract)', () => {
     expect(effects).toEqual([]);
   });
 
-  it('cell 14: SURRENDERED + LIFECYCLE => stay down', () => {
-    const { state, effects } = A.step(surrendered(), { type: EVENTS.LIFECYCLE });
-    expect(state.mode).toBe(MODES.SURRENDERED);
-    expect(effects).toEqual([]);
-  });
-
-  it('cell 15: SURRENDERED + EXT_RATE => observe only', () => {
+  it('post-surrender: further resets are observed, never fought (war over)', () => {
     const { state, effects } = A.step(surrendered(), {
       type: EVENTS.EXT_RATE,
       speed: 2.0,
       rateClass: RATE_CLASSES.AUTONOMOUS,
     });
-    expect(state.mode).toBe(MODES.SURRENDERED);
+    expect(state.mode).toBe(MODES.NO_OPINION);
     expect(types(effects)).toEqual([EFFECTS.SYNC_UI]);
+    // ...and lifecycle stays silent (cell 1 applies post-surrender).
+    expect(A.step(surrendered(), { type: EVENTS.LIFECYCLE }).effects).toEqual([]);
   });
 
-  it('cell 16: SURRENDERED + USER_SET => only the user restarts the war', () => {
-    const { state, effects } = A.step(surrendered(), { type: EVENTS.USER_SET, speed: 1.5 });
-    expect(state).toMatchObject({ mode: MODES.HOLDING, desired: 1.5, fightCount: 0 });
-    expect(types(effects)).toEqual([EFFECTS.WRITE, EFFECTS.PERSIST, EFFECTS.SYNC_UI]);
+  it('post-surrender: user action (VSC or native) reclaims authority', () => {
+    const viaVsc = A.step(surrendered(), { type: EVENTS.USER_SET, speed: 1.5 });
+    expect(viaVsc.state).toMatchObject({ mode: MODES.HOLDING, desired: 1.5, fightCount: 0 });
+    expect(types(viaVsc.effects)).toEqual([EFFECTS.WRITE, EFFECTS.PERSIST, EFFECTS.SYNC_UI]);
+
+    // Cell 2 adoption works post-surrender too — the reason a separate
+    // SURRENDERED mode would have been redundant.
+    const viaNative = A.step(surrendered(), {
+      type: EVENTS.EXT_RATE,
+      speed: 1.75,
+      rateClass: RATE_CLASSES.USER_INTENT,
+    });
+    expect(viaNative.state).toMatchObject({ mode: MODES.HOLDING, desired: 1.75 });
   });
 });
 

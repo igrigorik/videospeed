@@ -195,6 +195,8 @@ function arbApply(world, effects) {
         break;
       case A.EFFECTS.SYNC_UI:
         break;
+      case A.EFFECTS.CLEAR_AUTHORITY:
+        break; // model mem derives from state; nothing to apply
       default:
         throw new Error(`unknown effect ${e.type}`);
     }
@@ -379,7 +381,7 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
       { op: 'siteRate', rate: 1.5 }, // autonomous, no authority
       { op: 'play' }, // cell 1 fixed: no stomp — both sides must agree
       { op: 'gestureClick' },
-      { op: 'siteRate', rate: 1.75, pace: 'quick' }, // F3 still open: displayed, not adopted
+      { op: 'siteRate', rate: 1.75, pace: 'quick' }, // F3 fixed: adopted as authority
       { op: 'play' },
     ]);
   });
@@ -395,10 +397,24 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
     ]);
   });
 
-  it('fight sequence to surrender and the F2 restart', async () => {
+  it('fight sequence to surrender: stands down, war does not restart', async () => {
     const resets = Array.from({ length: 7 }, () => ({ op: 'siteRate', rate: 1.0 }));
     await runDifferential({ rememberEnabled: true, rememberedSpeed: 1.5 }, [
       ...resets,
+      { op: 'play' },
+    ]);
+  });
+
+  it('user action mid-fight resets the budget (cells 5/12)', async () => {
+    await runDifferential({ rememberEnabled: true, rememberedSpeed: 1.5 }, [
+      { op: 'siteRate', rate: 1.0 }, // fight 1
+      { op: 'siteRate', rate: 1.0 }, // fight 2
+      { op: 'userVsc', speed: 2.0 }, // fresh authority, clean budget
+      { op: 'siteRate', rate: 1.0 }, // fight 1 again — not 3
+      { op: 'siteRate', rate: 1.0 },
+      { op: 'siteRate', rate: 1.0 },
+      { op: 'siteRate', rate: 1.0 },
+      { op: 'siteRate', rate: 1.0 }, // 5th after reset: surrender here, not earlier
       { op: 'play' },
     ]);
   });
@@ -546,20 +562,23 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     expect(runArbiter(init, ops, 'target').stored).toBe(1.8);
   });
 
-  it('F2 (cell 9): OPEN — surrender keeps authority, so the war restarts forever', async () => {
+  it('F2 (cell 9): FIXED — surrender stands down; the war does not restart', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 1.5 };
     const surrenderOps = Array.from({ length: 6 }, () => ({ op: 'siteRate', rate: 1.0 }));
     const restartOps = [...surrenderOps, { op: 'siteRate', rate: 1.0 }]; // one more after surrender
 
-    const pipeline = await runLegacyModules(init, restartOps);
-    expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5 }); // BUG: fighting again post-surrender
-
+    // History: authority silently retained — fighting again after surrender.
     expect(runArbiter(init, restartOps, 'legacy')).toMatchObject({ rate: 1.5, mem: 1.5 });
+
+    // Production: stood down to NO_OPINION; session authority cleared, the
+    // stored speed survives for the next page load.
+    const pipeline = await runLegacyModules(init, restartOps);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
     const target = runArbiter(init, restartOps, 'target');
-    expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.SURRENDERED }); // stood down
+    expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.NO_OPINION, stored: 1.5 });
   });
 
-  it('F3 (cell 2): HALF-OPEN — native choice survives (cell 1 fix) but is still not adopted', async () => {
+  it('F3 (cell 2): FIXED — native choice becomes authority without prior opinion', async () => {
     const init = { rememberEnabled: false };
     const ops = [
       { op: 'gestureClick' }, // user clicks the native speed menu
@@ -568,12 +587,11 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     // History: not adopted AND then stomped to 1.0 (#1537 compounded).
     expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: null });
-    // Production: the stomp half is gone; the adoption half (legacyNoAdoption)
-    // remains — the choice displays but never becomes authority, so a later
-    // autonomous reset would not be fought.
+    // Production: adopted as session authority — re-asserted on play, and a
+    // later autonomous reset would be fought.
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 1.75, mem: null });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.75, mem: 1.75 }); // adopted, re-asserted
+    expect(pipeline).toMatchObject({ rate: 1.75, mem: 1.75 });
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.75, mem: 1.75 });
   });
 
   it('F5 (LOAD): FIXED — under a site rule, user native changes now stick', async () => {

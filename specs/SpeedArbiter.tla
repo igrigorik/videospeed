@@ -54,7 +54,7 @@ ASSUME /\ "one" \in Speeds
 
 VARIABLES
   rate,        \* the shared register: video.playbackRate
-  mode,        \* "NoOpinion" | "Holding" | "Surrendered"
+  mode,        \* "NoOpinion" | "Holding" — surrender collapses to NoOpinion (cell 9)
   desired,     \* authoritative target; None iff not Holding (impl: lastSpeed)
   stored,      \* persisted lastSpeed (chrome.storage), for purity checking
   fightCount,  \* consecutive autonomous resets fought this window
@@ -66,7 +66,7 @@ vars == <<rate, mode, desired, stored, fightCount, pending, quiet, lastWriter>>
 
 TypeOK ==
   /\ rate \in Speeds
-  /\ mode \in {"NoOpinion", "Holding", "Surrendered"}
+  /\ mode \in {"NoOpinion", "Holding"}
   /\ desired \in Speeds \cup {None}
   /\ stored \in Speeds \cup {None}
   /\ fightCount \in 0..MaxFight
@@ -143,14 +143,17 @@ ObserveAutonomousFight ==
   /\ lastWriter' = "vsc"
   /\ UNCHANGED <<mode, desired, stored, quiet>>
 
-(* Rule 9: budget exhausted — surrender AND stand down. Authority is
-   dropped (desired := None), so the war cannot silently restart (F2). *)
+(* Rule 9: budget exhausted — surrender = stand down to NoOpinion. A
+   separate Surrendered mode proved behaviorally identical to NoOpinion
+   once rule 2 adopts user intent from any mode, so it was eliminated;
+   dropping desired is what ends the war (F2). Storage is untouched: the
+   remembered speed still seeds authority on the next load. *)
 ObserveAutonomousSurrender ==
   /\ pending
   /\ mode = "Holding"
   /\ rate # desired
   /\ fightCount = MaxFight
-  /\ mode' = "Surrendered"
+  /\ mode' = "NoOpinion"
   /\ desired' = None
   /\ fightCount' = 0
   /\ pending' = FALSE
@@ -169,7 +172,7 @@ ObserveNoop ==
 (* Rules 1, 6, 14: play / seeked / deferred loadedmetadata.
    Holding: re-assert desired, never persist (#1494; F1 flag models the
    current step-6 leak). NoOpinion: nothing (the flag models pre-#1537
-   forcing of the 1.0 baseline). Surrendered: nothing. *)
+   forcing of the 1.0 baseline). Post-surrender states are NoOpinion. *)
 Lifecycle ==
   \/ /\ mode = "Holding"
      /\ rate' = desired

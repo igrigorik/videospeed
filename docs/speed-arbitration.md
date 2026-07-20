@@ -62,11 +62,11 @@ re-establishes authority) and can never cause writes in `NO_OPINION` mode.
 
 ## Arbiter state
 
-| Field        | Domain                                     | Meaning                                                  |
-| ------------ | ------------------------------------------ | -------------------------------------------------------- |
-| `mode`       | `NO_OPINION` \| `HOLDING` \| `SURRENDERED` | Whether VSC currently claims authority over the rate     |
-| `desired`    | speed \| none                              | The authoritative target. Non-none iff `mode = HOLDING`  |
-| `fightCount` | 0..MAX_FIGHT                               | Consecutive autonomous resets we have fought this window |
+| Field        | Domain                    | Meaning                                                  |
+| ------------ | ------------------------- | -------------------------------------------------------- |
+| `mode`       | `NO_OPINION` \| `HOLDING` | Whether VSC currently claims authority over the rate     |
+| `desired`    | speed \| none             | The authoritative target. Non-none iff `mode = HOLDING`  |
+| `fightCount` | 0..MAX_FIGHT              | Consecutive autonomous resets we have fought this window |
 
 Correspondence to today's code: `desired` is `settings.lastSpeed`
 (`null` = none), except under a site rule — see finding F5. `mode` is
@@ -93,12 +93,13 @@ that filtering is classifier/adapter duty; the arbiter never sees them.
 
 ## Effects vocabulary
 
-| Effect       | Meaning                                                                                        |
-| ------------ | ---------------------------------------------------------------------------------------------- |
-| `WRITE(v)`   | Set `video.playbackRate = v` (via site handler)                                                |
-| `PERSIST(v)` | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`) |
-| `SYNC_UI(v)` | Update the speed indicator only                                                                |
-| —            | No effect                                                                                      |
+| Effect            | Meaning                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `WRITE(v)`        | Set `video.playbackRate = v` (via site handler)                                                |
+| `PERSIST(v)`      | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`) |
+| `SYNC_UI(v)`      | Update the speed indicator only                                                                |
+| `CLEAR_AUTHORITY` | Null the SESSION authority (in-memory `lastSpeed`) without touching storage. Cell 9 only       |
+| —                 | No effect                                                                                      |
 
 `PERSIST` is atomic by contract: in-memory and storage move together or
 not at all. (Today they can diverge — finding F1.)
@@ -115,27 +116,31 @@ Priority at page load:
 
 ## The transition table (target contract)
 
-| #   | State       | Event                                       | Effects                | Next state  | Rationale / provenance                                                                                                                                                                                                 |
-| --- | ----------- | ------------------------------------------- | ---------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | NO_OPINION  | LIFECYCLE                                   | —                      | NO_OPINION  | **No opinion ⇒ no writes.** Was buggy (wrote 1.0 baseline): #1537, PR #1537                                                                                                                                            |
-| 2   | NO_OPINION  | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)             | HOLDING(v)  | User spoke through native controls; adopt. Today not adopted (gesture path gated on truthy `lastSpeed`) — design decision, resolves the #1532 sub-question                                                             |
-| 3   | NO_OPINION  | EXT_RATE(v, AUTONOMOUS)                     | SYNC_UI(v)             | NO_OPINION  | Site owns the rate; we display it                                                                                                                                                                                      |
-| 4   | NO_OPINION  | EXT_RATE(v, INIT_NOISE)                     | —                      | NO_OPINION  | readyState<1 noise, min-rate glitches                                                                                                                                                                                  |
-| 5   | NO_OPINION  | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)   | HOLDING(v)  | User claims authority                                                                                                                                                                                                  |
-| 6   | HOLDING(d)  | LIFECYCLE                                   | WRITE(d)               | HOLDING(d)  | Re-assert; **no PERSIST** (#1494)                                                                                                                                                                                      |
-| 7   | HOLDING(d)  | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)             | HOLDING(v)  | Accept native-control change as the new authority. Fails today via _misclassification_, not bad arbitration: #1554/#1555 (click-hold), #1562/#1546/#1563 (arrow-key false positive), #1581 (click-seek false positive) |
-| 8   | HOLDING(d)  | EXT_RATE(v≠d, AUTONOMOUS), fightCount < MAX | WRITE(d), fightCount++ | HOLDING(d)  | Fight back (bounded)                                                                                                                                                                                                   |
-| 9   | HOLDING(d)  | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX | SYNC_UI(v)             | SURRENDERED | Give up **and stand down** — authority is dropped, not retained (F2; today authority is silently kept and the war restarts every quiet window)                                                                         |
-| 10  | HOLDING(d)  | EXT_RATE(d, AUTONOMOUS)                     | —                      | HOLDING(d)  | Site confirmed our value                                                                                                                                                                                               |
-| 11  | HOLDING(d)  | EXT_RATE(v, INIT_NOISE)                     | —                      | HOLDING(d)  | Ignore                                                                                                                                                                                                                 |
-| 12  | HOLDING(d)  | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)   | HOLDING(v)  |                                                                                                                                                                                                                        |
-| 13  | HOLDING(d)  | FIGHT_WINDOW_EXPIRE                         | fightCount := 0        | HOLDING(d)  | Forgive isolated resets                                                                                                                                                                                                |
-| 14  | SURRENDERED | LIFECYCLE                                   | —                      | SURRENDERED | We stood down; stay down                                                                                                                                                                                               |
-| 15  | SURRENDERED | EXT_RATE(v, any)                            | SYNC_UI(v)             | SURRENDERED | Observe only                                                                                                                                                                                                           |
-| 16  | SURRENDERED | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)   | HOLDING(v)  | Only the user can restart the war                                                                                                                                                                                      |
+| #   | State      | Event                                       | Effects                     | Next state | Rationale / provenance                                                                                                                                                                                                              |
+| --- | ---------- | ------------------------------------------- | --------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | NO_OPINION | LIFECYCLE                                   | —                           | NO_OPINION | **No opinion ⇒ no writes.** Was buggy (wrote 1.0 baseline): #1537, PR #1537                                                                                                                                                         |
+| 2   | NO_OPINION | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)                  | HOLDING(v) | User spoke through native controls; adopt. Today not adopted (gesture path gated on truthy `lastSpeed`) — design decision, resolves the #1532 sub-question                                                                          |
+| 3   | NO_OPINION | EXT_RATE(v, AUTONOMOUS)                     | SYNC_UI(v)                  | NO_OPINION | Site owns the rate; we display it                                                                                                                                                                                                   |
+| 4   | NO_OPINION | EXT_RATE(v, INIT_NOISE)                     | —                           | NO_OPINION | readyState<1 noise, min-rate glitches                                                                                                                                                                                               |
+| 5   | NO_OPINION | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)        | HOLDING(v) | User claims authority                                                                                                                                                                                                               |
+| 6   | HOLDING(d) | LIFECYCLE                                   | WRITE(d)                    | HOLDING(d) | Re-assert; **no PERSIST** (#1494)                                                                                                                                                                                                   |
+| 7   | HOLDING(d) | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)                  | HOLDING(v) | Accept native-control change as the new authority. Fails today via _misclassification_, not bad arbitration: #1554/#1555 (click-hold), #1562/#1546/#1563 (arrow-key false positive), #1581 (click-seek false positive)              |
+| 8   | HOLDING(d) | EXT_RATE(v≠d, AUTONOMOUS), fightCount < MAX | WRITE(d), fightCount++      | HOLDING(d) | Fight back (bounded)                                                                                                                                                                                                                |
+| 9   | HOLDING(d) | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX | CLEAR_AUTHORITY, SYNC_UI(v) | NO_OPINION | Surrender = stand down. Session authority cleared (storage untouched — the remembered speed re-seeds on next load); the war cannot restart (F2). No separate SURRENDERED mode: with cell 2, it would equal NO_OPINION in every cell |
+| 10  | HOLDING(d) | EXT_RATE(d, AUTONOMOUS)                     | —                           | HOLDING(d) | Site confirmed our value                                                                                                                                                                                                            |
+| 11  | HOLDING(d) | EXT_RATE(v, INIT_NOISE)                     | —                           | HOLDING(d) | Ignore                                                                                                                                                                                                                              |
+| 12  | HOLDING(d) | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)        | HOLDING(v) |                                                                                                                                                                                                                                     |
+| 13  | HOLDING(d) | FIGHT_WINDOW_EXPIRE                         | fightCount := 0             | HOLDING(d) | Forgive isolated resets                                                                                                                                                                                                             |
 
 Every cell is total: any (state, event) pair not listed above is a spec
 bug, not an implementation choice.
+
+Historical note: earlier drafts had a third mode, `SURRENDERED`, with
+cells 14–16. Once cell 2 adopts user intent from any mode, that mode is
+behaviorally identical to `NO_OPINION` in every cell — the only thing it
+remembered was _that_ we lost, not anything that changed behavior — so
+cell 9 stands down to `NO_OPINION` directly and the mode was eliminated
+(model-checked equivalent; the mode count went 3 → 2).
 
 ## Invariants
 

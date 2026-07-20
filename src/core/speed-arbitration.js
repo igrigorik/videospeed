@@ -6,16 +6,15 @@
  *              -> SpeedArbiter.step (pure decision, verified)
  *              -> effect execution through the existing ActionHandler paths
  *
- * Wave-2 transitional design, deliberate and temporary:
+ * Design notes:
  *
  * - Arbiter state is DERIVED from config.settings on every decision rather
- *   than owned. This is sound exactly while the compat flags are in legacy
- *   position: SURRENDERED is unreachable (shallow surrender keeps HOLDING),
- *   so mode is fully derivable from lastSpeed, and executing effects through
- *   the real setSpeed keeps settings.lastSpeed — the storage-listener-synced
- *   source of truth — authoritative. Owned state plus cross-tab listener
- *   integration ships with the F2 (real surrender) flag flip, which is the
- *   first configuration where derivation breaks.
+ *   than owned: settings.lastSpeed IS the session authority (null = no
+ *   opinion), kept storage-listener-synced across tabs. This survived the
+ *   F2 flip because surrender collapsed into "clear session authority and
+ *   stand down to NO_OPINION" (see cell 9) — there is no separate
+ *   surrendered mode to remember, so derivation stays total. Fight
+ *   bookkeeping (count + window timer) is the only adapter-owned state.
  *
  * - Effects execute through ActionHandler.adjustSpeed with the legacy
  *   source taxonomy ('internal'/'external'/'init'), so persistence behavior
@@ -155,25 +154,46 @@ class SpeedArbitration {
       return;
     }
 
-    // Cell 9 (shallow under legacy compat) — budget exhausted.
-    if (prevFight > 0 && next.fightCount === 0 && state.mode === A.MODES.HOLDING) {
+    // Cell 9 — budget exhausted: stand down. CLEAR_AUTHORITY nulls the
+    // session authority projection so derivation, the cooldown-restore
+    // branch, and cross-tab semantics all see "no opinion" uniformly.
+    if (effects.some((e) => e.type === A.EFFECTS.CLEAR_AUTHORITY)) {
       window.VSC.logger.info(
-        `Fight detection: surrendering after ${prevFight} resets. Accepting site speed ${rawRate}`
+        `Fight detection: surrendering after ${prevFight} resets. Standing down at site speed ${rawRate}`
       );
+      if (this.fightTimer) {
+        clearTimeout(this.fightTimer);
+        this.fightTimer = null;
+      }
+      this.config.clearSessionAuthority();
     }
 
-    // Cells 3/10/15 + surrender fallthrough: observe/accept without persist.
+    // Cells 3/10 + surrender fallthrough: observe/accept without persist.
     if (this.eventManager && this.eventManager.actionHandler) {
       this.eventManager.actionHandler.adjustSpeed(video, rawRate, { source: 'external' });
     }
   }
 
   /**
-   * Lifecycle decision (cells 1/6/14): what, if anything, should the
+   * A user action through VSC claimed authority (cells 5/12). The effect
+   * execution is setSpeed's job (the caller); this resets the fight state
+   * per the contract — a fresh user choice starts with a clean budget.
+   * Called by ActionHandler for source:'internal' speed changes.
+   */
+  noteUserSet() {
+    this.fightCount = 0;
+    if (this.fightTimer) {
+      clearTimeout(this.fightTimer);
+      this.fightTimer = null;
+    }
+  }
+
+  /**
+   * Lifecycle decision (cells 1/6): what, if anything, should the
    * register be set to on play/seeked/deferred-init?
    *
-   * @returns {number|null} target speed, or null for "no write" (target
-   *   contract cells 1 and 14; never null under legacy compat)
+   * @returns {number|null} target speed, or null for "no write" (cell 1;
+   *   never null under full legacy compat)
    */
   lifecycleTarget() {
     const A = window.VSC.SpeedArbiter;
@@ -217,8 +237,8 @@ SpeedArbitration.POLICY = {
     legacyNoOpinionLifecycle: false, // cell 1 fixed (#1537) — release N
     legacyLifecyclePersist: false, // F1 fixed (with setSpeed init-persist fix) — release N
     legacySiteRuleLoad: false, // F5 fixed (rule = initial authority) — release N, coupled to cell 1
-    legacyShallowSurrender: true, // F2 open — needs owned arbiter state first
-    legacyNoAdoption: true, // F3 open — policy decision pending
+    legacyShallowSurrender: false, // F2 fixed (real surrender = stand down to NO_OPINION)
+    legacyNoAdoption: false, // F3 fixed (native speed choices become authority)
   }),
   rules: null, // assigned below; IntentClassifier must be loaded first
 };
