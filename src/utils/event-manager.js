@@ -14,15 +14,33 @@ class EventManager {
     // Event deduplication to prevent duplicate key processing
     this.lastKeyEventSignature = null;
 
-    // Fight detection: track how many times a site resets our speed
-    this.fightCount = 0;
-    this.fightTimer = null;
+    // Decision core: classifier (gesture evidence -> verdicts) + arbiter
+    // (pure transition table). See docs/speed-arbitration.md. This module
+    // is now an adapter: it owns DOM listeners and the cooldown echo
+    // filter; all accept/enforce/ignore decisions live in the arbiter.
+    this.arbitration = new window.VSC.SpeedArbitration(config, this);
 
-    // User gesture tracking: timestamp of the last user interaction we did NOT
-    // handle (click on page UI, unhandled key). A ratechange arriving within
-    // USER_GESTURE_WINDOW_MS of this is treated as intentional and accepted
-    // immediately rather than fought — handles native site speed controls.
-    this.lastUserInteractionAt = 0;
+    // Migration aliases: external code and existing tests reach for the
+    // pre-arbiter field names. Semantics are identical — these delegate to
+    // the classifier's evidence ledger and the adapter's fight state.
+    Object.defineProperty(this, 'lastUserInteractionAt', {
+      get: () => this.arbitration.classifier.lastGestureAt,
+      set: (v) => {
+        this.arbitration.classifier.lastGestureAt = v;
+      },
+    });
+    Object.defineProperty(this, 'fightCount', {
+      get: () => this.arbitration.fightCount,
+      set: (v) => {
+        this.arbitration.fightCount = v;
+      },
+    });
+    Object.defineProperty(this, 'fightTimer', {
+      get: () => this.arbitration.fightTimer,
+      set: (v) => {
+        this.arbitration.fightTimer = v;
+      },
+    });
   }
 
   /**
@@ -119,9 +137,10 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      // Unhandled key — could be a site shortcut (e.g. YouTube's < > speed keys).
-      // Mark as user interaction so an immediately-following ratechange is accepted.
-      this.lastUserInteractionAt = event.timeStamp;
+      // Unhandled key — possibly a native site shortcut. Whether it counts
+      // as gesture evidence is the classifier's ruling (LEGACY_RULES: any
+      // key; TARGET_RULES: only native speed shortcuts, per PR #1563).
+      this.arbitration.classifier.observeUnhandledKey(event);
       window.VSC.logger.verbose(
         `No key binding found for code=${event.code}, keyCode=${event.keyCode}`
       );
@@ -211,11 +230,11 @@ class EventManager {
   }
 
   /**
-   * Track user interactions that originate outside the VSC controller.
-   * Clicks on YouTube's speed menu (or any site's native speed UI) land here.
-   * Unhandled keyboard events (e.g. YouTube's < > shortcuts) land in handleKeydown.
-   * Both update lastUserInteractionAt so handleRateChange can distinguish
-   * intentional speed changes from automatic site-initiated resets.
+   * Feed user interactions that originate outside the VSC controller to the
+   * classifier's evidence ledger. Clicks on native speed UI land here;
+   * unhandled keys land in handleKeydown; pointerdown covers click-and-hold
+   * interactions (evidence only under TARGET_RULES, per PR #1555).
+   * The classifier — not this module — decides what counts as intent.
    * @param {Document} document
    * @private
    */
@@ -225,14 +244,26 @@ class EventManager {
       if (event.target?.closest?.('vsc-controller')) {
         return;
       }
-      this.lastUserInteractionAt = event.timeStamp;
+      this.arbitration.classifier.observeClick(event);
+    };
+    const pointerDownHandler = (event) => {
+      if (event.target?.closest?.('vsc-controller')) {
+        return;
+      }
+      this.arbitration.classifier.observePointerDown(event);
     };
     document.addEventListener('click', clickHandler, true);
+    document.addEventListener('pointerdown', pointerDownHandler, true);
 
     if (!this.listeners.has(document)) {
       this.listeners.set(document, []);
     }
-    this.listeners.get(document).push({ type: 'click', handler: clickHandler, useCapture: true });
+    this.listeners
+      .get(document)
+      .push(
+        { type: 'click', handler: clickHandler, useCapture: true },
+        { type: 'pointerdown', handler: pointerDownHandler, useCapture: true }
+      );
   }
 
   /**
@@ -322,73 +353,18 @@ class EventManager {
       return;
     }
 
-    // Fight detection: if site changed speed away from what we set, decide whether
-    // to fight back or accept. User-initiated changes (detected via gesture window)
-    // are accepted immediately — this allows native site controls (e.g. YouTube's
-    // speed menu or < > shortcuts) to coexist with our fight-back logic.
-    const authoritativeSpeed = this.config.settings.lastSpeed;
-
-    if (authoritativeSpeed && Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
-      const timeSinceGesture = event.timeStamp - this.lastUserInteractionAt;
-      const isUserGesture = timeSinceGesture < EventManager.USER_GESTURE_WINDOW_MS;
-
-      if (isUserGesture) {
-        // User interacted with the site's native controls — accept immediately.
-        // Treat as internal so lastSpeed and storage are updated to match intent.
-        window.VSC.logger.info(
-          `Accepting site speed change as user-intentional (gesture ${timeSinceGesture}ms ago): ${video.playbackRate}`
-        );
-        this.fightCount = 0;
-        if (this.fightTimer) {
-          clearTimeout(this.fightTimer);
-          this.fightTimer = null;
-        }
-        this.lastUserInteractionAt = 0;
-        if (this.actionHandler) {
-          this.actionHandler.adjustSpeed(video, video.playbackRate);
-        }
-        return;
-      }
-
-      this.fightCount++;
-
-      // Reset fight count after a quiet period
-      if (this.fightTimer) {
-        clearTimeout(this.fightTimer);
-      }
-      this.fightTimer = setTimeout(() => {
-        this.fightCount = 0;
-        this.fightTimer = null;
-      }, EventManager.FIGHT_WINDOW_MS);
-
-      if (this.fightCount >= EventManager.MAX_FIGHT_COUNT) {
-        // Surrender — accept the site's speed
-        window.VSC.logger.info(
-          `Fight detection: surrendering after ${this.fightCount} resets. Accepting site speed ${video.playbackRate}`
-        );
-        this.fightCount = 0;
-        // Fall through to accept the external change below
-      } else {
-        // Fight back — restore our speed with exponential backoff
-        const cooldown = Math.min(
-          EventManager.BASE_COOLDOWN_MS * Math.pow(2, this.fightCount - 1),
-          EventManager.MAX_COOLDOWN_MS
-        );
-        window.VSC.logger.info(
-          `Fight detection: attempt ${this.fightCount}/${EventManager.MAX_FIGHT_COUNT}, re-applying ${authoritativeSpeed} (cooldown ${cooldown}ms)`
-        );
-        window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
-        this.refreshCoolDown(cooldown);
-        event.stopImmediatePropagation();
-        return;
-      }
-    }
-
-    if (this.actionHandler) {
-      this.actionHandler.adjustSpeed(video, video.playbackRate, {
-        source: 'external',
-      });
-    }
+    // Everything past the guards above is a genuine external change. The
+    // classifier turns gesture evidence into a verdict; the arbiter decides
+    // accept/enforce/ignore per docs/speed-arbitration.md; the adapter
+    // executes the effects (including fight-back mechanics). No decision
+    // logic lives in this module anymore.
+    const verdict = this.arbitration.classifier.classify({
+      rate: video.playbackRate,
+      timeStamp: event.timeStamp,
+      readyState: video.readyState,
+      detail: event.detail,
+    });
+    this.arbitration.onExternalRate(video, event, verdict);
   }
 
   /**
@@ -429,11 +405,7 @@ class EventManager {
       this.coolDown = false;
     }
 
-    if (this.fightTimer) {
-      clearTimeout(this.fightTimer);
-      this.fightTimer = null;
-    }
-    this.fightCount = 0;
+    this.arbitration.cleanup();
   }
 }
 

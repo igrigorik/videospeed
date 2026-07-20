@@ -16,6 +16,13 @@ class VideoController {
     this.parent = target.parentElement || parent;
     this.config = config;
     this.actionHandler = actionHandler;
+    // Lifecycle decisions (cells 1/6/14 of docs/speed-arbitration.md) come
+    // from the arbitration adapter. Share the EventManager's instance when
+    // reachable (single fight state); lifecycle-only decisions are
+    // stateless, so a local fallback is safe for standalone construction.
+    this.arbitration =
+      (actionHandler && actionHandler.eventManager && actionHandler.eventManager.arbitration) ||
+      new window.VSC.SpeedArbitration(config, null);
     this.controlsManager = new window.VSC.ControlsManager(actionHandler, config);
     this.shouldStartHidden = shouldStartHidden;
 
@@ -60,7 +67,16 @@ class VideoController {
    * @private
    */
   initializeSpeed() {
-    const targetSpeed = this.getTargetSpeed();
+    const targetSpeed = this.arbitration.lifecycleTarget();
+
+    // null = the arbiter has no opinion and emits no write (target contract
+    // cells 1/14; never null while compat flags are in legacy position).
+    if (targetSpeed === null) {
+      window.VSC.logger.debug(
+        `initializeSpeed: no authoritative target, leaving playbackRate=${this.video.playbackRate}`
+      );
+      return;
+    }
 
     window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
 
@@ -85,33 +101,17 @@ class VideoController {
   }
 
   /**
-   * Get target speed for video initialization and event restoration.
-   *
-   * lastSpeed semantics: null = "no user choice this session", any number
-   * (including 1.0) = "user deliberately set this." setSpeed() writes a
-   * real number on every user action; load() initializes to null when a
-   * per-site rule exists or rememberSpeed is off.
-   *
-   * Fresh load priority:
-   *   1. siteDefaultSpeed (per-site rule) — always wins if configured
-   *   2. lastSpeed from storage (rememberSpeed=true, no per-site rule)
-   *   3. 1.0 fallback
-   * Mid-session: user's last setSpeed() call wins until next page load.
+   * DEPRECATED migration alias — the lifecycle target is the arbiter's
+   * decision now (docs/speed-arbitration.md cells 1/6/14); the lastSpeed
+   * semantics this method used to encode live in the contract doc and
+   * arbiter.loadState(). Kept because external code and tests still call
+   * it. Falls back to the current rate when the arbiter emits no write.
    *
    * @returns {number} Target speed
    * @private
    */
   getTargetSpeed() {
-    const baseline = this.config.settings.siteDefaultSpeed ?? 1.0;
-    const last = this.config.settings.lastSpeed;
-
-    if (last !== null) {
-      window.VSC.logger.debug(`Using lastSpeed ${last} (baseline=${baseline})`);
-      return last;
-    }
-
-    window.VSC.logger.debug(`Using baseline ${baseline} (lastSpeed=${last})`);
-    return baseline;
+    return this.arbitration.lifecycleTarget() ?? this.video.playbackRate;
   }
 
   /**
@@ -230,7 +230,16 @@ class VideoController {
    */
   setupEventHandlers() {
     const mediaEventAction = (event) => {
-      const targetSpeed = this.getTargetSpeed(event.target);
+      const targetSpeed = this.arbitration.lifecycleTarget();
+
+      // null = the arbiter has no opinion and emits no write (target
+      // contract cell 1/14; never null under legacy compat flags).
+      if (targetSpeed === null) {
+        window.VSC.logger.debug(
+          `Media event ${event.type}: no authoritative target, leaving playbackRate=${event.target.playbackRate}`
+        );
+        return;
+      }
 
       // Lifecycle restore, not a user choice — don't persist to lastSpeed.
       window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
