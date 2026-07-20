@@ -13,3 +13,8 @@ tests/e2e/screenshots
 node_modules
 coverage
 plan.md
+
+# TLC model-checker artifacts (specs/)
+specs/states/
+specs/*_TTrace_*.tla
+specs/*_TTrace_*.bin
