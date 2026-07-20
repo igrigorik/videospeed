@@ -69,7 +69,10 @@ const LEGACY_COMPAT = Object.freeze({
   legacySiteRuleLoad: true,
 });
 
-const DEFAULT_MAX_FIGHT = 5; // mirrors EventManager.MAX_FIGHT_COUNT
+// Effective fight budget. EventManager.MAX_FIGHT_COUNT is 5, but the legacy
+// handler increments THEN checks `>= MAX`, so the 5th reset surrenders after
+// only 4 fight-backs — the arbiter default preserves that observable budget.
+const DEFAULT_MAX_FIGHT = 4;
 
 /**
  * Build the initial arbiter state from load-time inputs (LOAD in the table).
@@ -93,16 +96,16 @@ function loadState(init, compat = TARGET_COMPAT) {
 
   if (siteRuleSpeed !== null && siteRuleSpeed !== undefined) {
     if (compat.legacySiteRuleLoad) {
-      return makeState(MODES.NO_OPINION, null, 0, siteRuleSpeed);
+      return makeState(MODES.NO_OPINION, null, 0, siteRuleSpeed, rememberEnabled);
     }
-    return makeState(MODES.HOLDING, siteRuleSpeed, 0, 1.0);
+    return makeState(MODES.HOLDING, siteRuleSpeed, 0, 1.0, rememberEnabled);
   }
 
   if (rememberEnabled && rememberedSpeed !== null && rememberedSpeed !== undefined) {
-    return makeState(MODES.HOLDING, rememberedSpeed, 0, 1.0);
+    return makeState(MODES.HOLDING, rememberedSpeed, 0, 1.0, rememberEnabled);
   }
 
-  return makeState(MODES.NO_OPINION, null, 0, 1.0);
+  return makeState(MODES.NO_OPINION, null, 0, 1.0, rememberEnabled);
 }
 
 /**
@@ -111,9 +114,12 @@ function loadState(init, compat = TARGET_COMPAT) {
  * @param {number} fightCount
  * @param {number} baseline - lifecycle target when legacy compat forces a
  *   write without authority (site rule under F5, else 1.0)
+ * @param {boolean} rememberEnabled - the rememberSpeed setting; read ONLY by
+ *   legacy compat branches (setSpeed step 6 is gated on it), never by the
+ *   target contract
  */
-function makeState(mode, desired, fightCount, baseline) {
-  return Object.freeze({ mode, desired, fightCount, baseline });
+function makeState(mode, desired, fightCount, baseline, rememberEnabled) {
+  return Object.freeze({ mode, desired, fightCount, baseline, rememberEnabled });
 }
 
 function effect(type, speed) {
@@ -138,7 +144,7 @@ function step(state, event, options = {}) {
     // Cells 5, 12, 16: the user spoke through VSC — unconditional authority.
     case ARBITER_EVENTS.USER_SET: {
       return {
-        state: makeState(MODES.HOLDING, event.speed, 0, state.baseline),
+        state: makeState(MODES.HOLDING, event.speed, 0, state.baseline, state.rememberEnabled),
         effects: [
           effect(ARBITER_EFFECTS.WRITE, event.speed),
           effect(ARBITER_EFFECTS.PERSIST, event.speed),
@@ -160,6 +166,26 @@ function step(state, event, options = {}) {
       }
       if (state.mode === MODES.NO_OPINION && compat.legacyNoOpinionLifecycle) {
         // Cell 1 pre-#1537: force the baseline, stomping native rate choices.
+        if (compat.legacyLifecyclePersist && state.rememberEnabled) {
+          // F1, full extent: with rememberSpeed on, setSpeed step 6 calls
+          // config.save({lastSpeed}), and save() merges into in-memory
+          // settings (settings.js:220) — defeating step 1's 'init' guard.
+          // The forced baseline silently BECOMES fightable authority, in
+          // memory and in storage, with zero user action.
+          return {
+            state: makeState(
+              MODES.HOLDING,
+              state.baseline,
+              0,
+              state.baseline,
+              state.rememberEnabled
+            ),
+            effects: [
+              effect(ARBITER_EFFECTS.WRITE, state.baseline),
+              effect(ARBITER_EFFECTS.PERSIST, state.baseline),
+            ],
+          };
+        }
         return { state, effects: [effect(ARBITER_EFFECTS.WRITE, state.baseline)] };
       }
       // Cells 1 (target), 14: no opinion / stood down => no writes.
@@ -183,7 +209,7 @@ function step(state, event, options = {}) {
             return { state, effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)] };
           }
           return {
-            state: makeState(MODES.HOLDING, rate, 0, state.baseline),
+            state: makeState(MODES.HOLDING, rate, 0, state.baseline, state.rememberEnabled),
             effects: [effect(ARBITER_EFFECTS.PERSIST, rate), effect(ARBITER_EFFECTS.SYNC_UI, rate)],
           };
         }
@@ -207,14 +233,20 @@ function step(state, event, options = {}) {
               // F2: legacy resets the counter but silently KEEPS authority,
               // so the war restarts after the next quiet window.
               return {
-                state: makeState(MODES.HOLDING, state.desired, 0, state.baseline),
+                state: makeState(
+                  MODES.HOLDING,
+                  state.desired,
+                  0,
+                  state.baseline,
+                  state.rememberEnabled
+                ),
                 effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)],
               };
             }
             // Cell 9: surrender AND stand down — authority is dropped; only
             // the user can restart the war (cell 16).
             return {
-              state: makeState(MODES.SURRENDERED, null, 0, state.baseline),
+              state: makeState(MODES.SURRENDERED, null, 0, state.baseline, state.rememberEnabled),
               effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)],
             };
           }
@@ -233,7 +265,7 @@ function step(state, event, options = {}) {
         return { state, effects: [] };
       }
       return {
-        state: makeState(state.mode, state.desired, 0, state.baseline),
+        state: makeState(state.mode, state.desired, 0, state.baseline, state.rememberEnabled),
         effects: [],
       };
     }

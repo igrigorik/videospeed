@@ -173,6 +173,13 @@ already-tracked issues:
   silently overwrites the stored 1.8 with 1.25 — and the storage-change
   listener propagates that to every other open tab (a second vector for
   #1559 beyond user actions). Violates I2.
+  **Full extent (found by the differential harness):** `config.save()`
+  merges into in-memory settings immediately (`settings.js:220`), so
+  step 6 ALSO sets in-memory `lastSpeed` — defeating step 1's `init`
+  guard entirely whenever `rememberSpeed` is on. The forced baseline
+  silently _becomes fightable authority_ with zero user action: under a
+  site rule, F5's "no fight-back" holds only until the first `play`,
+  after which the system has self-mutated into holding the rule speed.
 - **F2 — surrender is shallow.** On surrender the code accepts the
   site's rate with `source:'external'`, which does NOT update
   `lastSpeed`. Authority is silently retained, so after the next quiet
@@ -235,6 +242,34 @@ Every heuristic must cite its motivating evidence. Current inventory:
 5. Multi-tab semantics (#1559) specified as an explicit extension —
    today's cross-tab bleed is an accident of shared storage, not a
    decision; the spec forces the decision.
+
+## Verification status
+
+Three independent layers, all runnable locally:
+
+1. **TLC over `specs/SpeedArbiter.tla`** — target contract exhaustively
+   checked (582 states); two single-defect configs reproduce #1537 and
+   F1 as property violations with minimal traces. Design-time oracle.
+2. **Mini model checker in `tests/unit/core/arbiter.test.js`** —
+   exhaustive BFS over the reachable (state × register) graph asserting
+   invariants I1–I6 on every edge; runs in vitest, no Java needed.
+3. **Differential harness + bug ledger in
+   `tests/integration/arbiter-differential.test.js`** — the same
+   scenario streams drive the real legacy modules and the
+   legacy-flagged arbiter; observables must match at every step
+   (hand scenarios + a 20-seed deterministic random sweep). The bug
+   ledger pins every known bug (open and resolved): each REPRODUCES
+   under legacy configuration in both worlds and VANISHES under the
+   target contract — except #1581, honestly pinned as an open
+   classifier gap. Fight-budget note: legacy increments-then-checks, so
+   `MAX_FIGHT_COUNT = 5` yields 4 fight-backs; the arbiter's default
+   budget preserves that observable behavior.
+
+Consequence: the strangler-fig rewire can land with all compat flags in
+legacy position as a provably behavior-preserving change, and each
+contract fix ships as a one-flag diff whose effect is already
+demonstrated by a ledger entry. Remaining debates are about which
+behavior we want per cell — never about implementation correctness.
 
 ## Model checking
 
