@@ -100,17 +100,19 @@ a POSIX shell. Windows users need:
 
 ## Optional
 
-### Run Pre-Commit Checks Locally
+### Run Git Hooks Manually
 
-Installing [pre-commit](https://pre-commit.com/) is easy to do (click the link
-for instructions on your platform). This repo comes with pre-commit already
-configured. Doing this will ensure that your project is properly formatted and
-runs some very basic tests. Once you have pre-commit installed on your system,
-simply enter `pre-commit install` in your terminal in the folder to have these
-checks run automatically each time you commit.
+Running `npm install` configures the repository's Husky hooks. Commits run
+`npx lint-staged` to format and lint staged files, while pushes run the full
+lint and test suites.
 
-Even better, after issueing the install command you can now manually run
-pre-commit checks before committing via `pre-commit run --all-files`
+You can run the same checks manually:
+
+```sh
+npx lint-staged
+npm run lint
+npm test
+```
 
 ### Pull Upstream Changes
 
