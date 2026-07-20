@@ -289,7 +289,7 @@ describe('EventManager', () => {
     mockVideo.vsc = { speedIndicator: { textContent: '1.00' } };
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
-    const maxFights = window.VSC.EventManager.MAX_FIGHT_COUNT;
+    const maxFights = window.VSC.SpeedArbiter.DEFAULT_MAX_FIGHT + 1;
 
     for (let i = 0; i < maxFights - 1; i++) {
       eventManager.coolDown = false;
@@ -338,12 +338,12 @@ describe('EventManager', () => {
       });
     }
 
-    expect(eventManager.fightCount).toBe(2);
+    expect(eventManager.arbitration.fightCount).toBe(2);
 
-    const fightWindowMs = window.VSC.EventManager.FIGHT_WINDOW_MS;
+    const fightWindowMs = window.VSC.SpeedArbitration.FIGHT_WINDOW_MS;
     await vi.advanceTimersByTimeAsync(fightWindowMs + 50);
 
-    expect(eventManager.fightCount).toBe(0);
+    expect(eventManager.arbitration.fightCount).toBe(0);
   });
 
   // User gesture window tests
@@ -362,7 +362,7 @@ describe('EventManager', () => {
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
     // Gesture at t=1000ms, ratechange at t=1050ms → delta=50ms < USER_GESTURE_WINDOW_MS(300ms)
-    eventManager.lastUserInteractionAt = 1000;
+    eventManager.arbitration.classifier.lastGestureAt = 1000;
 
     let eventStopped = false;
     eventManager.handleRateChange({
@@ -378,8 +378,8 @@ describe('EventManager', () => {
     // Should accept: speed stays at 2.0, lastSpeed updated, fightCount reset
     expect(mockVideo.playbackRate).toBe(2.0);
     expect(config.settings.lastSpeed).toBe(2.0);
-    expect(eventManager.fightCount).toBe(0);
-    expect(eventManager.lastUserInteractionAt).toBe(0); // consumed
+    expect(eventManager.arbitration.fightCount).toBe(0);
+    expect(eventManager.arbitration.classifier.lastGestureAt).toBe(0); // consumed
     expect(eventStopped).toBe(false);
   });
 
@@ -396,7 +396,7 @@ describe('EventManager', () => {
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
     // Use fixed timestamps: gesture window is 300ms, so delta of 1000ms is clearly outside
-    eventManager.lastUserInteractionAt = 0;
+    eventManager.arbitration.classifier.lastGestureAt = 0;
     let eventStopped = false;
     eventManager.handleRateChange({
       composedPath: () => [mockVideo],
@@ -410,7 +410,7 @@ describe('EventManager', () => {
 
     // Should fight: speed restored to 1.5
     expect(mockVideo.playbackRate).toBe(1.5);
-    expect(eventManager.fightCount).toBe(1);
+    expect(eventManager.arbitration.fightCount).toBe(1);
     expect(eventStopped).toBe(true);
   });
 
@@ -427,7 +427,7 @@ describe('EventManager', () => {
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
     // Gesture at t=100ms, ratechange at t=700ms → delta=600ms > USER_GESTURE_WINDOW_MS(300ms)
-    eventManager.lastUserInteractionAt = 100;
+    eventManager.arbitration.classifier.lastGestureAt = 100;
     eventManager.handleRateChange({
       composedPath: () => [mockVideo],
       target: mockVideo,
@@ -437,7 +437,7 @@ describe('EventManager', () => {
     });
 
     expect(mockVideo.playbackRate).toBe(1.5); // fought back
-    expect(eventManager.fightCount).toBe(1);
+    expect(eventManager.arbitration.fightCount).toBe(1);
   });
 
   it('cleanup should clear fight detection state', async () => {
@@ -447,12 +447,12 @@ describe('EventManager', () => {
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const eventManager = new window.VSC.EventManager(config, actionHandler);
 
-    eventManager.fightCount = 5;
-    eventManager.fightTimer = setTimeout(() => {}, 10000);
+    eventManager.arbitration.fightCount = 5;
+    eventManager.arbitration.fightTimer = setTimeout(() => {}, 10000);
 
     eventManager.cleanup();
 
-    expect(eventManager.fightCount).toBe(0);
-    expect(eventManager.fightTimer).toBe(null);
+    expect(eventManager.arbitration.fightCount).toBe(0);
+    expect(eventManager.arbitration.fightTimer).toBe(null);
   });
 });

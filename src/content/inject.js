@@ -411,6 +411,9 @@ class VideoSpeedExtension {
               if (video.vsc) {
                 extension.actionHandler.adjustSpeed(video, targetSpeed);
               } else {
+                // Uncontrolled video (no vsc controller): outside the
+                // arbitration domain, direct write is the only channel.
+                // eslint-disable-next-line no-restricted-syntax
                 video.playbackRate = targetSpeed;
               }
             });
@@ -432,6 +435,7 @@ class VideoSpeedExtension {
                 // Fallback for videos without controller
                 const { MIN: sMin, MAX: sMax } = window.VSC.Constants.SPEED_LIMITS;
                 const newSpeed = Math.min(Math.max(video.playbackRate + delta, sMin), sMax);
+                // eslint-disable-next-line no-restricted-syntax -- uncontrolled video, outside arbitration domain
                 video.playbackRate = newSpeed;
               }
             });
@@ -447,6 +451,7 @@ class VideoSpeedExtension {
             if (video.vsc) {
               extension.actionHandler.resetSpeed(video, 1.0);
             } else {
+              // eslint-disable-next-line no-restricted-syntax -- uncontrolled video, outside arbitration domain
               video.playbackRate = 1.0;
             }
           });

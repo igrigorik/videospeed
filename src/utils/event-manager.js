@@ -17,30 +17,9 @@ class EventManager {
     // Decision core: classifier (gesture evidence -> verdicts) + arbiter
     // (pure transition table). See docs/speed-arbitration.md. This module
     // is now an adapter: it owns DOM listeners and the cooldown echo
-    // filter; all accept/enforce/ignore decisions live in the arbiter.
+    // filter; all accept/enforce/ignore decisions live in the arbiter, and
+    // fight/gesture state lives on the arbitration adapter.
     this.arbitration = new window.VSC.SpeedArbitration(config, this);
-
-    // Migration aliases: external code and existing tests reach for the
-    // pre-arbiter field names. Semantics are identical — these delegate to
-    // the classifier's evidence ledger and the adapter's fight state.
-    Object.defineProperty(this, 'lastUserInteractionAt', {
-      get: () => this.arbitration.classifier.lastGestureAt,
-      set: (v) => {
-        this.arbitration.classifier.lastGestureAt = v;
-      },
-    });
-    Object.defineProperty(this, 'fightCount', {
-      get: () => this.arbitration.fightCount,
-      set: (v) => {
-        this.arbitration.fightCount = v;
-      },
-    });
-    Object.defineProperty(this, 'fightTimer', {
-      get: () => this.arbitration.fightTimer,
-      set: (v) => {
-        this.arbitration.fightTimer = v;
-      },
-    });
   }
 
   /**
@@ -417,21 +396,15 @@ EventManager.modifiersMatch = function (mods, ctrl, alt, meta, shift) {
   return mods.ctrl === ctrl && mods.alt === alt && mods.meta === meta && mods.shift === shift;
 };
 
-// Time window (ms) after a user interaction in which an external ratechange is
-// treated as user-intentional (site native controls) rather than fought back.
-EventManager.USER_GESTURE_WINDOW_MS = 300;
+// Cooldown timing — the echo-suppression mechanism this module still owns.
+// Gesture-window timing lives on IntentClassifier; fight-window timing and
+// the fight budget live on SpeedArbitration/SpeedArbiter.
 
 // Base cooldown duration (ms) for ratechange handling; doubles each fight-back retry
 EventManager.BASE_COOLDOWN_MS = 200;
 
 // Maximum cooldown duration (ms) during fight-back backoff
 EventManager.MAX_COOLDOWN_MS = 2000;
-
-// Fight detection: surrender after this many rapid site-initiated resets
-EventManager.MAX_FIGHT_COUNT = 5;
-
-// Fight detection: reset fight count after this quiet period (ms)
-EventManager.FIGHT_WINDOW_MS = EventManager.MAX_COOLDOWN_MS + 1000;
 
 // Create singleton instance
 window.VSC.EventManager = EventManager;

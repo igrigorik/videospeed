@@ -138,7 +138,7 @@ class SpeedArbitration {
       this.fightTimer = setTimeout(() => {
         this.fightCount = 0;
         this.fightTimer = null;
-      }, EM.FIGHT_WINDOW_MS);
+      }, SpeedArbitration.FIGHT_WINDOW_MS);
 
       const cooldown = Math.min(
         EM.BASE_COOLDOWN_MS * Math.pow(2, this.fightCount - 1),
@@ -194,5 +194,10 @@ class SpeedArbitration {
     this.fightCount = 0;
   }
 }
+
+// Fight detection: forgive the fight count after this quiet period (ms).
+// Max cooldown (2000ms, EventManager.MAX_COOLDOWN_MS) plus one second, so a
+// fight-back's own cooldown can never outlive the window that forgives it.
+SpeedArbitration.FIGHT_WINDOW_MS = 3000;
 
 window.VSC.SpeedArbitration = SpeedArbitration;

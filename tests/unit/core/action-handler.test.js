@@ -1080,8 +1080,8 @@ describe('ActionHandler', () => {
     // No storage saves should occur
     expect(savedCalls.length).toBe(0);
 
-    // Simulate play event (which calls getTargetSpeed)
-    const targetSpeed = video.vsc.getTargetSpeed(video);
+    // Simulate play event (which asks the arbiter for the lifecycle target)
+    const targetSpeed = video.vsc.arbitration.lifecycleTarget();
     expect(targetSpeed).toBe(1.4);
 
     // Restore original save method

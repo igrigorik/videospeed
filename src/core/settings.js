@@ -127,8 +127,13 @@ if (!window.VSC.VideoSpeedConfig) {
           storage.siteRules || window.VSC.Constants.DEFAULT_SETTINGS.siteRules;
 
         // Match current URL against site rules to derive per-site default speed.
+        // Reset first: without this, siteDefaultSpeed is sticky across load()
+        // calls — invisible in production (fresh process per page load) but a
+        // real leak in any long-lived context, and load() below would null
+        // lastSpeed based on a stale rule.
         // matchSiteRule is exposed on window.VSC by inject-entry.js; guard for
         // test environments where it may not be available.
+        this.settings.siteDefaultSpeed = null;
         if (window.VSC.matchSiteRule) {
           const matched = window.VSC.matchSiteRule(this.settings.siteRules, window.location.href);
           if (matched && matched.speed !== null && matched.speed !== undefined) {
@@ -143,7 +148,7 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.rememberSpeed = Boolean(storage.rememberSpeed);
 
         // lastSpeed = null means "no user choice yet this session."
-        // getTargetSpeed() falls through to siteDefaultSpeed or 1.0.
+        // The arbiter lifecycle decision falls through to siteDefaultSpeed or 1.0.
         //
         // Priority on fresh load:
         //   1. siteDefaultSpeed (per-site rule) — always wins if configured

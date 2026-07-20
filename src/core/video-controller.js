@@ -101,20 +101,6 @@ class VideoController {
   }
 
   /**
-   * DEPRECATED migration alias — the lifecycle target is the arbiter's
-   * decision now (docs/speed-arbitration.md cells 1/6/14); the lastSpeed
-   * semantics this method used to encode live in the contract doc and
-   * arbiter.loadState(). Kept because external code and tests still call
-   * it. Falls back to the current rate when the arbiter emits no write.
-   *
-   * @returns {number} Target speed
-   * @private
-   */
-  getTargetSpeed() {
-    return this.arbitration.lifecycleTarget() ?? this.video.playbackRate;
-  }
-
-  /**
    * Initialize video controller UI
    * @returns {HTMLElement} Controller wrapper element
    * @private

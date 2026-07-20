@@ -219,24 +219,26 @@ describe('Settings', () => {
     window.VSC.matchSiteRule = original;
   });
 
-  it('siteDefaultSpeed is not set when siteRule matches with speed=null', async () => {
+  it('siteDefaultSpeed is null when siteRule matches with speed=null', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     const original = window.VSC.matchSiteRule;
     window.VSC.matchSiteRule = () => ({ pattern: 'test.com', enabled: false, speed: null });
 
     await config.load();
-    expect(config.settings.siteDefaultSpeed).toBeUndefined();
+    // load() resets to an explicit null before matching (sticky-state fix)
+    expect(config.settings.siteDefaultSpeed).toBeNull();
 
     window.VSC.matchSiteRule = original;
   });
 
-  it('siteDefaultSpeed is not set when no rule matches', async () => {
+  it('siteDefaultSpeed is null when no rule matches', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     const original = window.VSC.matchSiteRule;
     window.VSC.matchSiteRule = () => null;
 
     await config.load();
-    expect(config.settings.siteDefaultSpeed).toBeUndefined();
+    // load() resets to an explicit null before matching (sticky-state fix)
+    expect(config.settings.siteDefaultSpeed).toBeNull();
 
     window.VSC.matchSiteRule = original;
   });

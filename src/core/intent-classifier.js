@@ -40,7 +40,7 @@ const TARGET_RULES = Object.freeze({
   pointerHoldArms: true, // held pointer = ongoing gesture (PR #1555)
 });
 
-const USER_GESTURE_WINDOW_MS = 300; // mirrors EventManager.USER_GESTURE_WINDOW_MS
+const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange reads as intent
 
 /**
  * Native speed shortcut detection (PR #1563): YouTube's < / > keys.

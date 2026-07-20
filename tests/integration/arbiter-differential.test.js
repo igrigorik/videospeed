@@ -102,8 +102,8 @@ async function legacyStep(world, op) {
       world.actionHandler.adjustSpeed(world.video, op.speed, { source: 'internal' });
       break;
     case 'gestureClick':
-      // Mirror of EventManager's document click handler body (one line).
-      world.eventManager.lastUserInteractionAt = world.now;
+      // Exactly what EventManager's document click handler does now.
+      world.eventManager.arbitration.classifier.observeClick({ timeStamp: world.now });
       break;
     case 'pointerDown':
       break; // legacy is blind to held pointers — that IS bug #1554
