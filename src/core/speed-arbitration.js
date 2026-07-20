@@ -41,9 +41,9 @@ class SpeedArbitration {
   constructor(config, eventManager) {
     this.config = config;
     this.eventManager = eventManager;
-    this.compat = window.VSC.SpeedArbiter.LEGACY_COMPAT;
+    this.compat = SpeedArbitration.POLICY.compat;
     this.classifier = new window.VSC.IntentClassifier({
-      rules: window.VSC.IntentClassifier.LEGACY_RULES,
+      rules: SpeedArbitration.POLICY.rules,
       minRate: window.VSC.Constants.SPEED_LIMITS.MIN,
     });
     this.fightCount = 0;
@@ -199,5 +199,30 @@ class SpeedArbitration {
 // Max cooldown (2000ms, EventManager.MAX_COOLDOWN_MS) plus one second, so a
 // fight-back's own cooldown can never outlive the window that forgives it.
 SpeedArbitration.FIGHT_WINDOW_MS = 3000;
+
+/**
+ * Production arbitration policy — the single place behavior flips happen.
+ * Every line cites its bug-ledger entry in
+ * tests/integration/arbiter-differential.test.js; flipping a line is a
+ * complete, individually revertable behavior change.
+ *
+ * NOTE the cell-1 / F5 coupling: with legacyNoOpinionLifecycle=false,
+ * lifecycle events no longer write a baseline, so site rules MUST be
+ * initial authority (legacySiteRuleLoad=false + settings.load() seeding
+ * lastSpeed from the rule) or rules would never be enforced at all. These
+ * two flags flip together or not at all.
+ */
+SpeedArbitration.POLICY = {
+  compat: Object.freeze({
+    legacyNoOpinionLifecycle: false, // cell 1 fixed (#1537) — release N
+    legacyLifecyclePersist: false, // F1 fixed (with setSpeed init-persist fix) — release N
+    legacySiteRuleLoad: false, // F5 fixed (rule = initial authority) — release N, coupled to cell 1
+    legacyShallowSurrender: true, // F2 open — needs owned arbiter state first
+    legacyNoAdoption: true, // F3 open — policy decision pending
+  }),
+  rules: null, // assigned below; IntentClassifier must be loaded first
+};
+SpeedArbitration.POLICY.rules = window.VSC.IntentClassifier.TARGET_RULES; // #1562/#1546/#1554/#1568 fixed — release N
+Object.freeze(SpeedArbitration.POLICY);
 
 window.VSC.SpeedArbitration = SpeedArbitration;

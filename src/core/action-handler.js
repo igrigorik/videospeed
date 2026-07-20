@@ -505,8 +505,12 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 6. Persist to storage only if rememberSpeed is enabled
-    if (source !== 'external' && this.config.settings.rememberSpeed) {
+    // 6. Persist to storage only for user-attributed changes (persistence
+    //    purity, invariant I2). 'init' excluded symmetrically with step 1:
+    //    before this fix, a lifecycle restore with rememberSpeed on leaked
+    //    to storage AND — because save() merges into in-memory settings —
+    //    silently promoted the restored value to fightable authority (F1).
+    if (source !== 'external' && source !== 'init' && this.config.settings.rememberSpeed) {
       this.config.save({ lastSpeed: numericSpeed });
     }
 

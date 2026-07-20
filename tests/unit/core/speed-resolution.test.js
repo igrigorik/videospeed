@@ -61,12 +61,13 @@ describe('SpeedResolution', () => {
     expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
   });
 
-  // --- Truth table row 2: rememberSpeed=OFF, site rule speed=2.0, lastSpeed=null → 2.0 ---
-  it('site rule speed=2.0, rememberSpeed OFF, lastSpeed default → site baseline 2.0', async () => {
+  // --- Truth table row 2: rememberSpeed=OFF, site rule speed=2.0 → 2.0 ---
+  it('site rule speed=2.0, rememberSpeed OFF → rule is initial authority 2.0', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    config.settings.lastSpeed = null;
+    // load() seeds lastSpeed from the rule (F5 fix)
+    config.settings.lastSpeed = 2.0;
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
@@ -98,11 +99,11 @@ describe('SpeedResolution', () => {
   });
 
   // --- Per-site rule always wins on fresh load, even with rememberSpeed=ON ---
-  it('rememberSpeed ON, site=2.0, lastSpeed=null (fresh load) → 2.0 (site wins)', async () => {
+  it('rememberSpeed ON, site=2.0 (fresh load) → 2.0 (site rule wins over stored)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
-    config.settings.lastSpeed = null; // load() nulls lastSpeed when site rule exists
+    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
@@ -114,7 +115,7 @@ describe('SpeedResolution', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    config.settings.lastSpeed = null;
+    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
@@ -137,8 +138,8 @@ describe('SpeedResolution', () => {
     expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
   });
 
-  // --- Edge: siteDefaultSpeed=null treated same as undefined ---
-  it('siteDefaultSpeed=null falls back to 1.0 baseline', async () => {
+  // --- Edge: no rule, no user choice → NO opinion, NO write (cell 1) ---
+  it('no rule, lastSpeed=null → lifecycle emits no write (null)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
@@ -146,6 +147,8 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = null;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
+    // Release N (cell 1 fixed): no authority means the arbiter emits no
+    // write — the native rate is left alone (#1537).
+    expect(ctrl.arbitration.lifecycleTarget()).toBeNull();
   });
 });

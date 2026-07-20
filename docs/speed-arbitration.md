@@ -255,21 +255,34 @@ Three independent layers, all runnable locally:
    invariants I1–I6 on every edge; runs in vitest, no Java needed.
 3. **Differential harness + bug ledger in
    `tests/integration/arbiter-differential.test.js`** — the same
-   scenario streams drive the real legacy modules and the
-   legacy-flagged arbiter; observables must match at every step
-   (hand scenarios + a 20-seed deterministic random sweep). The bug
-   ledger pins every known bug (open and resolved): each REPRODUCES
-   under legacy configuration in both worlds and VANISHES under the
-   target contract — except #1581, honestly pinned as an open
-   classifier gap. Fight-budget note: legacy increments-then-checks, so
-   `MAX_FIGHT_COUNT = 5` yields 4 fight-backs; the arbiter's default
-   budget preserves that observable behavior.
+   scenario streams drive the real production pipeline and the pure
+   arbiter model under the same policy; observables must match at
+   every step (hand scenarios + a 20-seed deterministic random sweep).
+   The bug ledger pins every known bug in three configurations: the
+   historical legacy model (reproduces the original bug, forever, as
+   executable history), the live pipeline (fixed or open per policy),
+   and the full target contract. Fight-budget note: legacy
+   increments-then-checks, so `MAX_FIGHT_COUNT = 5` yields 4
+   fight-backs; the arbiter's default budget preserves that observable
+   behavior.
 
-Consequence: the strangler-fig rewire can land with all compat flags in
-legacy position as a provably behavior-preserving change, and each
-contract fix ships as a one-flag diff whose effect is already
-demonstrated by a ledger entry. Remaining debates are about which
-behavior we want per cell — never about implementation correctness.
+## Production policy
+
+`SpeedArbitration.POLICY` (src/core/speed-arbitration.js) is the single
+place behavior flips happen; every line cites its ledger entry. Status:
+
+| Fix                                                | Status      | Notes                                                                      |
+| -------------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
+| Cell 1 (#1537)                                     | **shipped** | lifecycle no longer writes without authority                               |
+| Classifier TARGET_RULES (#1562/#1546, #1554/#1568) | **shipped** | arrow keys don't bless resets; click-hold is intent                        |
+| F1 (persistence purity)                            | **shipped** | via the `setSpeed` init-persist fix                                        |
+| F5 (rule = initial authority)                      | **shipped** | coupled to cell 1 — see POLICY note; user overrides now stick until reload |
+| F3 (adopt without prior authority)                 | open        | policy decision pending                                                    |
+| F2 (real surrender)                                | open        | needs owned arbiter state + cross-tab sync                                 |
+| #1581 (click narrowing)                            | open        | needs per-site classifier signatures                                       |
+
+Remaining debates are about which behavior we want per cell — never
+about implementation correctness.
 
 ## Model checking
 

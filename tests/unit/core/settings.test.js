@@ -285,8 +285,8 @@ describe('Settings', () => {
 
     await config.load();
 
-    // lastSpeed null (site rule wins), siteDefaultSpeed should be 2.3
-    expect(config.settings.lastSpeed).toBeNull();
+    // Rule seeds lastSpeed as initial authority (F5 fix)
+    expect(config.settings.lastSpeed).toBe(2.3);
     expect(config.settings.siteDefaultSpeed).toBe(2.3);
 
     window.VSC.matchSiteRule = original;

@@ -2,21 +2,21 @@
  * The proof for the speed-arbitration refactor. Two parts:
  *
  * 1. DIFFERENTIAL EQUIVALENCE — the same scenario streams drive (a) the real
- *    legacy pipeline (EventManager + VideoController + ActionHandler +
- *    settings, unmodified production code) and (b) the arbiter with
- *    LEGACY_COMPAT flags + LEGACY classifier rules. Observables (register,
- *    in-memory lastSpeed, persisted lastSpeed) must match at every step.
- *    This proves the refactor is behavior-preserving by construction: the
- *    arbiter can replace the legacy decision logic with zero user-visible
- *    change, before any behavior fix ships.
+ *    production pipeline (EventManager + VideoController + ActionHandler +
+ *    settings) and (b) the pure arbiter model under the SAME policy
+ *    (SpeedArbitration.POLICY). Observables (register, in-memory lastSpeed,
+ *    persisted lastSpeed) must match at every step. This permanently pins
+ *    the pipeline to the verified model: any adapter-wiring drift or
+ *    policy/model mismatch fails here with a step-by-step trace.
  *
  * 2. BUG LEDGER — one deterministic test per known bug (open and resolved).
- *    Each entry proves the bug REPRODUCES under the legacy configuration
- *    (both in the real modules and in the legacy-flagged arbiter — double
- *    confirmation the model captures reality) and VANISHES under the target
- *    contract + target classifier. Fixing the class = flipping flags; what
- *    remains debatable is which behavior we want per cell, never whether
- *    the implementation is correct.
+ *    Each entry pins three configurations: the historical legacy model
+ *    ('legacy' — reproduces the original bug, forever, as executable
+ *    history), the live production pipeline (fixed or still-open per
+ *    SpeedArbitration.POLICY), and the full target contract ('target').
+ *    Flipping a policy line flips the corresponding pipeline assertions
+ *    here; what remains debatable is which behavior we want per cell,
+ *    never whether the implementation is correct.
  *
  * Pacing model (mirrors production timing constants):
  *   quick =   50ms — inside the 300ms gesture window; only ever follows
@@ -68,11 +68,12 @@ async function createLegacyWorld(init) {
   // scenarios and load() then nulls lastSpeed via the F5 branch.
   config.settings.siteDefaultSpeed = null;
   await config.load();
-  // Replicate load()'s site-rule branch (settings.js:152) without depending
-  // on URL pattern matching in the jsdom environment.
+  // Replicate load()'s site-rule branch without depending on URL pattern
+  // matching in the jsdom environment. A rule seeds lastSpeed as initial
+  // authority (F5 fix — mirrors settings.js load()).
   if (init.siteRuleSpeed !== null && init.siteRuleSpeed !== undefined) {
     config.settings.siteDefaultSpeed = init.siteRuleSpeed;
-    config.settings.lastSpeed = null;
+    config.settings.lastSpeed = init.siteRuleSpeed;
   } else {
     config.settings.siteDefaultSpeed = null;
   }
@@ -106,7 +107,11 @@ async function legacyStep(world, op) {
       world.eventManager.arbitration.classifier.observeClick({ timeStamp: world.now });
       break;
     case 'pointerDown':
-      break; // legacy is blind to held pointers — that IS bug #1554
+      // Exactly what EventManager's pointerdown listener does now. (Under
+      // LEGACY_RULES this is a no-op — that WAS bug #1554; TARGET_RULES
+      // treat a held pointer as ongoing intent.)
+      world.eventManager.arbitration.classifier.observePointerDown({ timeStamp: world.now });
+      break;
     case 'gestureKey': {
       const ev = createMockKeyboardEvent('keydown', op.keyCode, {
         code: op.code,
@@ -157,8 +162,11 @@ async function destroyLegacyWorld(world) {
 /* ------------------------------------------------------------------ */
 
 function createArbiterWorld(init, variant) {
-  const compat = variant === 'legacy' ? A.LEGACY_COMPAT : A.TARGET_COMPAT;
-  const rules = variant === 'legacy' ? IC.LEGACY_RULES : IC.TARGET_RULES;
+  const POLICY = window.VSC.SpeedArbitration.POLICY;
+  const compat =
+    variant === 'legacy' ? A.LEGACY_COMPAT : variant === 'policy' ? POLICY.compat : A.TARGET_COMPAT;
+  const rules =
+    variant === 'legacy' ? IC.LEGACY_RULES : variant === 'policy' ? POLICY.rules : IC.TARGET_RULES;
   return {
     variant,
     compat,
@@ -299,7 +307,7 @@ function arbObservables(world) {
 
 async function runDifferential(init, ops) {
   const legacy = await createLegacyWorld(init);
-  const arb = createArbiterWorld(init, 'legacy');
+  const arb = createArbiterWorld(init, 'policy');
   const trace = [];
 
   for (const op of ops) {
@@ -369,14 +377,14 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
   it('no-opinion journey: native change, lifecycle stomp, blocked adoption', async () => {
     await runDifferential({ rememberEnabled: false }, [
       { op: 'siteRate', rate: 1.5 }, // autonomous, no authority
-      { op: 'play' }, // legacy stomps to 1.0 (#1537) — both sides must agree
+      { op: 'play' }, // cell 1 fixed: no stomp — both sides must agree
       { op: 'gestureClick' },
-      { op: 'siteRate', rate: 1.75, pace: 'quick' }, // legacy: no adoption (F3)
+      { op: 'siteRate', rate: 1.75, pace: 'quick' }, // F3 still open: displayed, not adopted
       { op: 'play' },
     ]);
   });
 
-  it('site-rule journey: rule enforcement without fight-back (F5) and F1 leak', async () => {
+  it('site-rule journey: rule as initial authority (F5 fixed), no F1 leak', async () => {
     await runDifferential({ siteRuleSpeed: 1.25, rememberEnabled: true, rememberedSpeed: 1.8 }, [
       { op: 'play' }, // F1: rule speed leaks to storage
       { op: 'siteRate', rate: 2.0 }, // F5: no fight-back under a rule
@@ -404,10 +412,10 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
     ]);
   });
 
-  it('keyboard evidence: arrow keys and native speed keys both arm legacy', async () => {
+  it('keyboard evidence: speed keys arm, arrow keys do not (TARGET_RULES)', async () => {
     await runDifferential({ rememberEnabled: true, rememberedSpeed: 2.0 }, [
       { op: 'gestureKey', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
-      { op: 'siteRate', rate: 1.0, pace: 'quick' }, // legacy adopts (the #1562 bug)
+      { op: 'siteRate', rate: 1.0, pace: 'quick' }, // arrows no longer bless: fought (#1562 fixed)
       { op: 'gestureKey', key: '>', code: 'Period', keyCode: 190, shiftKey: true },
       { op: 'siteRate', rate: 1.75, pace: 'quick' },
       { op: 'play' },
@@ -471,7 +479,7 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
 /* Part 2: the bug ledger                                              */
 /* ------------------------------------------------------------------ */
 
-describe('Bug ledger: legacy reproduces, target fixes — deterministically', () => {
+describe('Bug ledger: history reproduces, policy/target fix — deterministically', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     resetMockStorage();
@@ -480,17 +488,16 @@ describe('Bug ledger: legacy reproduces, target fixes — deterministically', ()
     vi.useRealTimers();
   });
 
-  it('#1537 (cell 1): lifecycle stomps native speed when VSC has no opinion', async () => {
+  it('#1537 (cell 1): FIXED — lifecycle no longer stomps native speed', async () => {
     const init = { rememberEnabled: false };
     const ops = [
       { op: 'siteRate', rate: 1.5 }, // user picked 1.5 in the native menu
       { op: 'play' },
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy.rate).toBe(1.0); // BUG: native choice silently undone
-
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // model matches reality
-    expect(runArbiter(init, ops, 'target').rate).toBe(1.5); // contract fixes it
+    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // history: bug reproduced
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline.rate).toBe(1.5); // production: fixed (release N)
+    expect(runArbiter(init, ops, 'target').rate).toBe(1.5);
   });
 
   it('#1494 (cell 6, resolved): lifecycle restore never overwrites lastSpeed', async () => {
@@ -499,101 +506,103 @@ describe('Bug ledger: legacy reproduces, target fixes — deterministically', ()
       { op: 'siteRate', rate: 1.0 }, // background-tab style reset -> fought
       { op: 'play' },
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy).toMatchObject({ rate: 1.8, mem: 1.8 }); // stays fixed
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.8, mem: 1.8 }); // stays fixed
 
     expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.8, mem: 1.8 });
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.8, mem: 1.8 });
   });
 
-  it('#1554/#1568 (classifier): click-and-hold 2x boost is fought as autonomous', async () => {
+  it('#1554/#1568 (classifier): FIXED — click-and-hold 2x boost accepted as intent', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 1.0 };
     const ops = [
       { op: 'pointerDown' }, // user holds the mouse button on YouTube
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // site applies the 2x boost
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy.rate).toBe(1.0); // BUG: boost immediately undone
-
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0);
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 }); // held pointer = intent
+    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // history: boost was fought
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (TARGET_RULES)
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
-  it('#1562/#1546 (classifier): arrow-key seek blesses a transient 1x reset', async () => {
+  it('#1562/#1546 (classifier): FIXED — arrow-key seek reset is fought, not adopted', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
     const ops = [
       { op: 'gestureKey', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
       { op: 'siteRate', rate: 1.0, pace: 'quick' }, // YouTube's seek reset
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy).toMatchObject({ rate: 1.0, mem: 1.0 }); // BUG: reset adopted as intent
-
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 }); // fought back
+    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 }); // history
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (TARGET_RULES)
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
-  it('F1 (cell 6): site-rule lifecycle restore clobbers stored lastSpeed', async () => {
+  it('F1 (cell 6): FIXED — site-rule lifecycle restore no longer clobbers stored lastSpeed', async () => {
     const init = { siteRuleSpeed: 1.25, rememberEnabled: true, rememberedSpeed: 1.8 };
     const ops = [{ op: 'play' }]; // ZERO user actions
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy.stored).toBe(1.25); // BUG: remembered 1.8 silently overwritten
-
-    expect(runArbiter(init, ops, 'legacy').stored).toBe(1.25);
-    expect(runArbiter(init, ops, 'target').stored).toBe(1.8); // persistence purity
+    expect(runArbiter(init, ops, 'legacy').stored).toBe(1.25); // history: silent clobber
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline.stored).toBe(1.8); // production: persistence purity (setSpeed init fix)
+    expect(runArbiter(init, ops, 'target').stored).toBe(1.8);
   });
 
-  it('F2 (cell 9): surrender keeps authority, so the war restarts forever', async () => {
+  it('F2 (cell 9): OPEN — surrender keeps authority, so the war restarts forever', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 1.5 };
     const surrenderOps = Array.from({ length: 6 }, () => ({ op: 'siteRate', rate: 1.0 }));
     const restartOps = [...surrenderOps, { op: 'siteRate', rate: 1.0 }]; // one more after surrender
 
-    const legacy = await runLegacyModules(init, restartOps);
-    expect(legacy).toMatchObject({ rate: 1.5, mem: 1.5 }); // BUG: fighting again post-surrender
+    const pipeline = await runLegacyModules(init, restartOps);
+    expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5 }); // BUG: fighting again post-surrender
 
     expect(runArbiter(init, restartOps, 'legacy')).toMatchObject({ rate: 1.5, mem: 1.5 });
     const target = runArbiter(init, restartOps, 'target');
     expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.SURRENDERED }); // stood down
   });
 
-  it('F3 (cell 2): native speed choice never adopted without prior authority', async () => {
+  it('F3 (cell 2): HALF-OPEN — native choice survives (cell 1 fix) but is still not adopted', async () => {
     const init = { rememberEnabled: false };
     const ops = [
       { op: 'gestureClick' }, // user clicks the native speed menu
       { op: 'siteRate', rate: 1.75, pace: 'quick' },
       { op: 'play' },
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy).toMatchObject({ rate: 1.0, mem: null }); // BUG: not adopted, then stomped (#1537 compounds)
-
+    // History: not adopted AND then stomped to 1.0 (#1537 compounded).
     expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: null });
+    // Production: the stomp half is gone; the adoption half (legacyNoAdoption)
+    // remains — the choice displays but never becomes authority, so a later
+    // autonomous reset would not be fought.
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.75, mem: null });
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.75, mem: 1.75 }); // adopted, re-asserted
   });
 
-  it('F5 (LOAD): under a site rule, user native changes are accepted then reverted', async () => {
+  it('F5 (LOAD): FIXED — under a site rule, user native changes now stick', async () => {
     const init = { siteRuleSpeed: 1.25, rememberEnabled: false };
     const ops = [
       { op: 'gestureClick' },
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // user picks 2x natively
-      { op: 'play' }, // ...and the rule snaps it back
+      { op: 'play' },
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy.rate).toBe(1.25); // BUG: user choice reverted on next play
-
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.25);
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 }); // rule is initial authority only
+    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.25); // history: reverted on play
+    const pipeline = await runLegacyModules(init, ops);
+    // Production: rule is initial authority, so adoption works (HOLDING mode)
+    // and lifecycle re-asserts the user's 2x instead of snapping back.
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('#1581 (classifier, OPEN GAP): progress-bar click still blesses a seek reset', async () => {
     // Documented honestly: click narrowing needs per-site signatures. Until
-    // then BOTH rule sets misclassify a click-seek reset as user intent.
-    // This test pins the gap; fixing it flips the target expectation.
+    // then, clicks arm the gesture window under BOTH rule sets, so a
+    // click-seek reset is misclassified as user intent. This test pins the
+    // gap; fixing it flips the pipeline and target expectations.
     const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
     const ops = [
       { op: 'gestureClick' }, // click on the Facebook progress bar
       { op: 'siteRate', rate: 1.0, pace: 'quick' }, // player resets on seek
     ];
-    const legacy = await runLegacyModules(init, ops);
-    expect(legacy).toMatchObject({ rate: 1.0, mem: 1.0 }); // BUG
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // BUG (still open)
 
     expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 });
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 }); // still open

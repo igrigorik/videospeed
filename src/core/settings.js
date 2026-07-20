@@ -147,15 +147,20 @@ if (!window.VSC.VideoSpeedConfig) {
         // Apply loaded settings
         this.settings.rememberSpeed = Boolean(storage.rememberSpeed);
 
-        // lastSpeed = null means "no user choice yet this session."
-        // The arbiter lifecycle decision falls through to siteDefaultSpeed or 1.0.
+        // lastSpeed = the arbitration authority. null means "VSC has no
+        // opinion this session" — the arbiter then leaves the rate alone.
         //
-        // Priority on fresh load:
-        //   1. siteDefaultSpeed (per-site rule) — always wins if configured
+        // Priority on fresh load (LOAD in docs/speed-arbitration.md):
+        //   1. siteDefaultSpeed (per-site rule) — becomes INITIAL authority
         //   2. lastSpeed from storage (rememberSpeed=true, no per-site rule)
-        //   3. null → baseline 1.0
+        //   3. null → no opinion
+        //
+        // A rule seeds lastSpeed rather than nulling it (F5 fix): the rule
+        // is an initial value of the same authority the user can later
+        // override, fight-back protects it, and lifecycle re-asserts it —
+        // one uniform machine instead of a special rule mode.
         if (this.settings.siteDefaultSpeed) {
-          this.settings.lastSpeed = null;
+          this.settings.lastSpeed = this.settings.siteDefaultSpeed;
         } else if (this.settings.rememberSpeed) {
           this.settings.lastSpeed = Number(storage.lastSpeed) || null;
         } else {
