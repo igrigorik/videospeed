@@ -120,9 +120,16 @@ class SpeedArbitration {
     );
     this.fightCount = next.fightCount;
 
+    const inputAge =
+      this.classifier.lastInputAt > 0
+        ? Math.round(event.timeStamp - this.classifier.lastInputAt)
+        : -1;
+
     // Cells 2/7 — adoption: the user drove the site's native controls.
     if (effects.some((e) => e.type === A.EFFECTS.PERSIST)) {
-      window.VSC.logger.info(`Accepting site speed change as user-intentional: ${rawRate}`);
+      window.VSC.logger.info(
+        `Accepting site speed change as user-intentional: ${rawRate} (input ${inputAge}ms ago)`
+      );
       if (this.fightTimer) {
         clearTimeout(this.fightTimer);
         this.fightTimer = null;
@@ -149,7 +156,7 @@ class SpeedArbitration {
         EM.MAX_COOLDOWN_MS
       );
       window.VSC.logger.info(
-        `Fight detection: attempt ${this.fightCount}, re-applying ${state.desired} (cooldown ${cooldown}ms)`
+        `Fight detection: attempt ${this.fightCount}, re-applying ${state.desired} (cooldown ${cooldown}ms, input ${inputAge}ms ago)`
       );
       window.VSC.siteHandlerManager.handleSpeedChange(video, state.desired);
       if (this.eventManager) {

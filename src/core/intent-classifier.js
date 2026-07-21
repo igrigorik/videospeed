@@ -12,11 +12,28 @@
  *   LEGACY_RULES — current master behavior, for differential verification:
  *     any unhandled key and any click arm the gesture window. Known false
  *     positives: arrow-key seek (#1562/#1546), progress-bar clicks (#1581).
- *   TARGET_RULES — the corrected heuristics:
- *     only native speed shortcut keys arm the window (PR #1563). Clicks
- *     still arm the window globally — that generic temporal signal is what
- *     makes native speed menus work on arbitrary sites without per-site
- *     wiring; narrowing it happens via per-site suppression (see below).
+ *   TARGET_RULES — tiered evidence (see below). Only native speed
+ *     shortcut keys arm strong key intent (PR #1563); clicks feed a
+ *     sequence detector; adoption of a reset-to-1.0 requires STRONG
+ *     evidence (#1581, fixed generically).
+ *
+ * Evidence tiers (TARGET_RULES):
+ *   STRONG — native speed key, site signature (YT hold/space), or a click
+ *     SEQUENCE (two clicks within CLICK_SEQUENCE_WINDOW_MS, the last
+ *     within the gesture window). Real speed menus are always >= 2 clicks
+ *     deep, so menu choices — including "Normal" — reach this tier
+ *     naturally.
+ *   WEAK — a single click within the gesture window. Sufficient to adopt
+ *     any NON-1.0 value (sites have no reason to autonomously set 1.7x),
+ *     but NOT a transition to 1.0: every documented false positive
+ *     (#1581, #1562-class) is a click-side-effect reset to exactly 1.0.
+ *   Otherwise AUTONOMOUS.
+ *
+ * Privacy: the evidence ledger is deliberately coarse — five in-memory
+ * timestamps and one boolean (last generic input, last two clicks, last
+ * speed-intent key, pointer-held). No positions, no key identities, no
+ * element info, no event payloads; nothing persisted, nothing leaves the
+ * page context, and every value is semantically dead after a few seconds.
  *
  * Per-site signature overrides (SITE_RULE_OVERRIDES): the generic temporal
  * heuristic is the scalable default; overrides exist only for documented
@@ -45,14 +62,16 @@ const CLASSIFIER_VERDICTS = Object.freeze({
 });
 
 const LEGACY_RULES = Object.freeze({
+  tiered: false, // flat 300ms window, any evidence adopts any value
   anyUnhandledKeyArms: true, // any key blesses the next ratechange
   clickArms: true,
   pointerHoldArms: false, // click-and-hold invisible until mouseup (#1554)
 });
 
 const TARGET_RULES = Object.freeze({
+  tiered: true, // evidence tiers + value asymmetry (see header)
   anyUnhandledKeyArms: false, // only native speed shortcuts (PR #1563)
-  clickArms: true, // generic signal; per-site suppression via SITE_RULE_OVERRIDES (#1581)
+  clickArms: true, // clicks feed the sequence detector
   pointerHoldArms: false, // YouTube-only addition via SITE_RULE_OVERRIDES (#1554)
 });
 
@@ -68,11 +87,8 @@ const SITE_RULE_OVERRIDES = Object.freeze({
   // arm here explicitly (held Space auto-repeats keydown, keeping the
   // gesture window fresh through the hold and across the release reset).
   'youtube.com': Object.freeze({ pointerHoldArms: true, spacebarArms: true }),
-  // #1581 candidate (NOT yet enabled): Facebook resets rate on
-  // click-triggered seeks. Enable clickArms:false here once it is verified
-  // that facebook.com exposes no native speed menu that would rely on the
-  // click signal:
-  // 'facebook.com': Object.freeze({ clickArms: false }),
+  // (#1581 needs no entry: click-seek resets go to 1.0, and a 1.0 adoption
+  // requires STRONG evidence under the tiered rules — fixed generically.)
 });
 
 /**
@@ -94,6 +110,11 @@ function rulesForHost(base, hostname) {
 }
 
 const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange reads as intent
+// Two clicks this close together read as UI traversal (menu -> item), the
+// signature of every real speed menu. Generous: users browse menus slowly.
+const CLICK_SEQUENCE_WINDOW_MS = 5000;
+// Autonomous resets land on exactly 1.0; tolerance for float noise.
+const NORMAL_RATE_EPSILON = 0.005;
 
 /**
  * Native speed shortcut detection (PR #1563): YouTube's < / > keys.
@@ -111,12 +132,22 @@ class IntentClassifier {
   constructor(options = {}) {
     this.rules = options.rules || TARGET_RULES;
     this.minRate = options.minRate ?? 0.07; // SPEED_LIMITS.MIN
-    this.lastGestureAt = 0;
-    this.pointerHeld = false;
+    // The entire evidence ledger — coarse by design (see header):
+    this.lastGestureAt = 0; // strong key intent (speed keys, site keys)
+    this.lastClickAt = 0; // most recent click
+    this.prevClickAt = 0; // click before that (sequence detection)
+    this.lastInputAt = 0; // ANY user input (presence/quiet axis)
+    this.pointerHeld = false; // site-scoped hold signature
+  }
+
+  /** Any user input at all — presence evidence only, never intent. */
+  observeInput(event) {
+    this.lastInputAt = event.timeStamp;
   }
 
   /** A keydown no VSC binding handled. */
   observeUnhandledKey(event) {
+    this.lastInputAt = event.timeStamp;
     const isSpace = event.code === 'Space' || event.keyCode === 32;
     if (
       this.rules.anyUnhandledKeyArms ||
@@ -129,7 +160,11 @@ class IntentClassifier {
 
   /** A click that did not target the VSC controller. */
   observeClick(event) {
-    if (this.rules.clickArms) {
+    this.lastInputAt = event.timeStamp;
+    if (this.rules.tiered) {
+      this.prevClickAt = this.lastClickAt;
+      this.lastClickAt = event.timeStamp;
+    } else if (this.rules.clickArms) {
       this.lastGestureAt = event.timeStamp;
     }
     if (this.rules.pointerHoldArms) {
@@ -139,6 +174,7 @@ class IntentClassifier {
 
   /** Pointer pressed outside the VSC controller (PR #1555). */
   observePointerDown(event) {
+    this.lastInputAt = event.timeStamp;
     if (this.rules.pointerHoldArms) {
       this.pointerHeld = true;
       this.lastGestureAt = event.timeStamp;
@@ -163,10 +199,30 @@ class IntentClassifier {
       return CLASSIFIER_VERDICTS.INIT_NOISE;
     }
 
-    const sinceGesture = ctx.timeStamp - this.lastGestureAt;
-    const inWindow =
-      this.lastGestureAt > 0 && sinceGesture >= 0 && sinceGesture < USER_GESTURE_WINDOW_MS;
-    if (inWindow || (this.rules.pointerHoldArms && this.pointerHeld)) {
+    const withinWindow = (ts) =>
+      ts > 0 && ctx.timeStamp - ts >= 0 && ctx.timeStamp - ts < USER_GESTURE_WINDOW_MS;
+
+    if (!this.rules.tiered) {
+      // Legacy flat window: any armed evidence adopts any value.
+      if (withinWindow(this.lastGestureAt) || (this.rules.pointerHoldArms && this.pointerHeld)) {
+        return CLASSIFIER_VERDICTS.USER_INTENT;
+      }
+      return CLASSIFIER_VERDICTS.AUTONOMOUS;
+    }
+
+    // Tiered evidence (see header).
+    const clickInWindow = withinWindow(this.lastClickAt);
+    const clickSequence =
+      clickInWindow &&
+      this.prevClickAt > 0 &&
+      this.lastClickAt - this.prevClickAt <= CLICK_SEQUENCE_WINDOW_MS;
+    const strong =
+      withinWindow(this.lastGestureAt) ||
+      (this.rules.pointerHoldArms && this.pointerHeld) ||
+      clickSequence;
+    const isNormalReset = Math.abs(ctx.rate - 1.0) < NORMAL_RATE_EPSILON;
+
+    if (strong || (clickInWindow && !isNormalReset)) {
       return CLASSIFIER_VERDICTS.USER_INTENT;
     }
     return CLASSIFIER_VERDICTS.AUTONOMOUS;
@@ -179,6 +235,8 @@ class IntentClassifier {
    */
   consumeGesture() {
     this.lastGestureAt = 0;
+    this.lastClickAt = 0;
+    this.prevClickAt = 0;
   }
 }
 
@@ -187,6 +245,7 @@ window.VSC.IntentClassifier.VERDICTS = CLASSIFIER_VERDICTS;
 window.VSC.IntentClassifier.LEGACY_RULES = LEGACY_RULES;
 window.VSC.IntentClassifier.TARGET_RULES = TARGET_RULES;
 window.VSC.IntentClassifier.USER_GESTURE_WINDOW_MS = USER_GESTURE_WINDOW_MS;
+window.VSC.IntentClassifier.CLICK_SEQUENCE_WINDOW_MS = CLICK_SEQUENCE_WINDOW_MS;
 window.VSC.IntentClassifier.isNativeSpeedShortcutKey = isNativeSpeedShortcutKey;
 window.VSC.IntentClassifier.SITE_RULE_OVERRIDES = SITE_RULE_OVERRIDES;
 window.VSC.IntentClassifier.rulesForHost = rulesForHost;

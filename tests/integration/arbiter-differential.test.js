@@ -665,20 +665,44 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
-  it('#1581 (classifier, OPEN GAP): progress-bar click still blesses a seek reset', async () => {
-    // Documented honestly: click narrowing needs per-site signatures. Until
-    // then, clicks arm the gesture window under BOTH rule sets, so a
-    // click-seek reset is misclassified as user intent. This test pins the
-    // gap; fixing it flips the pipeline and target expectations.
+  it('#1581 (classifier): FIXED — single-click seek reset to 1.0 is fought, not adopted', async () => {
+    // Tiered evidence + value asymmetry: a transition to exactly 1.0 on a
+    // lone click (the signature of every documented false positive) needs
+    // STRONG evidence, which an isolated seek click cannot provide.
     const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
     const ops = [
       { op: 'gestureClick' }, // click on the Facebook progress bar
       { op: 'siteRate', rate: 1.0, pace: 'quick' }, // player resets on seek
     ];
+    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 }); // history
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // BUG (still open)
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fought
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+  });
 
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 }); // still open
+  it('menu "Normal" (click sequence -> 1.0) is still adopted', async () => {
+    // Real speed menus are >= 2 clicks deep, so choosing 1.0 through one
+    // reaches the STRONG tier naturally — the value asymmetry costs
+    // legitimate menu users nothing.
+    const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
+    const ops = [
+      { op: 'gestureClick' }, // open the menu
+      { op: 'gestureClick', pace: 'quick' }, // choose "Normal"
+      { op: 'siteRate', rate: 1.0, pace: 'quick' },
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // adopted
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
+  });
+
+  it('single click still adopts non-1.0 values (weak tier suffices)', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
+    const ops = [
+      { op: 'gestureClick' },
+      { op: 'siteRate', rate: 1.5, pace: 'quick' }, // non-1.0: weak evidence ok
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5 });
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.5, mem: 1.5 });
   });
 });

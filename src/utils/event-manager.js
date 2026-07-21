@@ -92,6 +92,9 @@ class EventManager {
     }
     this.lastKeyEventSignature = eventSignature;
 
+    // Presence evidence regardless of what the key does (quiet axis).
+    this.arbitration.classifier.observeInput(event);
+
     // Ignore keydown event if typing in an input box
     if (this.isTypingContext(event.target)) {
       return false;
@@ -231,8 +234,18 @@ class EventManager {
       }
       this.arbitration.classifier.observePointerDown(event);
     };
+    // Presence-only evidence for the quiet/activity axis: a single
+    // timestamp assignment per event, passive so scrolling never blocks.
+    // Deliberately coarse — no payloads are read (see classifier privacy
+    // note).
+    const inputHandler = (event) => {
+      this.arbitration.classifier.observeInput(event);
+    };
     document.addEventListener('click', clickHandler, true);
     document.addEventListener('pointerdown', pointerDownHandler, true);
+    document.addEventListener('pointermove', inputHandler, { capture: true, passive: true });
+    document.addEventListener('wheel', inputHandler, { capture: true, passive: true });
+    document.addEventListener('touchstart', inputHandler, { capture: true, passive: true });
 
     if (!this.listeners.has(document)) {
       this.listeners.set(document, []);
@@ -241,7 +254,10 @@ class EventManager {
       .get(document)
       .push(
         { type: 'click', handler: clickHandler, useCapture: true },
-        { type: 'pointerdown', handler: pointerDownHandler, useCapture: true }
+        { type: 'pointerdown', handler: pointerDownHandler, useCapture: true },
+        { type: 'pointermove', handler: inputHandler, useCapture: true },
+        { type: 'wheel', handler: inputHandler, useCapture: true },
+        { type: 'touchstart', handler: inputHandler, useCapture: true }
       );
   }
 
