@@ -271,6 +271,31 @@ Three independent layers, all runnable locally:
    fight-backs; the arbiter's default budget preserves that observable
    behavior.
 
+## Design note: surrender semantics (F2)
+
+For future reference — what changed and what was deliberately given up.
+Legacy "surrender" was a 3-second ceasefire with TWO automatic
+re-engagement channels: (a) the next site enforcement write after the
+quiet window started a fresh fight burst — unbounded periodic war
+against enforcing sites (the #1587/#1556 signature); (b) the next
+`play`/`seeked` re-asserted the retained authority — so unpausing
+brought the user's speed back (and re-provoked the site).
+
+Real surrender (cell 9) removes both automatic channels: session
+authority is cleared, lifecycle goes silent, further site writes are
+observed only. Re-engagement requires a user action (VSC key or native
+control via adoption) or a page reload (stored speed re-seeds). The
+user-visible trade: after an enforcement battle, unpausing no longer
+restores your speed — one keypress does. Channel (b) was occasionally
+pleasant ("my speed came back after the ad break"), but the forgiveness
+window (cell 13) already protects isolated resets; only 5 rapid resets
+inside rolling 3s windows — the signature of programmatic enforcement —
+reach surrender at all.
+
+Back-pocket amendment if field feedback misses channel (b): re-arm on
+lifecycle with a once-per-session budget. One cell, deliberately not
+shipped speculatively.
+
 ## Production policy
 
 `SpeedArbitration.POLICY` (src/core/speed-arbitration.js) is the single

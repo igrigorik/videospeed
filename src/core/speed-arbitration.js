@@ -42,7 +42,12 @@ class SpeedArbitration {
     this.eventManager = eventManager;
     this.compat = SpeedArbitration.POLICY.compat;
     this.classifier = new window.VSC.IntentClassifier({
-      rules: SpeedArbitration.POLICY.rules,
+      // Generic policy rules composed with evidence-driven per-site
+      // exceptions (e.g. YouTube's hold-for-2x) for the current host.
+      rules: window.VSC.IntentClassifier.rulesForHost(
+        SpeedArbitration.POLICY.rules,
+        typeof window !== 'undefined' && window.location ? window.location.hostname : ''
+      ),
       minRate: window.VSC.Constants.SPEED_LIMITS.MIN,
     });
     this.fightCount = 0;

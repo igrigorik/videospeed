@@ -82,6 +82,14 @@ async function createLegacyWorld(init) {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
   eventManager.actionHandler = actionHandler;
 
+  // Test seam: production composed classifier rules for jsdom's hostname
+  // (localhost); re-compose for the scenario's simulated host so per-site
+  // signatures (e.g. YouTube hold-for-2x) are exercised.
+  eventManager.arbitration.classifier.rules = window.VSC.IntentClassifier.rulesForHost(
+    window.VSC.SpeedArbitration.POLICY.rules,
+    init.hostname || 'localhost'
+  );
+
   const video = createMockVideo({
     playbackRate: initialRegister(init),
     currentSrc: 'https://example.com/v.mp4',
@@ -165,8 +173,16 @@ function createArbiterWorld(init, variant) {
   const POLICY = window.VSC.SpeedArbitration.POLICY;
   const compat =
     variant === 'legacy' ? A.LEGACY_COMPAT : variant === 'policy' ? POLICY.compat : A.TARGET_COMPAT;
+  // Per-site signature composition mirrors the production adapter — except
+  // for the historical 'legacy' variant, which predates the signature table
+  // and must reproduce old behavior on every host.
   const rules =
-    variant === 'legacy' ? IC.LEGACY_RULES : variant === 'policy' ? POLICY.rules : IC.TARGET_RULES;
+    variant === 'legacy'
+      ? IC.LEGACY_RULES
+      : IC.rulesForHost(
+          variant === 'policy' ? POLICY.rules : IC.TARGET_RULES,
+          init.hostname || 'localhost'
+        );
   return {
     variant,
     compat,
@@ -529,16 +545,30 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.8, mem: 1.8 });
   });
 
-  it('#1554/#1568 (classifier): FIXED — click-and-hold 2x boost accepted as intent', async () => {
-    const init = { rememberEnabled: true, rememberedSpeed: 1.0 };
+  it('#1554/#1568 (classifier): FIXED on YouTube — click-and-hold 2x boost accepted as intent', async () => {
+    // pointerHoldArms is a per-site signature (SITE_RULE_OVERRIDES), not a
+    // global rule: YouTube is the only web player in the evidence base with
+    // a press-and-hold boost, and held-pointer rate changes have innocent
+    // causes elsewhere (scrub-preview).
+    const init = { rememberEnabled: true, rememberedSpeed: 1.0, hostname: 'www.youtube.com' };
     const ops = [
       { op: 'pointerDown' }, // user holds the mouse button on YouTube
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // site applies the 2x boost
     ];
     expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // history: boost was fought
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (TARGET_RULES)
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (YT signature)
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+  });
+
+  it('held pointer on a generic site does NOT bless a rate change', async () => {
+    // The YT signature must not leak: elsewhere, a rate change during a
+    // held pointer (e.g. scrub-preview) is autonomous and gets fought.
+    const init = { rememberEnabled: true, rememberedSpeed: 1.0 };
+    const ops = [{ op: 'pointerDown' }, { op: 'siteRate', rate: 2.0, pace: 'quick' }];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought back
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
   });
 
   it('#1562/#1546 (classifier): FIXED — arrow-key seek reset is fought, not adopted', async () => {

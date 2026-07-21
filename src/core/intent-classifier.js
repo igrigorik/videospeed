@@ -13,10 +13,26 @@
  *     any unhandled key and any click arm the gesture window. Known false
  *     positives: arrow-key seek (#1562/#1546), progress-bar clicks (#1581).
  *   TARGET_RULES — the corrected heuristics:
- *     only native speed shortcut keys arm the window (PR #1563), and a held
- *     pointer counts as an ongoing gesture (PR #1555, #1554). Clicks still
- *     arm the window — narrowing them safely needs per-site signatures and
- *     remains an open classifier gap (#1581).
+ *     only native speed shortcut keys arm the window (PR #1563). Clicks
+ *     still arm the window globally — that generic temporal signal is what
+ *     makes native speed menus work on arbitrary sites without per-site
+ *     wiring; narrowing it happens via per-site suppression (see below).
+ *
+ * Per-site signature overrides (SITE_RULE_OVERRIDES): the generic temporal
+ * heuristic is the scalable default; overrides exist only for documented
+ * exceptions, in either direction:
+ *   - additions: YouTube's press-and-hold 2x boost (#1554/#1568) — the only
+ *     web player with this interaction in the evidence base, so
+ *     pointerHoldArms is scoped to YouTube rather than trusted globally
+ *     (rate changes during a held pointer have innocent causes elsewhere,
+ *     e.g. scrub-preview).
+ *   - suppressions: sites whose players reset playbackRate as a side
+ *     effect of click-triggered seeks (#1581, Facebook) can turn click
+ *     arming off — pending verification that the site has no native speed
+ *     menu that would become collateral.
+ * Every entry must cite its issue. This table IS the scaling strategy:
+ * generic signal + evidence-driven exception list, mirroring how site
+ * handlers already work for positioning.
  */
 
 window.VSC = window.VSC || {};
@@ -36,9 +52,42 @@ const LEGACY_RULES = Object.freeze({
 
 const TARGET_RULES = Object.freeze({
   anyUnhandledKeyArms: false, // only native speed shortcuts (PR #1563)
-  clickArms: true, // open gap: #1581 needs per-site narrowing
-  pointerHoldArms: true, // held pointer = ongoing gesture (PR #1555)
+  clickArms: true, // generic signal; per-site suppression via SITE_RULE_OVERRIDES (#1581)
+  pointerHoldArms: false, // YouTube-only addition via SITE_RULE_OVERRIDES (#1554)
 });
+
+/**
+ * Evidence-driven per-site exceptions to the generic rules. Keys are
+ * hostname suffixes ('youtube.com' matches youtube.com and *.youtube.com).
+ */
+const SITE_RULE_OVERRIDES = Object.freeze({
+  // Press-and-hold 2x boost fires a ratechange while the pointer is still
+  // down, before any click event exists (#1554/#1568, PR #1555).
+  'youtube.com': Object.freeze({ pointerHoldArms: true }),
+  // #1581 candidate (NOT yet enabled): Facebook resets rate on
+  // click-triggered seeks. Enable clickArms:false here once it is verified
+  // that facebook.com exposes no native speed menu that would rely on the
+  // click signal:
+  // 'facebook.com': Object.freeze({ clickArms: false }),
+});
+
+/**
+ * Compose the effective rule set for a host: base rules plus any per-site
+ * override whose key suffix-matches the hostname.
+ *
+ * @param {Object} base - TARGET_RULES / LEGACY_RULES / POLICY rules
+ * @param {string} hostname - e.g. window.location.hostname
+ * @returns {Object} effective rules
+ */
+function rulesForHost(base, hostname) {
+  const host = (hostname || '').toLowerCase();
+  for (const [suffix, override] of Object.entries(SITE_RULE_OVERRIDES)) {
+    if (host === suffix || host.endsWith(`.${suffix}`)) {
+      return Object.freeze({ ...base, ...override });
+    }
+  }
+  return base;
+}
 
 const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange reads as intent
 
@@ -130,3 +179,5 @@ window.VSC.IntentClassifier.LEGACY_RULES = LEGACY_RULES;
 window.VSC.IntentClassifier.TARGET_RULES = TARGET_RULES;
 window.VSC.IntentClassifier.USER_GESTURE_WINDOW_MS = USER_GESTURE_WINDOW_MS;
 window.VSC.IntentClassifier.isNativeSpeedShortcutKey = isNativeSpeedShortcutKey;
+window.VSC.IntentClassifier.SITE_RULE_OVERRIDES = SITE_RULE_OVERRIDES;
+window.VSC.IntentClassifier.rulesForHost = rulesForHost;
