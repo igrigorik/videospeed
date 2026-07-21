@@ -561,6 +561,32 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
+  it('#1554 spacebar variant: FIXED on YouTube — space-hold boost accepted', async () => {
+    // Worked in legacy via any-key arming; TARGET_RULES narrowed that away,
+    // which silently regressed the spacebar half of #1554 until this
+    // site-signature restored it. Held Space auto-repeats keydown, so the
+    // window stays fresh through the hold and across the release reset.
+    const init = { rememberEnabled: true, rememberedSpeed: 1.0, hostname: 'www.youtube.com' };
+    const ops = [
+      { op: 'gestureKey', key: ' ', code: 'Space', keyCode: 32 },
+      { op: 'siteRate', rate: 2.0, pace: 'quick' },
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+  });
+
+  it('space on a generic site does NOT bless a rate change', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 1.0 };
+    const ops = [
+      { op: 'gestureKey', key: ' ', code: 'Space', keyCode: 32 },
+      { op: 'siteRate', rate: 2.0, pace: 'quick' },
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought
+    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
+  });
+
   it('held pointer on a generic site does NOT bless a rate change', async () => {
     // The YT signature must not leak: elsewhere, a rate change during a
     // held pointer (e.g. scrub-preview) is autonomous and gets fought.

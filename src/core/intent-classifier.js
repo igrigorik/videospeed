@@ -61,9 +61,13 @@ const TARGET_RULES = Object.freeze({
  * hostname suffixes ('youtube.com' matches youtube.com and *.youtube.com).
  */
 const SITE_RULE_OVERRIDES = Object.freeze({
-  // Press-and-hold 2x boost fires a ratechange while the pointer is still
-  // down, before any click event exists (#1554/#1568, PR #1555).
-  'youtube.com': Object.freeze({ pointerHoldArms: true }),
+  // Press-and-hold 2x boost (#1554/#1568): the pointer variant fires a
+  // ratechange while the pointer is still down, before any click event
+  // exists (PR #1555). The SPACEBAR variant of the same boost armed via
+  // legacy any-key-arming — narrowed away by TARGET_RULES — so Space must
+  // arm here explicitly (held Space auto-repeats keydown, keeping the
+  // gesture window fresh through the hold and across the release reset).
+  'youtube.com': Object.freeze({ pointerHoldArms: true, spacebarArms: true }),
   // #1581 candidate (NOT yet enabled): Facebook resets rate on
   // click-triggered seeks. Enable clickArms:false here once it is verified
   // that facebook.com exposes no native speed menu that would rely on the
@@ -113,7 +117,12 @@ class IntentClassifier {
 
   /** A keydown no VSC binding handled. */
   observeUnhandledKey(event) {
-    if (this.rules.anyUnhandledKeyArms || isNativeSpeedShortcutKey(event)) {
+    const isSpace = event.code === 'Space' || event.keyCode === 32;
+    if (
+      this.rules.anyUnhandledKeyArms ||
+      isNativeSpeedShortcutKey(event) ||
+      (this.rules.spacebarArms && isSpace)
+    ) {
       this.lastGestureAt = event.timeStamp;
     }
   }
