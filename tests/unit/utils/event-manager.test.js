@@ -183,6 +183,46 @@ describe('EventManager', () => {
     expect(externalAdjustCalled).toBe(false);
   });
 
+  it('live catch-up setSpeed should not restore stale lastSpeed during cooldown', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.0;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    actionHandler.eventManager = eventManager;
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+    mockVideo.vsc = {
+      div: document.createElement('div'),
+      speedIndicator: { textContent: '1.00' },
+    };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    let currentRate = 1.0;
+    Object.defineProperty(mockVideo, 'playbackRate', {
+      get() {
+        return currentRate;
+      },
+      set(value) {
+        currentRate = value;
+        eventManager.handleRateChange({
+          composedPath: () => [mockVideo],
+          target: mockVideo,
+          detail: null,
+          stopImmediatePropagation: () => {},
+        });
+      },
+      configurable: true,
+    });
+
+    actionHandler.setSpeed(mockVideo, 1.5, 'liveCatchUp');
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(mockVideo.vsc.speedIndicator.textContent).toBe('1.50');
+    expect(config.settings.lastSpeed).toBe(1.0);
+  });
+
   // Fight back / extension event tests
 
   it('should restore authoritative speed on external ratechange', async () => {
@@ -210,6 +250,39 @@ describe('EventManager', () => {
     eventManager.handleRateChange(mockEvent);
 
     expect(mockVideo.playbackRate).toBe(1.5);
+    expect(eventStopped).toBe(true);
+  });
+
+  it('should use live catch-up speed as authoritative while catch-up is active', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.0;
+    config.settings.liveCatchUpEnabled = true;
+    config.settings.liveCatchUpSpeed = 1.5;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+    mockVideo.vsc = {
+      speedIndicator: { textContent: '1.50' },
+      liveCatchUpActive: true,
+    };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    let eventStopped = false;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      timeStamp: 1000,
+      stopImmediatePropagation: () => {
+        eventStopped = true;
+      },
+    });
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(config.settings.lastSpeed).toBe(1.0);
     expect(eventStopped).toBe(true);
   });
 

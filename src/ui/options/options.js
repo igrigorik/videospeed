@@ -654,6 +654,16 @@ function validate() {
   }
 
   const regEndsWithFlags = window.VSC.Constants.regEndsWithFlags;
+  const showValidationError = (message) => {
+    status.textContent = message;
+    status.classList.add('show', 'error');
+    valid = false;
+    window.validationTimeout = setTimeout(() => {
+      status.textContent = '';
+      status.classList.remove('show', 'error');
+    }, 5000);
+    return valid;
+  };
 
   // Validate site rules
   const rules = collectSiteRules();
@@ -673,14 +683,9 @@ function validate() {
         }
         new RegExp(regex, flags);
       } catch {
-        status.textContent = `Error: Invalid site rule regex: "${rule.pattern}". Unable to save.`;
-        status.classList.add('show', 'error');
-        valid = false;
-        window.validationTimeout = setTimeout(() => {
-          status.textContent = '';
-          status.classList.remove('show', 'error');
-        }, 5000);
-        return valid;
+        return showValidationError(
+          `Error: Invalid site rule regex: "${rule.pattern}". Unable to save.`
+        );
       }
     }
 
@@ -690,18 +695,45 @@ function validate() {
         rule.speed < window.VSC.Constants.SPEED_LIMITS.MIN ||
         rule.speed > window.VSC.Constants.SPEED_LIMITS.MAX
       ) {
-        status.textContent = `Error: Speed for "${rule.pattern}" must be between ${
-          window.VSC.Constants.SPEED_LIMITS.MIN
-        } and ${window.VSC.Constants.SPEED_LIMITS.MAX}.`;
-        status.classList.add('show', 'error');
-        valid = false;
-        window.validationTimeout = setTimeout(() => {
-          status.textContent = '';
-          status.classList.remove('show', 'error');
-        }, 5000);
-        return valid;
+        return showValidationError(
+          `Error: Speed for "${rule.pattern}" must be between ${
+            window.VSC.Constants.SPEED_LIMITS.MIN
+          } and ${window.VSC.Constants.SPEED_LIMITS.MAX}.`
+        );
       }
     }
+  }
+
+  const liveCatchUpSpeed = Number(document.getElementById('liveCatchUpSpeed').value);
+  const liveCatchUpStartThreshold = Number(
+    document.getElementById('liveCatchUpStartThreshold').value
+  );
+  const liveCatchUpStopThreshold = Number(
+    document.getElementById('liveCatchUpStopThreshold').value
+  );
+
+  if (
+    !Number.isFinite(liveCatchUpSpeed) ||
+    liveCatchUpSpeed < window.VSC.Constants.SPEED_LIMITS.MIN ||
+    liveCatchUpSpeed > window.VSC.Constants.SPEED_LIMITS.MAX
+  ) {
+    return showValidationError(
+      `Error: Live catch-up speed must be between ${window.VSC.Constants.SPEED_LIMITS.MIN} and ${window.VSC.Constants.SPEED_LIMITS.MAX}.`
+    );
+  }
+
+  if (!Number.isFinite(liveCatchUpStartThreshold) || liveCatchUpStartThreshold < 0) {
+    return showValidationError('Error: Live catch-up start must be 0 seconds or greater.');
+  }
+
+  if (!Number.isFinite(liveCatchUpStopThreshold) || liveCatchUpStopThreshold < 0) {
+    return showValidationError('Error: Live edge threshold must be 0 seconds or greater.');
+  }
+
+  if (liveCatchUpStopThreshold > liveCatchUpStartThreshold) {
+    return showValidationError(
+      'Error: Live edge threshold must be less than or equal to the catch-up start.'
+    );
   }
 
   return valid;
@@ -725,6 +757,15 @@ async function save_options() {
     const exclusiveKeys = document.getElementById('exclusiveKeys').checked;
     const audioBoolean = document.getElementById('audioBoolean').checked;
     const startHidden = document.getElementById('startHidden').checked;
+    const liveCatchUpEnabled = document.getElementById('liveCatchUpEnabled').checked;
+    const liveCatchUpSpeed = Number(document.getElementById('liveCatchUpSpeed').value);
+    const liveCatchUpStartThreshold = Number(
+      document.getElementById('liveCatchUpStartThreshold').value
+    );
+    const liveCatchUpStopThreshold = Number(
+      document.getElementById('liveCatchUpStopThreshold').value
+    );
+    const liveResetSpeedAtEdge = document.getElementById('liveResetSpeedAtEdge').checked;
     const controllerOpacity = Number(document.getElementById('controllerOpacity').value);
     const controllerButtonSize = Number(document.getElementById('controllerButtonSize').value);
     const logLevel = parseInt(document.getElementById('logLevel').value);
@@ -765,6 +806,11 @@ async function save_options() {
       exclusiveKeys: exclusiveKeys,
       audioBoolean: audioBoolean,
       startHidden: startHidden,
+      liveCatchUpEnabled: liveCatchUpEnabled,
+      liveCatchUpSpeed: liveCatchUpSpeed,
+      liveCatchUpStartThreshold: liveCatchUpStartThreshold,
+      liveCatchUpStopThreshold: liveCatchUpStopThreshold,
+      liveResetSpeedAtEdge: liveResetSpeedAtEdge,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
       logLevel: logLevel,
@@ -811,6 +857,11 @@ async function restore_options() {
     document.getElementById('exclusiveKeys').checked = storage.exclusiveKeys;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
     document.getElementById('startHidden').checked = storage.startHidden;
+    document.getElementById('liveCatchUpEnabled').checked = storage.liveCatchUpEnabled;
+    document.getElementById('liveCatchUpSpeed').value = storage.liveCatchUpSpeed;
+    document.getElementById('liveCatchUpStartThreshold').value = storage.liveCatchUpStartThreshold;
+    document.getElementById('liveCatchUpStopThreshold').value = storage.liveCatchUpStopThreshold;
+    document.getElementById('liveResetSpeedAtEdge').checked = storage.liveResetSpeedAtEdge;
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('controllerButtonSize').value = storage.controllerButtonSize;
     document.getElementById('logLevel').value = storage.logLevel;

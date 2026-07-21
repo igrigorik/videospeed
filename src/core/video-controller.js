@@ -25,6 +25,10 @@ class VideoController {
     // Transient reset memory (not persisted, instance-specific)
     this.speedBeforeReset = null;
     this.positionBeforeJump = null;
+    this.liveCatchUpActive = false;
+    this.liveCatchUpPauseCandidate = null;
+    this.liveCatchUpResumeCandidate = null;
+    this.liveCatchUpSeekGeneration = 0;
 
     // Attach controller to video element first (needed for adjustSpeed)
     target.vsc = this;
@@ -229,7 +233,7 @@ class VideoController {
    * @private
    */
   setupEventHandlers() {
-    const mediaEventAction = (event) => {
+    const restoreSpeedForMediaEvent = (event) => {
       const targetSpeed = this.getTargetSpeed(event.target);
 
       // Lifecycle restore, not a user choice — don't persist to lastSpeed.
@@ -238,21 +242,41 @@ class VideoController {
     };
 
     // Bind event handlers
-    this.handlePlay = mediaEventAction.bind(this);
+    this.handlePause = (event) => {
+      this.actionHandler.handleLivePause(event.target);
+    };
+    this.handlePlay = (event) => {
+      restoreSpeedForMediaEvent(event);
+      this.actionHandler.handleLivePlay(event.target);
+      this.actionHandler.updateLiveCatchUp(event.target);
+    };
+    this.handleSeeking = (event) => {
+      this.actionHandler.handleLiveSeek(event.target);
+    };
     // Don't restore speed on seeked if the video hasn't loaded data yet —
     // the player may still be initializing.
     this.handleSeek = (event) => {
       if (event.target.readyState < 2) {
         return;
       }
-      mediaEventAction.call(this, event);
+      restoreSpeedForMediaEvent(event);
+      this.actionHandler.updateLiveCatchUp(event.target);
+    };
+    this.handleLiveProgress = (event) => {
+      this.actionHandler.updateLiveCatchUp(event.target);
     };
 
     // Add essential event listeners for speed restoration
+    this.video.addEventListener('pause', this.handlePause);
     this.video.addEventListener('play', this.handlePlay);
+    this.video.addEventListener('seeking', this.handleSeeking);
     this.video.addEventListener('seeked', this.handleSeek);
+    this.video.addEventListener('timeupdate', this.handleLiveProgress);
+    this.video.addEventListener('progress', this.handleLiveProgress);
 
-    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
+    window.VSC.logger.debug(
+      'Added essential media event handlers: pause, play, seeking, seeked, timeupdate'
+    );
   }
 
   /**
@@ -294,11 +318,21 @@ class VideoController {
     }
 
     // Remove event listeners
+    if (this.handlePause) {
+      this.video.removeEventListener('pause', this.handlePause);
+    }
     if (this.handlePlay) {
       this.video.removeEventListener('play', this.handlePlay);
     }
+    if (this.handleSeeking) {
+      this.video.removeEventListener('seeking', this.handleSeeking);
+    }
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
+    }
+    if (this.handleLiveProgress) {
+      this.video.removeEventListener('timeupdate', this.handleLiveProgress);
+      this.video.removeEventListener('progress', this.handleLiveProgress);
     }
 
     // Disconnect mutation observer

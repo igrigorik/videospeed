@@ -37,6 +37,12 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
     exclusiveKeys: false, // default: false
     audioBoolean: true, // default: true (enable audio controller support)
     startHidden: false, // default: false
+    liveCatchUpEnabled: false, // default: false
+    liveCatchUpSpeed: 1.5, // speed used while catching up to a live edge
+    liveCatchUpStartThreshold: 10, // seconds behind live before catch-up starts
+    liveCatchUpStopThreshold: 3, // seconds behind live considered close enough
+    liveCatchUpPauseNearLiveThreshold: 900, // pause must begin within 15 minutes of live
+    liveResetSpeedAtEdge: false, // reset manual >1x speed at the live edge
     controllerOpacity: 0.3, // default: 0.3
     controllerButtonSize: 14,
     customCSS: '', // user's additional CSS injected alongside the built-in defaults

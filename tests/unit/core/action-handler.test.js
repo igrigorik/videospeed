@@ -57,6 +57,30 @@ describe('ActionHandler', () => {
     return mockVideo;
   }
 
+  function configureLiveCatchUp(config, overrides = {}) {
+    Object.assign(config.settings, {
+      liveCatchUpEnabled: true,
+      liveCatchUpSpeed: 1.5,
+      liveCatchUpStartThreshold: 10,
+      liveCatchUpStopThreshold: 3,
+      liveCatchUpPauseNearLiveThreshold: 900,
+      ...overrides,
+    });
+  }
+
+  function createLiveSeekable(start = 0, end = 100) {
+    return {
+      length: 1,
+      start: () => start,
+      end: () => end,
+    };
+  }
+
+  function armLiveCatchUpFromPause(actionHandler, video) {
+    actionHandler.handleLivePause(video);
+    actionHandler.handleLivePlay(video);
+  }
+
   afterEach(() => {
     cleanupChromeMock();
     if (mockDOM) {
@@ -182,6 +206,264 @@ describe('ActionHandler', () => {
 
     actionHandler.runAction('rewind', 5);
     expect(mockVideo.currentTime).toBe(55);
+  });
+
+  it('ActionHandler should catch up to live and restore 1x at the live edge', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+    config.settings.rememberSpeed = true;
+    config.settings.lastSpeed = 1.0;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
+    expect(config.settings.lastSpeed).toBe(1.0);
+
+    mockVideo.currentTime = 98;
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+    expect(mockVideo.vsc.liveCatchUpResumeCandidate).toBeNull();
+    expect(config.settings.lastSpeed).toBe(1.0);
+  });
+
+  it('ActionHandler should not treat regular videos as live catch-up candidates', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 20,
+      duration: 100,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+  });
+
+  it('ActionHandler should catch up finite-duration live streams with a sliding seekable window', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: 100,
+      seekable: createLiveSeekable(30, 100),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.5);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
+  });
+
+  it('ActionHandler should not catch up after seeking behind live without a pause-resume intent', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+  });
+
+  it('ActionHandler should not arm catch-up when pause starts too far from live', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 0,
+      duration: Infinity,
+      seekable: createLiveSeekable(0, 1000),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+    expect(mockVideo.vsc.liveCatchUpResumeCandidate).toBeNull();
+  });
+
+  it('ActionHandler should invalidate a near-live pause candidate when the user seeks', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    actionHandler.handleLivePause(mockVideo);
+    expect(mockVideo.vsc.liveCatchUpPauseCandidate).not.toBeNull();
+
+    actionHandler.handleLiveSeek(mockVideo);
+    actionHandler.handleLivePlay(mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+    expect(mockVideo.vsc.liveCatchUpPauseCandidate).toBeNull();
+    expect(mockVideo.vsc.liveCatchUpResumeCandidate).toBeNull();
+  });
+
+  it('ActionHandler should expire a stale pause-resume catch-up window', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    mockVideo.vsc.liveCatchUpResumeCandidate.resumedAt = Date.now() - 31000;
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+    expect(mockVideo.vsc.liveCatchUpResumeCandidate).toBeNull();
+  });
+
+  it('ActionHandler should not pin catch-up speed after the initial live catch-up suggestion', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+
+    mockVideo.playbackRate = 1.0;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.0);
+
+    mockVideo.playbackRate = 2.0;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(2.0);
+  });
+
+  it('ActionHandler should let manual speed changes take over during live catch-up', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+
+    actionHandler.adjustSpeed(mockVideo, 2.0);
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(2.0);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+    expect(mockVideo.vsc.liveCatchUpResumeCandidate).toBeNull();
+  });
+
+  it('ActionHandler should reset the catch-up cycle at live edge without forcing slow speeds to 1x', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    configureLiveCatchUp(config);
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      currentTime: 80,
+      duration: Infinity,
+      seekable: createLiveSeekable(),
+    });
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(true);
+
+    mockVideo.currentTime = 98;
+    mockVideo.playbackRate = 0.75;
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(0.75);
+    expect(mockVideo.vsc.liveCatchUpActive).toBe(false);
+
+    mockVideo.currentTime = 80;
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(0.75);
+
+    armLiveCatchUpFromPause(actionHandler, mockVideo);
+    actionHandler.updateLiveCatchUp(mockVideo);
+    expect(mockVideo.playbackRate).toBe(1.5);
+  });
+
+  it('ActionHandler should reset manual speed at the live edge when configured', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.liveCatchUpEnabled = false;
+    config.settings.liveResetSpeedAtEdge = true;
+    config.settings.liveCatchUpStopThreshold = 3;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const mockVideo = createTestVideoWithController(config, actionHandler, {
+      playbackRate: 1.75,
+      currentTime: 98,
+      duration: Infinity,
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 100,
+      },
+    });
+
+    actionHandler.updateLiveCatchUp(mockVideo);
+
+    expect(mockVideo.playbackRate).toBe(1.0);
   });
 
   it('ActionHandler should handle mark and jump actions', async () => {

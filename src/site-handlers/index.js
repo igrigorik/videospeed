@@ -88,6 +88,16 @@ class SiteHandlerManager {
   }
 
   /**
+   * Get site-specific live latency when available.
+   * @param {HTMLMediaElement} video - Video element
+   * @returns {number|null} Seconds behind live edge
+   */
+  getLiveLatency(video) {
+    const handler = this.getCurrentHandler();
+    return handler.getLiveLatency(video);
+  }
+
+  /**
    * Check if a video should be ignored
    * @param {HTMLMediaElement} video - Video element
    * @returns {boolean} True if video should be ignored
