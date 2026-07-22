@@ -223,6 +223,19 @@ if (!window.VSC.VideoSpeedConfig) {
       window.VSC.logger.info('Session speed authority cleared (surrender)');
     }
 
+    /**
+     * Restore the SESSION speed authority (in-memory lastSpeed) to a
+     * previously user-held value, without touching storage. Executes the
+     * arbiter's RESTORE_AUTHORITY effect (cell 14, quiet-war re-arm); the
+     * value's provenance is the pre-war user choice, so persistence purity
+     * (storage moves only on user events) is preserved.
+     * @param {number} speed
+     */
+    restoreSessionAuthority(speed) {
+      this.settings.lastSpeed = speed;
+      window.VSC.logger.info(`Session speed authority restored to ${speed} (quiet-war re-arm)`);
+    }
+
     async save(newSettings = {}) {
       const keys = Object.keys(newSettings);
       if (keys.length === 0) {

@@ -115,6 +115,12 @@ const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange 
 const CLICK_SEQUENCE_WINDOW_MS = 5000;
 // Autonomous resets land on exactly 1.0; tolerance for float noise.
 const NORMAL_RATE_EPSILON = 0.005;
+// No input for this long before a ratechange = quiet context: the change
+// cannot be a misclassified user action (all intent evidence IS input).
+// NOTE: quiet means not-interacting, NOT user-absent — passive viewing is
+// quiet. Quiet may therefore only ever LOOSEN safety assumptions about
+// misclassification, never justify weaker fighting for the viewer.
+const QUIET_CONTEXT_MS = 5000;
 
 /**
  * Native speed shortcut detection (PR #1563): YouTube's < / > keys.
@@ -229,6 +235,17 @@ class IntentClassifier {
   }
 
   /**
+   * Quiet context: no user input observed for QUIET_CONTEXT_MS before the
+   * given moment (or ever). Used by the adapter as the war-context signal
+   * for the cell 9/9b quiet-war re-arm split.
+   * @param {number} timeStamp - the ratechange's timeStamp
+   * @returns {boolean}
+   */
+  isQuietContext(timeStamp) {
+    return this.lastInputAt === 0 || timeStamp - this.lastInputAt >= QUIET_CONTEXT_MS;
+  }
+
+  /**
    * One-shot semantics: called by the adapter when a USER_INTENT verdict was
    * actually adopted, mirroring legacy's lastUserInteractionAt = 0 reset in
    * the accept branch.
@@ -246,6 +263,7 @@ window.VSC.IntentClassifier.LEGACY_RULES = LEGACY_RULES;
 window.VSC.IntentClassifier.TARGET_RULES = TARGET_RULES;
 window.VSC.IntentClassifier.USER_GESTURE_WINDOW_MS = USER_GESTURE_WINDOW_MS;
 window.VSC.IntentClassifier.CLICK_SEQUENCE_WINDOW_MS = CLICK_SEQUENCE_WINDOW_MS;
+window.VSC.IntentClassifier.QUIET_CONTEXT_MS = QUIET_CONTEXT_MS;
 window.VSC.IntentClassifier.isNativeSpeedShortcutKey = isNativeSpeedShortcutKey;
 window.VSC.IntentClassifier.SITE_RULE_OVERRIDES = SITE_RULE_OVERRIDES;
 window.VSC.IntentClassifier.rulesForHost = rulesForHost;

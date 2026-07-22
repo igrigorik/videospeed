@@ -170,6 +170,93 @@ describe('SpeedArbiter transition table (target contract)', () => {
     expect(A.step(surrendered(), { type: EVENTS.LIFECYCLE }).effects).toEqual([]);
   });
 
+  it('cell 9b: a fully QUIET war stands down REARMABLE (budget consumed)', () => {
+    let s = holding(1.5);
+    for (let i = 0; i <= A.DEFAULT_MAX_FIGHT; i++) {
+      s = A.step(s, {
+        type: EVENTS.EXT_RATE,
+        speed: 1.0,
+        rateClass: RATE_CLASSES.AUTONOMOUS,
+        quiet: true,
+      }).state;
+    }
+    expect(s).toMatchObject({ mode: MODES.REARMABLE, desired: 1.5, rearmBudget: 0 });
+  });
+
+  it('cell 14: REARMABLE + LIFECYCLE restores the pre-war speed once', () => {
+    let s = holding(1.5);
+    for (let i = 0; i <= A.DEFAULT_MAX_FIGHT; i++) {
+      s = A.step(s, {
+        type: EVENTS.EXT_RATE,
+        speed: 1.0,
+        rateClass: RATE_CLASSES.AUTONOMOUS,
+        quiet: true,
+      }).state;
+    }
+    const { state, effects } = A.step(s, { type: EVENTS.LIFECYCLE });
+    expect(state).toMatchObject({ mode: MODES.HOLDING, desired: 1.5 });
+    expect(types(effects)).toEqual([EFFECTS.RESTORE_AUTHORITY, EFFECTS.WRITE]);
+    expect(effects[1].speed).toBe(1.5);
+
+    // ...and a second fully-quiet war is terminal: the budget is spent.
+    let t = state;
+    for (let i = 0; i <= A.DEFAULT_MAX_FIGHT; i++) {
+      t = A.step(t, {
+        type: EVENTS.EXT_RATE,
+        speed: 1.0,
+        rateClass: RATE_CLASSES.AUTONOMOUS,
+        quiet: true,
+      }).state;
+    }
+    expect(t).toMatchObject({ mode: MODES.NO_OPINION, desired: null, rearmBudget: 0 });
+  });
+
+  it('cell 9: ANY activity-context fight makes surrender terminal (attrition safety)', () => {
+    let s = holding(1.5);
+    // First fight in activity context (quiet: false) poisons the war.
+    s = A.step(s, {
+      type: EVENTS.EXT_RATE,
+      speed: 1.0,
+      rateClass: RATE_CLASSES.AUTONOMOUS,
+      quiet: false,
+    }).state;
+    for (let i = 1; i <= A.DEFAULT_MAX_FIGHT; i++) {
+      s = A.step(s, {
+        type: EVENTS.EXT_RATE,
+        speed: 1.0,
+        rateClass: RATE_CLASSES.AUTONOMOUS,
+        quiet: true,
+      }).state;
+    }
+    expect(s).toMatchObject({ mode: MODES.NO_OPINION, desired: null, rearmBudget: 1 });
+  });
+
+  it('REARMABLE: autonomous changes are observed; user intent adopts and cancels re-arm', () => {
+    let s = holding(1.5);
+    for (let i = 0; i <= A.DEFAULT_MAX_FIGHT; i++) {
+      s = A.step(s, {
+        type: EVENTS.EXT_RATE,
+        speed: 1.0,
+        rateClass: RATE_CLASSES.AUTONOMOUS,
+        quiet: true,
+      }).state;
+    }
+    const observed = A.step(s, {
+      type: EVENTS.EXT_RATE,
+      speed: 2.0,
+      rateClass: RATE_CLASSES.AUTONOMOUS,
+    });
+    expect(observed.state.mode).toBe(MODES.REARMABLE);
+    expect(types(observed.effects)).toEqual([EFFECTS.SYNC_UI]);
+
+    const adopted = A.step(s, {
+      type: EVENTS.EXT_RATE,
+      speed: 1.75,
+      rateClass: RATE_CLASSES.USER_INTENT,
+    });
+    expect(adopted.state).toMatchObject({ mode: MODES.HOLDING, desired: 1.75 });
+  });
+
   it('post-surrender: user action (VSC or native) reclaims authority', () => {
     const viaVsc = A.step(surrendered(), { type: EVENTS.USER_SET, speed: 1.5 });
     expect(viaVsc.state).toMatchObject({ mode: MODES.HOLDING, desired: 1.5, fightCount: 0 });
@@ -271,7 +358,9 @@ describe('SpeedArbiter model checking (exhaustive over small domain)', () => {
     for (const v of SPEEDS) {
       events.push({ type: EVENTS.USER_SET, speed: v });
       for (const rateClass of Object.values(RATE_CLASSES)) {
-        events.push({ type: EVENTS.EXT_RATE, speed: v, rateClass });
+        for (const quiet of [false, true]) {
+          events.push({ type: EVENTS.EXT_RATE, speed: v, rateClass, quiet });
+        }
       }
     }
     return events;
@@ -293,7 +382,15 @@ describe('SpeedArbiter model checking (exhaustive over small domain)', () => {
   it('invariants I1-I6 hold on every reachable edge (target contract)', () => {
     const seen = new Set();
     const queue = initialWorlds();
-    const key = (w) => JSON.stringify([w.arb.mode, w.arb.desired, w.arb.fightCount, w.rate]);
+    const key = (w) =>
+      JSON.stringify([
+        w.arb.mode,
+        w.arb.desired,
+        w.arb.fightCount,
+        w.arb.warQuiet,
+        w.arb.rearmBudget,
+        w.rate,
+      ]);
     queue.forEach((w) => seen.add(key(w)));
 
     let edges = 0;
@@ -320,16 +417,27 @@ describe('SpeedArbiter model checking (exhaustive over small domain)', () => {
           }
         }
 
-        // I5: authority exists exactly in HOLDING.
-        expect(next.desired !== null).toBe(next.mode === MODES.HOLDING);
+        // I5: authority (or a pending re-arm value) exists exactly outside
+        // NO_OPINION.
+        expect(next.desired !== null).toBe(next.mode !== MODES.NO_OPINION);
+
+        // Re-arms are bounded: the budget never increases.
+        expect(next.rearmBudget).toBeLessThanOrEqual(world.arb.rearmBudget);
 
         // I3: fight budget bounded; at most one WRITE per event.
         expect(next.fightCount).toBeLessThanOrEqual(MAX_FIGHT);
         expect(effects.filter((e) => e.type === EFFECTS.WRITE).length).toBeLessThanOrEqual(1);
 
-        // I1: no writes without opinion.
-        if (world.arb.mode !== MODES.HOLDING && event.type !== EVENTS.USER_SET) {
+        // I1: no writes in NO_OPINION. (REARMABLE lifecycle DOES write —
+        // it restores user-held authority, which is the point of cell 14.)
+        if (world.arb.mode === MODES.NO_OPINION && event.type !== EVENTS.USER_SET) {
           expect(effects.some((e) => e.type === EFFECTS.WRITE)).toBe(false);
+        }
+
+        // RESTORE_AUTHORITY is emitted only by cell 14.
+        if (effects.some((e) => e.type === EFFECTS.RESTORE_AUTHORITY)) {
+          expect(world.arb.mode).toBe(MODES.REARMABLE);
+          expect(event.type).toBe(EVENTS.LIFECYCLE);
         }
 
         // I2: persistence purity — PERSIST only on user action or adoption.

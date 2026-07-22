@@ -19,13 +19,19 @@
 
 window.VSC = window.VSC || {};
 
-// Two modes only. An explicit SURRENDERED mode existed in earlier contract
-// drafts, but once cell 2 adopts user intent from any mode it is
-// behaviorally identical to NO_OPINION in every cell — surrender is simply
-// standing down to no-opinion (see docs/speed-arbitration.md, cell 9).
+// An explicit SURRENDERED mode existed in earlier contract drafts, but once
+// cell 2 adopts user intent from any mode it was behaviorally identical to
+// NO_OPINION and was eliminated. REARMABLE is different — it IS behaviorally
+// distinct: after a surrender in a fully QUIET war (every reset arrived with
+// no user input for >= QUIET_CONTEXT_MS — such resets cannot be misclassified
+// user actions, since all intent evidence is input), the next lifecycle event
+// restores the user's speed, once per session. Activity-context wars stay
+// terminally surrendered: they might have been fought against a misclassified
+// user, and attrition-safety (user wins after the budget) must hold.
 const MODES = Object.freeze({
   NO_OPINION: 'NO_OPINION',
   HOLDING: 'HOLDING',
+  REARMABLE: 'REARMABLE',
 });
 
 const ARBITER_EVENTS = Object.freeze({
@@ -48,6 +54,11 @@ const ARBITER_EFFECTS = Object.freeze({
   // Null the SESSION authority projection (in-memory lastSpeed), leaving
   // persisted storage untouched. Emitted only by cell 9 (surrender).
   CLEAR_AUTHORITY: 'CLEAR_AUTHORITY',
+  // Restore the session authority projection to a previously user-held
+  // value (in-memory only, storage untouched — persistence purity I2 is
+  // about storage and still holds). Emitted only by cell 14 (quiet-war
+  // re-arm); the value's provenance is the pre-war user choice.
+  RESTORE_AUTHORITY: 'RESTORE_AUTHORITY',
   // Exists ONLY to mirror finding F1 (setSpeed step-6 writes storage on
   // source:'init' while skipping in-memory lastSpeed) under legacy compat,
   // so the differential harness can match current behavior exactly. The
@@ -79,6 +90,12 @@ const LEGACY_COMPAT = Object.freeze({
 // handler increments THEN checks `>= MAX`, so the 5th reset surrenders after
 // only 4 fight-backs — the arbiter default preserves that observable budget.
 const DEFAULT_MAX_FIGHT = 4;
+
+// Quiet-war re-arms per session. One: the user's speed gets a single second
+// chance after a machine-vs-machine war; if the site fights again, the next
+// surrender is terminal. Bounded => the F2 periodic-war pathology cannot
+// return.
+const DEFAULT_REARM_BUDGET = 1;
 
 /**
  * Build the initial arbiter state from load-time inputs (LOAD in the table).
@@ -124,8 +141,20 @@ function loadState(init, compat = TARGET_COMPAT) {
  *   legacy compat branches (setSpeed step 6 is gated on it), never by the
  *   target contract
  */
-function makeState(mode, desired, fightCount, baseline, rememberEnabled) {
-  return Object.freeze({ mode, desired, fightCount, baseline, rememberEnabled });
+function makeState(mode, desired, fightCount, baseline, rememberEnabled, warQuiet, rearmBudget) {
+  return Object.freeze({
+    mode,
+    desired,
+    fightCount,
+    baseline,
+    rememberEnabled,
+    // True while every fight in the current war arrived in quiet context
+    // (vacuously true outside a war). Quiet resets cannot be misclassified
+    // user actions — all intent evidence is input.
+    warQuiet: warQuiet ?? true,
+    // Remaining quiet-war re-arms this session.
+    rearmBudget: rearmBudget ?? DEFAULT_REARM_BUDGET,
+  });
 }
 
 function effect(type, speed) {
@@ -150,7 +179,15 @@ function step(state, event, options = {}) {
     // Cells 5, 12: the user spoke through VSC — unconditional authority.
     case ARBITER_EVENTS.USER_SET: {
       return {
-        state: makeState(MODES.HOLDING, event.speed, 0, state.baseline, state.rememberEnabled),
+        state: makeState(
+          MODES.HOLDING,
+          event.speed,
+          0,
+          state.baseline,
+          state.rememberEnabled,
+          true,
+          state.rearmBudget
+        ),
         effects: [
           effect(ARBITER_EFFECTS.WRITE, event.speed),
           effect(ARBITER_EFFECTS.PERSIST, event.speed),
@@ -170,6 +207,27 @@ function step(state, event, options = {}) {
         }
         return { state, effects };
       }
+      if (state.mode === MODES.REARMABLE) {
+        // Cell 14: the quiet-war re-arm — restore the pre-war user speed at
+        // the next lifecycle moment, consuming the session's re-arm budget
+        // (already decremented at surrender). RESTORE_AUTHORITY is
+        // in-memory only; storage was never touched.
+        return {
+          state: makeState(
+            MODES.HOLDING,
+            state.desired,
+            0,
+            state.baseline,
+            state.rememberEnabled,
+            true,
+            state.rearmBudget
+          ),
+          effects: [
+            effect(ARBITER_EFFECTS.RESTORE_AUTHORITY, state.desired),
+            effect(ARBITER_EFFECTS.WRITE, state.desired),
+          ],
+        };
+      }
       if (state.mode === MODES.NO_OPINION && compat.legacyNoOpinionLifecycle) {
         // Cell 1 pre-#1537: force the baseline, stomping native rate choices.
         if (compat.legacyLifecyclePersist && state.rememberEnabled) {
@@ -184,7 +242,9 @@ function step(state, event, options = {}) {
               state.baseline,
               0,
               state.baseline,
-              state.rememberEnabled
+              state.rememberEnabled,
+              true,
+              state.rearmBudget
             ),
             effects: [
               effect(ARBITER_EFFECTS.WRITE, state.baseline),
@@ -215,7 +275,15 @@ function step(state, event, options = {}) {
             return { state, effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)] };
           }
           return {
-            state: makeState(MODES.HOLDING, rate, 0, state.baseline, state.rememberEnabled),
+            state: makeState(
+              MODES.HOLDING,
+              rate,
+              0,
+              state.baseline,
+              state.rememberEnabled,
+              true,
+              state.rearmBudget
+            ),
             effects: [effect(ARBITER_EFFECTS.PERSIST, rate), effect(ARBITER_EFFECTS.SYNC_UI, rate)],
           };
         }
@@ -224,14 +292,19 @@ function step(state, event, options = {}) {
         case RATE_CLASSES.AUTONOMOUS: {
           if (state.mode === MODES.HOLDING && rate !== state.desired) {
             if (state.fightCount < maxFight) {
-              // Cell 8: fight back (bounded).
+              // Cell 8: fight back (bounded). Track whether the whole war is
+              // quiet-context — a war's first fight starts the record.
+              const warQuiet =
+                state.fightCount === 0 ? !!event.quiet : state.warQuiet && !!event.quiet;
               return {
                 state: makeState(
                   MODES.HOLDING,
                   state.desired,
                   state.fightCount + 1,
                   state.baseline,
-                  state.rememberEnabled
+                  state.rememberEnabled,
+                  warQuiet,
+                  state.rearmBudget
                 ),
                 effects: [effect(ARBITER_EFFECTS.WRITE, state.desired)],
               };
@@ -245,19 +318,47 @@ function step(state, event, options = {}) {
                   state.desired,
                   0,
                   state.baseline,
-                  state.rememberEnabled
+                  state.rememberEnabled,
+                  true,
+                  state.rearmBudget
                 ),
                 effects: [effect(ARBITER_EFFECTS.SYNC_UI, rate)],
               };
             }
-            // Cell 9: surrender = stand down to NO_OPINION. A separate
-            // SURRENDERED mode proved behaviorally identical to NO_OPINION
-            // once cell 2 adopts user intent from any mode, so it was
-            // eliminated. CLEAR_AUTHORITY tells the effect executor to null
-            // the session authority projection (in-memory lastSpeed only;
-            // storage keeps the remembered speed for the next page load).
+            // Cells 9/9b: budget exhausted — stand down. If the ENTIRE war
+            // was quiet-context (no reset could have been a misclassified
+            // user action) and a re-arm remains, stand down REARMABLE: the
+            // next lifecycle event restores the pre-war speed once (cell
+            // 14). Otherwise — any activity-context fight, or budget spent —
+            // surrender is terminal for the session (attrition safety).
+            const fullyQuiet = state.warQuiet && !!event.quiet;
+            if (fullyQuiet && state.rearmBudget > 0) {
+              return {
+                state: makeState(
+                  MODES.REARMABLE,
+                  state.desired,
+                  0,
+                  state.baseline,
+                  state.rememberEnabled,
+                  true,
+                  state.rearmBudget - 1
+                ),
+                effects: [
+                  effect(ARBITER_EFFECTS.CLEAR_AUTHORITY, null),
+                  effect(ARBITER_EFFECTS.SYNC_UI, rate),
+                ],
+              };
+            }
             return {
-              state: makeState(MODES.NO_OPINION, null, 0, state.baseline, state.rememberEnabled),
+              state: makeState(
+                MODES.NO_OPINION,
+                null,
+                0,
+                state.baseline,
+                state.rememberEnabled,
+                true,
+                state.rearmBudget
+              ),
               effects: [
                 effect(ARBITER_EFFECTS.CLEAR_AUTHORITY, null),
                 effect(ARBITER_EFFECTS.SYNC_UI, rate),
@@ -279,7 +380,15 @@ function step(state, event, options = {}) {
         return { state, effects: [] };
       }
       return {
-        state: makeState(state.mode, state.desired, 0, state.baseline, state.rememberEnabled),
+        state: makeState(
+          state.mode,
+          state.desired,
+          0,
+          state.baseline,
+          state.rememberEnabled,
+          true,
+          state.rearmBudget
+        ),
         effects: [],
       };
     }

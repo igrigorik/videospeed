@@ -62,11 +62,13 @@ re-establishes authority) and can never cause writes in `NO_OPINION` mode.
 
 ## Arbiter state
 
-| Field        | Domain                    | Meaning                                                  |
-| ------------ | ------------------------- | -------------------------------------------------------- |
-| `mode`       | `NO_OPINION` \| `HOLDING` | Whether VSC currently claims authority over the rate     |
-| `desired`    | speed \| none             | The authoritative target. Non-none iff `mode = HOLDING`  |
-| `fightCount` | 0..MAX_FIGHT              | Consecutive autonomous resets we have fought this window |
+| Field         | Domain                                   | Meaning                                                                                                                              |
+| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `mode`        | `NO_OPINION` \| `HOLDING` \| `REARMABLE` | Authority claim. REARMABLE = stood down after a fully input-quiet war, pre-war speed pending one lifecycle restoration (cells 9b/14) |
+| `desired`     | speed \| none                            | The authoritative target (or pre-war speed in REARMABLE). Non-none iff mode ≠ NO_OPINION                                             |
+| `fightCount`  | 0..MAX_FIGHT                             | Consecutive autonomous resets we have fought this window                                                                             |
+| `warQuiet`    | boolean                                  | Every fight of the current war was input-quiet (no reset could be a misclassified user action)                                       |
+| `rearmBudget` | 0..1                                     | Quiet-war re-arms remaining this session                                                                                             |
 
 Correspondence to today's code: `desired` is `settings.lastSpeed`
 (`null` = none), except under a site rule — see finding F5. `mode` is
@@ -93,13 +95,14 @@ that filtering is classifier/adapter duty; the arbiter never sees them.
 
 ## Effects vocabulary
 
-| Effect            | Meaning                                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| `WRITE(v)`        | Set `video.playbackRate = v` (via site handler)                                                |
-| `PERSIST(v)`      | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`) |
-| `SYNC_UI(v)`      | Update the speed indicator only                                                                |
-| `CLEAR_AUTHORITY` | Null the SESSION authority (in-memory `lastSpeed`) without touching storage. Cell 9 only       |
-| —                 | No effect                                                                                      |
+| Effect                 | Meaning                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `WRITE(v)`             | Set `video.playbackRate = v` (via site handler)                                                                      |
+| `PERSIST(v)`           | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`)                       |
+| `SYNC_UI(v)`           | Update the speed indicator only                                                                                      |
+| `CLEAR_AUTHORITY`      | Null the SESSION authority (in-memory `lastSpeed`) without touching storage. Cell 9 only                             |
+| `RESTORE_AUTHORITY(v)` | Restore SESSION authority to the pre-war user speed (in-memory only, storage untouched — I2 preserved). Cell 14 only |
+| —                      | No effect                                                                                                            |
 
 `PERSIST` is atomic by contract: in-memory and storage move together or
 not at all. (Today they can diverge — finding F1.)
@@ -116,31 +119,34 @@ Priority at page load:
 
 ## The transition table (target contract)
 
-| #   | State      | Event                                       | Effects                     | Next state | Rationale / provenance                                                                                                                                                                                                              |
-| --- | ---------- | ------------------------------------------- | --------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | NO_OPINION | LIFECYCLE                                   | —                           | NO_OPINION | **No opinion ⇒ no writes.** Was buggy (wrote 1.0 baseline): #1537, PR #1537                                                                                                                                                         |
-| 2   | NO_OPINION | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)                  | HOLDING(v) | User spoke through native controls; adopt. Today not adopted (gesture path gated on truthy `lastSpeed`) — design decision, resolves the #1532 sub-question                                                                          |
-| 3   | NO_OPINION | EXT_RATE(v, AUTONOMOUS)                     | SYNC_UI(v)                  | NO_OPINION | Site owns the rate; we display it                                                                                                                                                                                                   |
-| 4   | NO_OPINION | EXT_RATE(v, INIT_NOISE)                     | —                           | NO_OPINION | readyState<1 noise, min-rate glitches                                                                                                                                                                                               |
-| 5   | NO_OPINION | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)        | HOLDING(v) | User claims authority                                                                                                                                                                                                               |
-| 6   | HOLDING(d) | LIFECYCLE                                   | WRITE(d)                    | HOLDING(d) | Re-assert; **no PERSIST** (#1494)                                                                                                                                                                                                   |
-| 7   | HOLDING(d) | EXT_RATE(v, USER_INTENT)                    | PERSIST(v)                  | HOLDING(v) | Accept native-control change as the new authority. Fails today via _misclassification_, not bad arbitration: #1554/#1555 (click-hold), #1562/#1546/#1563 (arrow-key false positive), #1581 (click-seek false positive)              |
-| 8   | HOLDING(d) | EXT_RATE(v≠d, AUTONOMOUS), fightCount < MAX | WRITE(d), fightCount++      | HOLDING(d) | Fight back (bounded)                                                                                                                                                                                                                |
-| 9   | HOLDING(d) | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX | CLEAR_AUTHORITY, SYNC_UI(v) | NO_OPINION | Surrender = stand down. Session authority cleared (storage untouched — the remembered speed re-seeds on next load); the war cannot restart (F2). No separate SURRENDERED mode: with cell 2, it would equal NO_OPINION in every cell |
-| 10  | HOLDING(d) | EXT_RATE(d, AUTONOMOUS)                     | —                           | HOLDING(d) | Site confirmed our value                                                                                                                                                                                                            |
-| 11  | HOLDING(d) | EXT_RATE(v, INIT_NOISE)                     | —                           | HOLDING(d) | Ignore                                                                                                                                                                                                                              |
-| 12  | HOLDING(d) | USER_VSC_SET(v)                             | WRITE(v), PERSIST(v)        | HOLDING(v) |                                                                                                                                                                                                                                     |
-| 13  | HOLDING(d) | FIGHT_WINDOW_EXPIRE                         | fightCount := 0             | HOLDING(d) | Forgive isolated resets                                                                                                                                                                                                             |
+| #   | State        | Event                                                                                                    | Effects                        | Next state             | Rationale / provenance                                                                                                                                                                                                 |
+| --- | ------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | NO_OPINION   | LIFECYCLE                                                                                                | —                              | NO_OPINION             | **No opinion ⇒ no writes.** Was buggy (wrote 1.0 baseline): #1537, PR #1537                                                                                                                                            |
+| 2   | NO_OPINION   | EXT_RATE(v, USER_INTENT)                                                                                 | PERSIST(v)                     | HOLDING(v)             | User spoke through native controls; adopt. Today not adopted (gesture path gated on truthy `lastSpeed`) — design decision, resolves the #1532 sub-question                                                             |
+| 3   | NO_OPINION   | EXT_RATE(v, AUTONOMOUS)                                                                                  | SYNC_UI(v)                     | NO_OPINION             | Site owns the rate; we display it                                                                                                                                                                                      |
+| 4   | NO_OPINION   | EXT_RATE(v, INIT_NOISE)                                                                                  | —                              | NO_OPINION             | readyState<1 noise, min-rate glitches                                                                                                                                                                                  |
+| 5   | NO_OPINION   | USER_VSC_SET(v)                                                                                          | WRITE(v), PERSIST(v)           | HOLDING(v)             | User claims authority                                                                                                                                                                                                  |
+| 6   | HOLDING(d)   | LIFECYCLE                                                                                                | WRITE(d)                       | HOLDING(d)             | Re-assert; **no PERSIST** (#1494)                                                                                                                                                                                      |
+| 7   | HOLDING(d)   | EXT_RATE(v, USER_INTENT)                                                                                 | PERSIST(v)                     | HOLDING(v)             | Accept native-control change as the new authority. Fails today via _misclassification_, not bad arbitration: #1554/#1555 (click-hold), #1562/#1546/#1563 (arrow-key false positive), #1581 (click-seek false positive) |
+| 8   | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount < MAX                                                              | WRITE(d), fightCount++         | HOLDING(d)             | Fight back (bounded)                                                                                                                                                                                                   |
+| 9   | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX, war had ANY activity-context fight (or re-arm budget spent) | CLEAR_AUTHORITY, SYNC_UI(v)    | NO_OPINION             | Terminal surrender: an activity-context war might have been fought against a misclassified user — attrition safety (the user wins after the budget) must hold                                                          |
+| 9b  | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX, war fully input-QUIET, rearmBudget > 0                      | CLEAR_AUTHORITY, SYNC_UI(v)    | REARMABLE(d), budget−1 | A quiet reset cannot be a misclassified user action (all intent evidence is input), so this war was machine-vs-machine — the user's speed deserves one second chance                                                   |
+| 14  | REARMABLE(d) | LIFECYCLE                                                                                                | RESTORE_AUTHORITY(d), WRITE(d) | HOLDING(d)             | The quiet-war re-arm: restore the pre-war speed at the next lifecycle moment, once per session. In REARMABLE, autonomous changes are observed (as cell 3), user intent adopts (as cell 2), USER_SET claims (as cell 5) |
+| 10  | HOLDING(d)   | EXT_RATE(d, AUTONOMOUS)                                                                                  | —                              | HOLDING(d)             | Site confirmed our value                                                                                                                                                                                               |
+| 11  | HOLDING(d)   | EXT_RATE(v, INIT_NOISE)                                                                                  | —                              | HOLDING(d)             | Ignore                                                                                                                                                                                                                 |
+| 12  | HOLDING(d)   | USER_VSC_SET(v)                                                                                          | WRITE(v), PERSIST(v)           | HOLDING(v)             |                                                                                                                                                                                                                        |
+| 13  | HOLDING(d)   | FIGHT_WINDOW_EXPIRE                                                                                      | fightCount := 0                | HOLDING(d)             | Forgive isolated resets                                                                                                                                                                                                |
 
 Every cell is total: any (state, event) pair not listed above is a spec
 bug, not an implementation choice.
 
-Historical note: earlier drafts had a third mode, `SURRENDERED`, with
-cells 14–16. Once cell 2 adopts user intent from any mode, that mode is
-behaviorally identical to `NO_OPINION` in every cell — the only thing it
-remembered was _that_ we lost, not anything that changed behavior — so
-cell 9 stands down to `NO_OPINION` directly and the mode was eliminated
-(model-checked equivalent; the mode count went 3 → 2).
+Historical note: earlier drafts had a `SURRENDERED` mode (cells 14–16 of
+the original numbering), eliminated when cell-2 adoption made it
+behaviorally identical to `NO_OPINION`. `REARMABLE` is not its return:
+it is behaviorally distinct (lifecycle restores once), reachable only
+from a fully input-quiet war, and justified by a signal — quiet context
+— that certifies the war was machine-vs-machine. The elimination lesson
+stands: modes exist only when they change behavior.
 
 ## Invariants
 
@@ -227,7 +233,7 @@ Every heuristic must cite its motivating evidence. Current inventory:
 | Click (capture, outside vsc-controller)          | feeds the sequence detector. Tiered evidence: a click **sequence** (two clicks ≤5s apart, last within the window — the shape of every real speed menu) = STRONG, adopts any value; a **single** click = WEAK, adopts non-1.0 only. A lone-click transition to exactly 1.0 (the signature of every documented false positive: seek side-effect resets) is treated autonomous and fought — fixes #1581 generically. DOM-heuristic narrowing (PR #1532) rejected as fragile | #1521, #1581          |
 | Pointer held down                                | **YouTube-only site signature** (`SITE_RULE_OVERRIDES`): press-and-hold 2x is the only documented web-player interaction of this kind; held-pointer rate changes have innocent causes elsewhere (scrub-preview)                                                                                                                                                                                                                                                          | #1554, PR #1555       |
 | Spacebar (YouTube only)                          | arms intent — the keyboard variant of the hold boost; auto-repeat keeps the window fresh through the hold and release                                                                                                                                                                                                                                                                                                                                                    | #1554                 |
-| Any input (pointermove/wheel/touch/key), passive | presence-only evidence (quiet axis) — logged as decision context (`input Nms ago`), never treated as intent; reserved for future confidence stratification                                                                                                                                                                                                                                                                                                               | this doc              |
+| Any input (pointermove/wheel/touch/key), passive | presence-only evidence, never intent. Feeds `isQuietContext` (≥5s without input): quiet resets cannot be misclassified user actions, which gates the cell 9b/14 quiet-war re-arm; also logged as decision context (`input Nms ago`)                                                                                                                                                                                                                                      | this doc              |
 | `detail.origin === 'videoSpeed'` + cooldown      | self-echo → filtered before arbiter                                                                                                                                                                                                                                                                                                                                                                                                                                      | existing              |
 | `readyState < 1`                                 | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
 | `rate ≤ SPEED_LIMITS.MIN`                        | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
@@ -300,9 +306,15 @@ window (cell 13) already protects isolated resets; only 5 rapid resets
 inside rolling 3s windows — the signature of programmatic enforcement —
 reach surrender at all.
 
-Back-pocket amendment if field feedback misses channel (b): re-arm on
-lifecycle with a once-per-session budget. One cell, deliberately not
-shipped speculatively.
+The back-pocket amendment shipped in its safe form (cells 9b/14): when
+the ENTIRE war was input-quiet — meaning no reset could have been a
+misclassified user action, since all intent evidence is input — the
+stand-down is REARMABLE and the next lifecycle event restores the
+pre-war speed, once per session. Activity-context wars stay terminal.
+Rejected alternative, for the record: refreshing the fight budget on
+quiet resets would resurrect the infinite periodic war — passive
+VIEWING is input-quiet, so quiet must never justify more fighting, only
+looser assumptions about misclassification.
 
 ## Production policy
 
@@ -318,6 +330,7 @@ place behavior flips happen; every line cites its ledger entry. Status:
 | F3 (adopt without prior authority)                 | **shipped** | native speed choices become session authority                                                                                                                     |
 | F2 (real surrender)                                | **shipped** | stand down to NO_OPINION; session authority cleared, stored speed survives next load. No owned state needed — the SURRENDERED-mode collapse kept derivation total |
 | #1581 (click narrowing)                            | **shipped** | fixed generically by tiered evidence + value asymmetry                                                                                                            |
+| Quiet-war re-arm (cells 9b/14)                     | **shipped** | speed returns once after machine-vs-machine wars; spec updated first, TLC re-verified                                                                             |
 
 Remaining debates are about which behavior we want per cell — never
 about implementation correctness.

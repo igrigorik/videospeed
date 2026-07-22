@@ -212,6 +212,7 @@ function arbApply(world, effects) {
       case A.EFFECTS.SYNC_UI:
         break;
       case A.EFFECTS.CLEAR_AUTHORITY:
+      case A.EFFECTS.RESTORE_AUTHORITY:
         break; // model mem derives from state; nothing to apply
       default:
         throw new Error(`unknown effect ${e.type}`);
@@ -287,7 +288,12 @@ function arbStep(world, op) {
       const prevFight = world.state.fightCount;
       const r = A.step(
         world.state,
-        { type: A.EVENTS.EXT_RATE, speed: op.rate, rateClass: verdict },
+        {
+          type: A.EVENTS.EXT_RATE,
+          speed: op.rate,
+          rateClass: verdict,
+          quiet: world.classifier.isQuietContext(world.now),
+        },
         opts
       );
       world.state = r.state;
@@ -413,7 +419,7 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
     ]);
   });
 
-  it('fight sequence to surrender: stands down, war does not restart', async () => {
+  it('fight sequence to quiet-war surrender and single re-arm on play', async () => {
     const resets = Array.from({ length: 7 }, () => ({ op: 'siteRate', rate: 1.0 }));
     await runDifferential({ rememberEnabled: true, rememberedSpeed: 1.5 }, [
       ...resets,
@@ -618,7 +624,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     expect(runArbiter(init, ops, 'target').stored).toBe(1.8);
   });
 
-  it('F2 (cell 9): FIXED — surrender stands down; the war does not restart', async () => {
+  it('F2 (cells 9/9b): FIXED — surrender stands down; no automatic war restart', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 1.5 };
     const surrenderOps = Array.from({ length: 6 }, () => ({ op: 'siteRate', rate: 1.0 }));
     const restartOps = [...surrenderOps, { op: 'siteRate', rate: 1.0 }]; // one more after surrender
@@ -626,12 +632,54 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     // History: authority silently retained — fighting again after surrender.
     expect(runArbiter(init, restartOps, 'legacy')).toMatchObject({ rate: 1.5, mem: 1.5 });
 
-    // Production: stood down to NO_OPINION; session authority cleared, the
-    // stored speed survives for the next page load.
+    // Production: this war is input-quiet (no gestures in the scenario), so
+    // the stand-down is REARMABLE — but the extra reset is only OBSERVED
+    // (no fight): the war did not restart. Session authority is cleared;
+    // the stored speed survives for the next page load.
     const pipeline = await runLegacyModules(init, restartOps);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
     const target = runArbiter(init, restartOps, 'target');
-    expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.NO_OPINION, stored: 1.5 });
+    expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.REARMABLE, stored: 1.5 });
+  });
+
+  it('quiet-war re-arm (cells 9b/14): speed returns on next play, once per session', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 1.5 };
+    const war = Array.from({ length: 5 }, () => ({ op: 'siteRate', rate: 1.0 }));
+
+    // Machine war (input-quiet) -> surrender -> play restores the speed.
+    const rearmOps = [...war, { op: 'play' }];
+    const pipeline = await runLegacyModules(init, rearmOps);
+    expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5, stored: 1.5 });
+    expect(runArbiter(init, rearmOps, 'target')).toMatchObject({ rate: 1.5, mem: 1.5 });
+
+    // A second quiet war exhausts the budget: terminal, play stays silent.
+    const secondWar = [...rearmOps, ...war, { op: 'play' }];
+    const pipeline2 = await runLegacyModules(init, secondWar);
+    expect(pipeline2).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
+    expect(runArbiter(init, secondWar, 'target')).toMatchObject({
+      rate: 1.0,
+      mem: null,
+      mode: A.MODES.NO_OPINION,
+    });
+  });
+
+  it('activity-war surrender stays terminal: no re-arm after user-adjacent fights', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 1.5 };
+    // A gesture shortly before the first reset marks the war activity-context
+    // (the reset COULD have been a misclassified user action).
+    const ops = [
+      { op: 'gestureClick' },
+      { op: 'siteRate', rate: 1.0, pace: 'quick' }, // weak evidence + 1.0 -> fought, activity war
+      ...Array.from({ length: 4 }, () => ({ op: 'siteRate', rate: 1.0 })),
+      { op: 'play' }, // must NOT restore
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: null });
+    expect(runArbiter(init, ops, 'target')).toMatchObject({
+      rate: 1.0,
+      mem: null,
+      mode: A.MODES.NO_OPINION,
+    });
   });
 
   it('F3 (cell 2): FIXED — native choice becomes authority without prior opinion', async () => {

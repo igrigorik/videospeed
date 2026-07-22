@@ -53,24 +53,35 @@ ASSUME /\ "one" \in Speeds
        /\ BuggyLifecyclePersist \in BOOLEAN
 
 VARIABLES
-  rate,        \* the shared register: video.playbackRate
-  mode,        \* "NoOpinion" | "Holding" — surrender collapses to NoOpinion (cell 9)
-  desired,     \* authoritative target; None iff not Holding (impl: lastSpeed)
-  stored,      \* persisted lastSpeed (chrome.storage), for purity checking
-  fightCount,  \* consecutive autonomous resets fought this window
-  pending,     \* BOOLEAN: an external ratechange awaits arbitration
-  quiet,       \* BOOLEAN: site has permanently stopped writing (monotone)
-  lastWriter   \* ghost: who last changed rate ("init"|"user"|"site"|"vsc")
+  rate,         \* the shared register: video.playbackRate
+  mode,         \* "NoOpinion" | "Holding" | "Rearmable" (cells 9/9b/14)
+  desired,      \* authoritative target; None iff NoOpinion (impl: lastSpeed;
+                \* in Rearmable it is the pre-war speed pending restoration)
+  stored,       \* persisted lastSpeed (chrome.storage), for purity checking
+  fightCount,   \* consecutive autonomous resets fought this window
+  pending,      \* BOOLEAN: an external ratechange awaits arbitration
+  pendingQuiet, \* BOOLEAN: the pending change arrived in INPUT-quiet context
+                \* (no user input for QUIET_CONTEXT_MS — cannot be a
+                \* misclassified user action). NOT the same as `quiet` below.
+  warQuiet,     \* BOOLEAN: every fight of the current war was input-quiet
+  rearmBudget,  \* 0..1: quiet-war re-arms remaining this session
+  quiet,        \* BOOLEAN: site has permanently stopped writing (monotone)
+  lastWriter    \* ghost: who last changed rate ("init"|"user"|"site"|"vsc")
 
-vars == <<rate, mode, desired, stored, fightCount, pending, quiet, lastWriter>>
+vars ==
+  <<rate, mode, desired, stored, fightCount, pending, pendingQuiet, warQuiet,
+    rearmBudget, quiet, lastWriter>>
 
 TypeOK ==
   /\ rate \in Speeds
-  /\ mode \in {"NoOpinion", "Holding"}
+  /\ mode \in {"NoOpinion", "Holding", "Rearmable"}
   /\ desired \in Speeds \cup {None}
   /\ stored \in Speeds \cup {None}
   /\ fightCount \in 0..MaxFight
   /\ pending \in BOOLEAN
+  /\ pendingQuiet \in BOOLEAN
+  /\ warQuiet \in BOOLEAN
+  /\ rearmBudget \in 0..1
   /\ quiet \in BOOLEAN
   /\ lastWriter \in {"init", "user", "site", "vsc"}
 
@@ -95,6 +106,9 @@ Init ==
   /\ stored \in Speeds \cup {None}
   /\ fightCount = 0
   /\ pending = FALSE
+  /\ pendingQuiet = FALSE
+  /\ warQuiet = TRUE
+  /\ rearmBudget = 1
   /\ quiet = FALSE
   /\ lastWriter = "init"
 
@@ -108,27 +122,32 @@ UserSet(v) ==
   /\ stored' = v
   /\ fightCount' = 0
   /\ pending' = FALSE
+  /\ pendingQuiet' = FALSE
+  /\ warQuiet' = TRUE
   /\ lastWriter' = "user"
-  /\ UNCHANGED quiet
+  /\ UNCHANGED <<rearmBudget, quiet>>
 
 (* The adversary: the site writes the register whenever it likes. *)
 SiteWrite(v) ==
   /\ ~quiet
   /\ rate' = v
   /\ pending' = TRUE
+  /\ pendingQuiet' \in BOOLEAN  \* input context is the environment's choice
   /\ lastWriter' = "site"
-  /\ UNCHANGED <<mode, desired, stored, fightCount, quiet>>
+  /\ UNCHANGED <<mode, desired, stored, fightCount, warQuiet, rearmBudget, quiet>>
 
 (* Rules 2, 7: classifier verdict USER_INTENT — adopt the current rate as
    the new authority, persist it. Works from any mode: the user spoke. *)
 ObserveUserIntent ==
   /\ pending
   /\ pending' = FALSE
+  /\ pendingQuiet' = FALSE
   /\ mode' = "Holding"
   /\ desired' = rate
   /\ stored' = rate
   /\ fightCount' = 0
-  /\ UNCHANGED <<rate, quiet, lastWriter>>
+  /\ warQuiet' = TRUE
+  /\ UNCHANGED <<rate, rearmBudget, quiet, lastWriter>>
 
 (* Rule 8: classifier verdict AUTONOMOUS while we hold a diverging
    authority and have fight budget — enforce ours. *)
@@ -140,23 +159,35 @@ ObserveAutonomousFight ==
   /\ rate' = desired
   /\ fightCount' = fightCount + 1
   /\ pending' = FALSE
+  /\ pendingQuiet' = FALSE
+  /\ warQuiet' = IF fightCount = 0 THEN pendingQuiet ELSE warQuiet /\ pendingQuiet
   /\ lastWriter' = "vsc"
-  /\ UNCHANGED <<mode, desired, stored, quiet>>
+  /\ UNCHANGED <<mode, desired, stored, rearmBudget, quiet>>
 
-(* Rule 9: budget exhausted — surrender = stand down to NoOpinion. A
-   separate Surrendered mode proved behaviorally identical to NoOpinion
-   once rule 2 adopts user intent from any mode, so it was eliminated;
-   dropping desired is what ends the war (F2). Storage is untouched: the
-   remembered speed still seeds authority on the next load. *)
+(* Rules 9/9b: budget exhausted — stand down. If the ENTIRE war was
+   input-quiet (no reset could have been a misclassified user action,
+   because all intent evidence is input) and a re-arm remains, stand down
+   REARMABLE: the next lifecycle event restores the pre-war speed once
+   (rule 14). Otherwise surrender is terminal for the session — an
+   activity-context war might have been fought against a misclassified
+   user, and attrition safety (the user wins after the budget) must hold.
+   Storage is untouched in both variants. *)
 ObserveAutonomousSurrender ==
   /\ pending
   /\ mode = "Holding"
   /\ rate # desired
   /\ fightCount = MaxFight
-  /\ mode' = "NoOpinion"
-  /\ desired' = None
   /\ fightCount' = 0
   /\ pending' = FALSE
+  /\ pendingQuiet' = FALSE
+  /\ warQuiet' = TRUE
+  /\ IF warQuiet /\ pendingQuiet /\ rearmBudget > 0
+       THEN /\ mode' = "Rearmable"
+            /\ desired' = desired      \* the pre-war speed, pending re-arm
+            /\ rearmBudget' = rearmBudget - 1
+       ELSE /\ mode' = "NoOpinion"
+            /\ desired' = None
+            /\ UNCHANGED rearmBudget
   /\ UNCHANGED <<rate, stored, quiet, lastWriter>>
 
 (* Rules 3, 4, 10, 11, 15: everything else — the site confirmed our value,
@@ -167,7 +198,9 @@ ObserveNoop ==
   /\ pending
   /\ (mode # "Holding" \/ rate = desired)
   /\ pending' = FALSE
-  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, quiet, lastWriter>>
+  /\ pendingQuiet' = FALSE
+  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, warQuiet, rearmBudget,
+                 quiet, lastWriter>>
 
 (* Rules 1, 6, 14: play / seeked / deferred loadedmetadata.
    Holding: re-assert desired, never persist (#1494; F1 flag models the
@@ -178,25 +211,38 @@ Lifecycle ==
      /\ rate' = desired
      /\ stored' = IF BuggyLifecyclePersist THEN desired ELSE stored
      /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
-     /\ UNCHANGED <<mode, desired, fightCount, pending, quiet>>
+     /\ UNCHANGED <<mode, desired, fightCount, pending, pendingQuiet, warQuiet,
+                    rearmBudget, quiet>>
+  \/ /\ mode = "Rearmable"
+     \* Rule 14: the quiet-war re-arm — restore the pre-war speed once.
+     \* In-memory authority only; stored is untouched (purity preserved).
+     /\ mode' = "Holding"
+     /\ rate' = desired
+     /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
+     /\ UNCHANGED <<desired, stored, fightCount, pending, pendingQuiet, warQuiet,
+                    rearmBudget, quiet>>
   \/ /\ mode = "NoOpinion"
      /\ BuggyNoOpinionLifecycle
      /\ rate' = "one"
      /\ lastWriter' = IF rate # "one" THEN "vsc" ELSE lastWriter
-     /\ UNCHANGED <<mode, desired, stored, fightCount, pending, quiet>>
+     /\ UNCHANGED <<mode, desired, stored, fightCount, pending, pendingQuiet,
+                    warQuiet, rearmBudget, quiet>>
 
 (* Rule 13: FIGHT_WINDOW_MS elapsed without new fights — forgive. *)
 FightWindowExpire ==
   /\ fightCount > 0
   /\ fightCount' = 0
-  /\ UNCHANGED <<rate, mode, desired, stored, pending, quiet, lastWriter>>
+  /\ warQuiet' = TRUE
+  /\ UNCHANGED <<rate, mode, desired, stored, pending, pendingQuiet, rearmBudget,
+                 quiet, lastWriter>>
 
 (* The site permanently stops writing. Only needed so convergence
    properties have something to converge under. *)
 SiteGoQuiet ==
   /\ ~quiet
   /\ quiet' = TRUE
-  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, pending, lastWriter>>
+  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, pending, pendingQuiet,
+                 warQuiet, rearmBudget, lastWriter>>
 
 Next ==
   \/ \E v \in Speeds : UserSet(v)
@@ -218,9 +264,10 @@ Spec == Init /\ [][Next]_vars
 -----------------------------------------------------------------------------
 (* INVARIANTS (I-numbers from docs/speed-arbitration.md) *)
 
-(* I5: authority exists exactly in Holding mode. *)
+(* I5: authority (or a pending re-arm value) exists exactly outside
+   NoOpinion. *)
 ModeDesiredCoupling ==
-  (desired # None) <=> (mode = "Holding")
+  (desired # None) <=> (mode \in {"Holding", "Rearmable"})
 
 (* Supporting lemma for I4: in Holding, divergence implies an unprocessed
    observation — the arbiter never knowingly leaves the register wrong. *)
@@ -241,9 +288,15 @@ NoOpinionNeverWrites ==
   [][ (mode = "NoOpinion" /\ mode' = "NoOpinion" /\ rate' # rate)
         => lastWriter' # "vsc" ]_vars
 
+(* Re-arms are bounded: the budget never increases within a session. *)
+RearmBudgetMonotone ==
+  [][rearmBudget' <= rearmBudget]_vars
+
 (* I2: persisted state moves only on a user action or a user-intent
    adoption (both consume: UserSet sets lastWriter'="user"; adoption
-   consumes pending). Violated by the BuggyLifecyclePersist variant (F1). *)
+   consumes pending). Violated by the BuggyLifecyclePersist variant (F1).
+   Note rule 14 (re-arm) restores in-memory authority WITHOUT touching
+   stored — this property is exactly why that distinction matters. *)
 PersistencePurity ==
   [][ (stored' # stored)
         => (lastWriter' = "user" \/ (pending /\ ~pending')) ]_vars

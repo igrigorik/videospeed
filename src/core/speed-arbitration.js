@@ -52,6 +52,12 @@ class SpeedArbitration {
     });
     this.fightCount = 0;
     this.fightTimer = null;
+    // Quiet-war re-arm bookkeeping (cells 9b/14): the pre-war speed pending
+    // restoration, whether the whole current war has been quiet-context,
+    // and the per-session re-arm budget.
+    this.rearmPendingSpeed = null;
+    this.warQuiet = true;
+    this.rearmBudget = window.VSC.SpeedArbiter.DEFAULT_REARM_BUDGET;
   }
 
   /**
@@ -73,6 +79,19 @@ class SpeedArbitration {
         fightCount: this.fightCount,
         baseline,
         rememberEnabled,
+        warQuiet: this.warQuiet,
+        rearmBudget: this.rearmBudget,
+      };
+    }
+    if (this.rearmPendingSpeed !== null) {
+      return {
+        mode: A.MODES.REARMABLE,
+        desired: this.rearmPendingSpeed,
+        fightCount: this.fightCount,
+        baseline,
+        rememberEnabled,
+        warQuiet: this.warQuiet,
+        rearmBudget: this.rearmBudget,
       };
     }
     return {
@@ -81,6 +100,8 @@ class SpeedArbitration {
       fightCount: this.fightCount,
       baseline,
       rememberEnabled,
+      warQuiet: this.warQuiet,
+      rearmBudget: this.rearmBudget,
     };
   }
 
@@ -115,10 +136,22 @@ class SpeedArbitration {
     const prevFight = this.fightCount;
     const { state: next, effects } = A.step(
       state,
-      { type: A.EVENTS.EXT_RATE, speed: speedForDecision, rateClass: cls },
+      {
+        type: A.EVENTS.EXT_RATE,
+        speed: speedForDecision,
+        rateClass: cls,
+        quiet: this.classifier.isQuietContext(event.timeStamp),
+      },
       { compat: this.compat }
     );
     this.fightCount = next.fightCount;
+    this.warQuiet = next.warQuiet;
+    this.rearmBudget = next.rearmBudget;
+    if (next.mode === A.MODES.REARMABLE && state.mode !== A.MODES.REARMABLE) {
+      this.rearmPendingSpeed = state.desired; // quiet-war stand-down (cell 9b)
+    } else if (next.mode !== A.MODES.REARMABLE) {
+      this.rearmPendingSpeed = null; // adoption or user action cancels a pending re-arm
+    }
 
     const inputAge =
       this.classifier.lastInputAt > 0
@@ -194,6 +227,8 @@ class SpeedArbitration {
    */
   noteUserSet() {
     this.fightCount = 0;
+    this.warQuiet = true;
+    this.rearmPendingSpeed = null; // a fresh user choice supersedes any pending re-arm
     if (this.fightTimer) {
       clearTimeout(this.fightTimer);
       this.fightTimer = null;
@@ -209,11 +244,21 @@ class SpeedArbitration {
    */
   lifecycleTarget() {
     const A = window.VSC.SpeedArbiter;
-    const { effects } = A.step(
-      this.deriveState(),
+    const state = this.deriveState();
+    const { state: next, effects } = A.step(
+      state,
       { type: A.EVENTS.LIFECYCLE },
       { compat: this.compat }
     );
+    const restore = effects.find((e) => e.type === A.EFFECTS.RESTORE_AUTHORITY);
+    if (restore) {
+      // Cell 14: quiet-war re-arm fires — restore session authority (memory
+      // only), consume the pending slot. The caller executes the WRITE.
+      this.config.restoreSessionAuthority(restore.speed);
+      this.rearmPendingSpeed = null;
+      this.warQuiet = next.warQuiet;
+      this.rearmBudget = next.rearmBudget;
+    }
     const write = effects.find((e) => e.type === A.EFFECTS.WRITE);
     return write ? write.speed : null;
   }
