@@ -208,7 +208,7 @@ describe('VideoController', () => {
     expect(window.VSC.stateManager.controllers.size).toBe(0);
   });
 
-  it('VideoController should initialize speed using adjustSpeed method', async () => {
+  it('VideoController should initialize speed using the writeRate primitive', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true; // Enable global persistence
@@ -223,22 +223,22 @@ describe('VideoController', () => {
     });
     mockDOM.container.appendChild(mockVideo);
 
-    // Track adjustSpeed calls
-    let adjustSpeedCalled = false;
-    let adjustSpeedParams = null;
-    const originalAdjustSpeed = actionHandler.adjustSpeed;
-    actionHandler.adjustSpeed = function (video, value, options) {
-      adjustSpeedCalled = true;
-      adjustSpeedParams = { video, value, options };
-      return originalAdjustSpeed.call(this, video, value, options);
+    // Track writeRate calls (lifecycle writes use the bare WRITE primitive)
+    let writeRateCalled = false;
+    let writeRateParams = null;
+    const originalWriteRate = actionHandler.writeRate;
+    actionHandler.writeRate = function (video, rate) {
+      writeRateCalled = true;
+      writeRateParams = { video, rate };
+      return originalWriteRate.call(this, video, rate);
     };
 
     const _controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
-    // Should have called adjustSpeed with the stored speed
-    expect(adjustSpeedCalled).toBe(true);
-    expect(adjustSpeedParams.value).toBe(1.75);
-    expect(adjustSpeedParams.video).toBe(mockVideo);
+    // Should have called writeRate with the stored speed
+    expect(writeRateCalled).toBe(true);
+    expect(writeRateParams.rate).toBe(1.75);
+    expect(writeRateParams.video).toBe(mockVideo);
     expect(mockVideo.playbackRate).toBe(1.75);
   });
 
@@ -325,19 +325,19 @@ describe('VideoController', () => {
     });
     mockDOM.container.appendChild(mockVideo);
 
-    // Track adjustSpeed calls during events
-    const adjustSpeedCalls = [];
-    const originalAdjustSpeed = actionHandler.adjustSpeed;
-    actionHandler.adjustSpeed = function (video, value, options) {
-      adjustSpeedCalls.push({ video, value, options });
-      return originalAdjustSpeed.call(this, video, value, options);
+    // Track writeRate calls during events
+    const writeRateCalls = [];
+    const originalWriteRate = actionHandler.writeRate;
+    actionHandler.writeRate = function (video, rate) {
+      writeRateCalls.push({ video, rate });
+      return originalWriteRate.call(this, video, rate);
     };
 
     const _controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
-    // Should have called adjustSpeed during initialization
-    expect(adjustSpeedCalls.length > 0).toBe(true);
-    const initCall = adjustSpeedCalls.find((call) => call.value === 1.5);
+    // Should have called writeRate during initialization
+    expect(writeRateCalls.length > 0).toBe(true);
+    const initCall = writeRateCalls.find((call) => call.rate === 1.5);
     expect(initCall).toBeDefined();
   });
 

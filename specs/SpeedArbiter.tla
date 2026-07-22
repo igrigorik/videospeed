@@ -21,8 +21,10 @@
 (*     coalesces with it (the arbiter reads the current rate at observe    *)
 (*     time, as the implementation does).                                  *)
 (*   - Self-originated ratechange echoes are filtered before the arbiter   *)
-(*     (cooldown + detail.origin); VSC's own writes create no pending      *)
-(*     observation here.                                                   *)
+(*     by the write-token registry (each WRITE registers the value it      *)
+(*     expects to echo; the adapter consumes matching tokens); VSC's own   *)
+(*     writes therefore create no pending observation here. v2 could      *)
+(*     model the token queue explicitly alongside the init window.        *)
 (*   - KNOWN v1 GAP (found by the JS mini-checker): table cell 11 lets an  *)
 (*     INIT_NOISE-classified write leave the register diverged from a held *)
 (*     authority until the next lifecycle event heals it. This model       *)
@@ -109,8 +111,8 @@ Init ==
   /\ lastWriter = "init"
 
 (* Rules 5, 12, 16: the user acts through VSC. The only unambiguous input.
-   Clears any pending observation: our write supersedes it and the
-   synchronous echo is cooldown-filtered. *)
+   Clears any pending observation: our write supersedes it and its native
+   echo is absorbed by the write-token filter. *)
 UserSet(v) ==
   /\ rate' = v
   /\ mode' = "Holding"

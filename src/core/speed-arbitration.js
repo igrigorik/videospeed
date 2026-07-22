@@ -16,16 +16,29 @@
  *   surrendered mode to remember, so derivation stays total. Fight
  *   bookkeeping (count + window timer) is the only adapter-owned state.
  *
- * - Effects execute through ActionHandler.adjustSpeed with the source
- *   taxonomy ('internal'/'external'/'init') — a transitional shape slated
- *   for replacement by explicit executor primitives (see the deferred-work
- *   register in the contract doc). The differential suite
+ * - Effects execute through named primitives, one per effect in the
+ *   contract's vocabulary: WRITE -> ActionHandler.writeRate, SYNC_UI ->
+ *   ActionHandler.syncIndicator, PERSIST -> config.persistAuthority,
+ *   CLEAR_AUTHORITY -> config.clearSessionAuthority, RESTORE_AUTHORITY ->
+ *   config.restoreSessionAuthority. The adapter chooses raw-vs-snapped
+ *   values per branch (an execution detail: display follows the register's
+ *   actual value, decisions use the snapped one). The differential suite
  *   (tests/integration/arbiter-differential.test.js) pins the pipeline to
- *   the model either way.
+ *   the model.
  *
- * - Fight-back mechanics (exponential cooldown backoff, fight-window timer,
- *   stopImmediatePropagation) are execution details of the WRITE effect in
- *   fight context, preserved verbatim from the legacy handleRateChange.
+ * - Echo filtering is a write-token registry (noteWrite/consumeEcho), not a
+ *   time-based cooldown: every WRITE records the value it expects to see
+ *   echo back as a native ratechange; EventManager.handleRateChange consumes
+ *   a matching token and drops the event. Everything unmatched is genuinely
+ *   external and reaches the arbiter — so a reactive site that rewrites the
+ *   rate in response to our writes produces budget-accounted fight
+ *   exchanges (surrender in MAX_FIGHT rounds) instead of an invisible
+ *   cooldown-masked write war. Fight pacing is deliberately budget-only:
+ *   no temporal spacing between fight-backs, because the bound that
+ *   matters (attrition safety) is the count, not the rate.
+ *
+ * - Fight-back mechanics (fight-window timer, stopImmediatePropagation)
+ *   are execution details of the WRITE effect in fight context.
  */
 
 window.VSC = window.VSC || {};
@@ -35,8 +48,8 @@ class SpeedArbitration {
    * @param {Object} config - VideoSpeedConfig (settings must be loaded
    *   before decisions are requested)
    * @param {Object|null} eventManager - owning EventManager; null for
-   *   lifecycle-only use (VideoController fallback), where cooldown and
-   *   fight mechanics are not needed
+   *   lifecycle-only use (VideoController fallback), where echo filtering
+   *   and fight mechanics are not needed
    */
   constructor(config, eventManager) {
     this.config = config;
@@ -58,6 +71,67 @@ class SpeedArbitration {
     this.rearmPendingSpeed = null;
     this.warQuiet = true;
     this.rearmBudget = window.VSC.SpeedArbiter.DEFAULT_REARM_BUDGET;
+    // In-flight write registry (echo filter): per-video FIFO of rates we
+    // have written whose native ratechange echo has not been observed yet.
+    this.pendingWrites = new WeakMap();
+  }
+
+  /**
+   * Record an extension-issued register write (WRITE effect). The native
+   * ratechange it produces is consumed by consumeEcho, so the classifier
+   * and arbiter only ever see genuinely external events. Called by
+   * ActionHandler.writeRate — the single WRITE primitive.
+   *
+   * @param {HTMLMediaElement} video
+   * @param {number} rate - the value written (post-rounding)
+   */
+  noteWrite(video, rate) {
+    let queue = this.pendingWrites.get(video);
+    if (!queue) {
+      queue = [];
+      this.pendingWrites.set(video, queue);
+    }
+    queue.push({ rate, at: performance.now() });
+    // The length cap is the primary bound (robust when clocks are faked in
+    // tests); the TTL prune in consumeEcho is the temporal one. Sized for
+    // held-key repeat bursts: echoes are queued tasks, so at most a
+    // handful of writes are ever genuinely in flight.
+    if (queue.length > SpeedArbitration.ECHO_MAX_PENDING) {
+      queue.shift();
+    }
+  }
+
+  /**
+   * Try to match a ratechange against the in-flight write registry.
+   *
+   * Matching is value-tolerant (players may quantize what we wrote) and
+   * FIFO: a match also retires older pending writes, whose echoes were
+   * coalesced by the player (rapid successive assignments can fire a
+   * single ratechange for the final value).
+   *
+   * A swallowed same-value site write is benign by the same argument as
+   * the tolerance demotion in onExternalRate: a write that lands within
+   * tolerance of what we last wrote is a non-divergence (cell 10 no-op).
+   *
+   * @param {HTMLMediaElement} video
+   * @param {number} rate - the observed playbackRate
+   * @returns {boolean} true if the event was our own write echoing back
+   */
+  consumeEcho(video, rate) {
+    const queue = this.pendingWrites.get(video);
+    if (!queue || queue.length === 0) {
+      return false;
+    }
+    const now = performance.now();
+    while (queue.length && now - queue[0].at > SpeedArbitration.ECHO_TTL_MS) {
+      queue.shift();
+    }
+    const idx = queue.findIndex((w) => Math.abs(w.rate - rate) <= SpeedArbitration.ECHO_TOLERANCE);
+    if (idx === -1) {
+      return false;
+    }
+    queue.splice(0, idx + 1);
+    return true;
   }
 
   /**
@@ -107,7 +181,6 @@ class SpeedArbitration {
   onExternalRate(video, event, verdict) {
     const A = window.VSC.SpeedArbiter;
     const IC = window.VSC.IntentClassifier;
-    const EM = window.VSC.EventManager;
     const rawRate = video.playbackRate;
     const state = this.deriveState();
 
@@ -146,7 +219,10 @@ class SpeedArbitration {
         : -1;
 
     // Cells 2/7 — adoption: the user drove the site's native controls.
+    // Effects PERSIST + SYNC_UI; no WRITE — the register already holds the
+    // user's chosen value, we adopt it rather than re-writing it.
     if (effects.some((e) => e.type === A.EFFECTS.PERSIST)) {
+      const adopted = Number(rawRate.toFixed(2));
       window.VSC.logger.info(
         `Accepting site speed change as user-intentional: ${rawRate} (input ${inputAge}ms ago)`
       );
@@ -155,13 +231,15 @@ class SpeedArbitration {
         this.fightTimer = null;
       }
       this.classifier.consumeGesture();
-      if (this.eventManager && this.eventManager.actionHandler) {
-        this.eventManager.actionHandler.adjustSpeed(video, rawRate);
-      }
+      this.config.persistAuthority(adopted);
+      this.eventManager?.actionHandler?.syncIndicator(video, adopted);
       return;
     }
 
-    // Cell 8 — fight back, with the legacy backoff mechanics.
+    // Cell 8 — fight back: WRITE(desired). The write takes an echo token
+    // (via writeRate), so only the site's next counter-write — a genuinely
+    // external event — comes back around, incrementing the fight count.
+    // Pacing is budget-only by design; see the header note.
     if (next.fightCount > prevFight) {
       if (this.fightTimer) {
         clearTimeout(this.fightTimer);
@@ -171,24 +249,17 @@ class SpeedArbitration {
         this.fightTimer = null;
       }, SpeedArbitration.FIGHT_WINDOW_MS);
 
-      const cooldown = Math.min(
-        EM.BASE_COOLDOWN_MS * Math.pow(2, this.fightCount - 1),
-        EM.MAX_COOLDOWN_MS
-      );
       window.VSC.logger.info(
-        `Fight detection: attempt ${this.fightCount}, re-applying ${state.desired} (cooldown ${cooldown}ms, input ${inputAge}ms ago)`
+        `Fight detection: attempt ${this.fightCount}, re-applying ${state.desired} (input ${inputAge}ms ago)`
       );
-      window.VSC.siteHandlerManager.handleSpeedChange(video, state.desired);
-      if (this.eventManager) {
-        this.eventManager.refreshCoolDown(cooldown);
-      }
+      this.eventManager?.actionHandler?.writeRate(video, state.desired);
       event.stopImmediatePropagation();
       return;
     }
 
     // Cell 9 — budget exhausted: stand down. CLEAR_AUTHORITY nulls the
-    // session authority projection so derivation, the cooldown-restore
-    // branch, and cross-tab semantics all see "no opinion" uniformly.
+    // session authority projection so derivation and cross-tab semantics
+    // all see "no opinion" uniformly.
     if (effects.some((e) => e.type === A.EFFECTS.CLEAR_AUTHORITY)) {
       window.VSC.logger.info(
         `Fight detection: surrendering after ${prevFight} resets. Standing down at site speed ${rawRate}`
@@ -200,17 +271,16 @@ class SpeedArbitration {
       this.config.clearSessionAuthority();
     }
 
-    // Cells 3/10 + surrender fallthrough: observe/accept without persist.
-    if (this.eventManager && this.eventManager.actionHandler) {
-      this.eventManager.actionHandler.adjustSpeed(video, rawRate, { source: 'external' });
-    }
+    // Cells 3/10 + surrender fallthrough: observe — SYNC_UI only, never
+    // persist, never write (observation must not modify the register).
+    this.eventManager?.actionHandler?.syncIndicator(video, rawRate);
   }
 
   /**
-   * A user action through VSC claimed authority (cells 5/12). The effect
-   * execution is setSpeed's job (the caller); this resets the fight state
-   * per the contract — a fresh user choice starts with a clean budget.
-   * Called by ActionHandler for source:'internal' speed changes.
+   * A user action through VSC claimed authority (cells 5/12). Effect
+   * execution is the caller's job (ActionHandler.adjustSpeed runs the
+   * USER_SET effect row); this resets the fight state per the contract —
+   * a fresh user choice starts with a clean budget.
    */
   noteUserSet() {
     this.fightCount = 0;
@@ -254,10 +324,24 @@ class SpeedArbitration {
   }
 }
 
-// Fight detection: forgive the fight count after this quiet period (ms).
-// Max cooldown (2000ms, EventManager.MAX_COOLDOWN_MS) plus one second, so a
-// fight-back's own cooldown can never outlive the window that forgives it.
+// Fight detection: forgive the fight count after this quiet period (ms) —
+// isolated resets spread over time never accumulate into a surrender.
 SpeedArbitration.FIGHT_WINDOW_MS = 3000;
+
+// Echo filter tuning (replaces the legacy 200ms blanket cooldown).
+// Tolerance is one 2-decimal rounding step plus float headroom: a player
+// that quantizes our written value still matches; anything further off is
+// a genuine external change and must reach the arbiter (a fight exchange
+// with a clamping player then terminates on the fight budget).
+SpeedArbitration.ECHO_TOLERANCE = 0.011;
+// ratechange is a queued task — echoes normally land within one macrotask.
+// The TTL only exists to retire tokens whose echo never fired (e.g. the
+// player swallowed the write); generous because staleness is near-benign
+// (a swallowed same-value site write is a cell-10 no-op).
+SpeedArbitration.ECHO_TTL_MS = 500;
+// Hard bound on in-flight tokens per video (primary bound where clocks are
+// faked); sized for held-key repeat bursts.
+SpeedArbitration.ECHO_MAX_PENDING = 8;
 
 /**
  * The migration-era POLICY object (per-flag compat switches + rule-set

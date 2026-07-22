@@ -92,14 +92,25 @@ classifier; persisted storage belongs to the effects layer.
 | `LOAD(init)`          | settings load                               | Establishes initial mode (see below)                     |
 
 Self-originated ratechange echoes (our own `playbackRate` writes) are
-filtered before classification by the cooldown + `detail.origin` check —
-that filtering is classifier/adapter duty; the arbiter never sees them.
+filtered before classification by the write-token registry: every WRITE
+records the value it expects to see echo back
+(`SpeedArbitration.noteWrite`), and `handleRateChange` consumes a
+matching token (`consumeEcho`) and drops the event. Matching is
+value-tolerant (players may quantize the written value) and FIFO with
+coalescing (rapid successive writes can fire a single echo for the final
+value); tokens expire by queue cap and TTL. Because a token identifies
+exactly one expected echo, nothing genuinely external is ever masked — a
+reactive site that rewrites the rate in response to our writes produces
+ordinary budget-accounted `EXT_RATE` events (surrender within MAX_FIGHT
+rounds) instead of the invisible write war the legacy 200ms blanket
+cooldown permitted. This filtering is adapter duty; the arbiter never
+sees echoes.
 
 ## Effects vocabulary
 
 | Effect                 | Meaning                                                                                                              |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `WRITE(v)`             | Set `video.playbackRate = v` (via site handler)                                                                      |
+| `WRITE(v)`             | Set `video.playbackRate = v` (via site handler); registers an in-flight echo token first (see Event alphabet)        |
 | `PERSIST(v)`           | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`)                       |
 | `SYNC_UI(v)`           | Update the speed indicator only                                                                                      |
 | `CLEAR_AUTHORITY`      | Null the SESSION authority (in-memory `lastSpeed`) without touching storage. Cell 9 only                             |
@@ -108,7 +119,8 @@ that filtering is classifier/adapter duty; the arbiter never sees them.
 
 `PERSIST` is atomic by contract: in-memory and storage move together or
 not at all. (They historically diverged — finding F1, fixed in the
-`setSpeed` init-persist change.)
+`setSpeed` init-persist change; today `PERSIST` is the single primitive
+`config.persistAuthority`, so the pairing is structural.)
 
 ## Initial mode (LOAD)
 
@@ -230,17 +242,17 @@ already-tracked issues:
 
 Every heuristic must cite its motivating evidence. Current inventory:
 
-| Signal                                           | Classification effect                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Provenance            |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| Unhandled keydown                                | only native speed shortcuts (`<`/`>`, Shift+Comma/Period) arm strong key intent; arrow keys and other keys never bless a ratechange                                                                                                                                                                                                                                                                                                                                      | #1562/#1546, PR #1563 |
-| Click (capture, outside vsc-controller)          | feeds the sequence detector. Tiered evidence: a click **sequence** (two clicks ≤5s apart, last within the window — the shape of every real speed menu) = STRONG, adopts any value; a **single** click = WEAK, adopts non-1.0 only. A lone-click transition to exactly 1.0 (the signature of every documented false positive: seek side-effect resets) is treated autonomous and fought — fixes #1581 generically. DOM-heuristic narrowing (PR #1532) rejected as fragile | #1521, #1581          |
-| Pointer held down                                | **YouTube-only site signature** (`SITE_RULE_OVERRIDES`): press-and-hold 2x is the only documented web-player interaction of this kind; held-pointer rate changes have innocent causes elsewhere (scrub-preview)                                                                                                                                                                                                                                                          | #1554, PR #1555       |
-| Spacebar (YouTube only)                          | arms intent — the keyboard variant of the hold boost; auto-repeat keeps the window fresh through the hold and release                                                                                                                                                                                                                                                                                                                                                    | #1554                 |
-| Any input (pointermove/wheel/touch/key), passive | presence-only evidence, never intent. Feeds `isQuietContext` (≥5s without input): quiet resets cannot be misclassified user actions, which gates the cell 9b/14 quiet-war re-arm; also logged as decision context (`input Nms ago`)                                                                                                                                                                                                                                      | this doc              |
-| `detail.origin === 'videoSpeed'` + cooldown      | self-echo → filtered before arbiter                                                                                                                                                                                                                                                                                                                                                                                                                                      | existing              |
-| `readyState < 1`                                 | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
-| `rate ≤ SPEED_LIMITS.MIN`                        | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
-| Default (no evidence)                            | AUTONOMOUS                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
+| Signal                                               | Classification effect                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Provenance            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| Unhandled keydown                                    | only native speed shortcuts (`<`/`>`, Shift+Comma/Period) arm strong key intent; arrow keys and other keys never bless a ratechange                                                                                                                                                                                                                                                                                                                                      | #1562/#1546, PR #1563 |
+| Click (capture, outside vsc-controller)              | feeds the sequence detector. Tiered evidence: a click **sequence** (two clicks ≤5s apart, last within the window — the shape of every real speed menu) = STRONG, adopts any value; a **single** click = WEAK, adopts non-1.0 only. A lone-click transition to exactly 1.0 (the signature of every documented false positive: seek side-effect resets) is treated autonomous and fought — fixes #1581 generically. DOM-heuristic narrowing (PR #1532) rejected as fragile | #1521, #1581          |
+| Pointer held down                                    | **YouTube-only site signature** (`SITE_RULE_OVERRIDES`): press-and-hold 2x is the only documented web-player interaction of this kind; held-pointer rate changes have innocent causes elsewhere (scrub-preview)                                                                                                                                                                                                                                                          | #1554, PR #1555       |
+| Spacebar (YouTube only)                              | arms intent — the keyboard variant of the hold boost; auto-repeat keeps the window fresh through the hold and release                                                                                                                                                                                                                                                                                                                                                    | #1554                 |
+| Any input (pointermove/wheel/touch/key), passive     | presence-only evidence, never intent. Feeds `isQuietContext` (≥5s without input): quiet resets cannot be misclassified user actions, which gates the cell 9b/14 quiet-war re-arm; also logged as decision context (`input Nms ago`)                                                                                                                                                                                                                                      | this doc              |
+| Write-token registry (+ legacy `detail.origin` belt) | self-echo → filtered before arbiter                                                                                                                                                                                                                                                                                                                                                                                                                                      | existing              |
+| `readyState < 1`                                     | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
+| `rate ≤ SPEED_LIMITS.MIN`                            | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
+| Default (no evidence)                                | AUTONOMOUS                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
 
 Privacy: the evidence ledger is deliberately coarse — five in-memory
 timestamps and one boolean (last generic input, last two clicks, last
@@ -257,21 +269,36 @@ rules, and every policy flag is in target position.
 
 Deliberately deferred, in priority order:
 
-1. **Cooldown → write-token echo filter.** The cooldown time-window
-   blocks ALL ratechange processing after our writes (an undocumented
-   decision path with its own restore logic). Replacing it with
-   precise write-token matching deletes that branch and the backoff
-   plumbing — but it changes this spec's stated adapter assumption
-   (echo filtering), so it is a spec-first change.
+1. **Cooldown → write-token echo filter** — DONE (2026-07). The
+   cooldown branch, its parallel restore logic, and the exponential
+   backoff plumbing are deleted; echo filtering is the write-token
+   registry described under "Event alphabet". Fight pacing is now
+   deliberately budget-only — no temporal spacing between fight-backs —
+   because the bound that matters for attrition safety is the count,
+   not the rate; and every exchange with a reactive site is now visible
+   to the fight budget instead of being invisibly absorbed by the
+   cooldown window (the suspected #1587 write-war engine).
 2. **Multi-tab authority (#1559)** as an explicit spec extension — the
    current cross-tab bleed is inherited accident, not decision.
 3. **Per-video gesture scoping (F4)** — DECLINED (2026-07): document-wide
    evidence is the accepted design position; the tiered value asymmetry
    already shrank the cross-video blast radius. Revisit only on field
    evidence from multi-video feed sites.
-4. **`setSpeed` decomposition** into dumb effect primitives — the
-   source-taxonomy ('internal'/'external'/'init') is half-dissolved
-   (F1 fix); full dissolution pending.
+4. **`setSpeed` decomposition** — DONE (2026-07). `setSpeed` and its
+   source taxonomy ('internal'/'external'/'init') no longer exist; the
+   effects vocabulary maps 1:1 to named primitives: WRITE →
+   `ActionHandler.writeRate` (takes the echo token), SYNC_UI →
+   `ActionHandler.syncIndicator`, PERSIST → `config.persistAuthority`,
+   CLEAR_AUTHORITY / RESTORE_AUTHORITY →
+   `config.clearSessionAuthority` / `restoreSessionAuthority`.
+   `adjustSpeed` IS the USER_SET event (every remaining caller is a
+   user acting through VSC) and executes that row's effects; lifecycle
+   and observe paths compose the bare primitives — so persistence
+   purity (I2) holds by construction instead of by source-string
+   checks. The synthetic origin-tagged `ratechange` dispatch was
+   retired with the taxonomy (the token filters the native echo); the
+   `detail.origin` check survives only as a belt for stale page-world
+   scripts during extension updates.
 5. **Legacy compat branches** — DONE (2026-07): deleted once their
    migration and ledger-history purposes were served; the executable
    history is one checkout away at tag `arbitration-executable-history`.
@@ -291,6 +318,10 @@ Three independent layers, all runnable locally:
    scenario streams drive the real production pipeline and the pure
    arbiter model under the same policy; observables must match at
    every step (hand scenarios + a 20-seed deterministic random sweep).
+   Echo absorption is itself proven differentially: the `echo` op
+   replays our own write's ratechange in the pipeline world ONLY — the
+   pure model has no echo concept — so equivalence holds iff the token
+   filter absorbs every echo completely.
    The bug ledger pins every known bug in three configurations: the
    historical legacy model (reproduces the original bug, forever, as
    executable history), the live pipeline (fixed or open per policy),
@@ -350,6 +381,8 @@ place behavior flips happen; every line cites its ledger entry. Status:
 | F2 (real surrender)                                | **shipped** | stand down to NO_OPINION; session authority cleared, stored speed survives next load. No owned state needed — the SURRENDERED-mode collapse kept derivation total |
 | #1581 (click narrowing)                            | **shipped** | fixed generically by tiered evidence + value asymmetry                                                                                                            |
 | Quiet-war re-arm (cells 9b/14)                     | **shipped** | speed returns once after machine-vs-machine wars; spec updated first, TLC re-verified                                                                             |
+| Write-token echo filter (deferred #1)              | **shipped** | cooldown + backoff deleted; every genuinely external event now reaches the arbiter, so reactive-site exchanges are budget-accounted (suspected #1587 engine)      |
+| Effect primitives (deferred #4)                    | **shipped** | `setSpeed` + source taxonomy dissolved into `writeRate`/`syncIndicator`/`persistAuthority`; I2 now holds by construction                                          |
 
 Remaining debates are about which behavior we want per cell — never
 about implementation correctness.

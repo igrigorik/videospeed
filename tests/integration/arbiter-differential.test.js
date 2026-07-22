@@ -16,11 +16,18 @@
  *    arbitration-executable-history to run them.
  *
  * Pacing model (mirrors production timing constants):
- *   quick =   50ms — inside the 300ms gesture window; only ever follows
- *                    gesture ops, so no cooldown interference
- *   med   = 2500ms — clears max cooldown (2000ms) but stays inside the
- *                    fight window (3000ms): fights accumulate
+ *   quick =   50ms — inside the 300ms gesture window
+ *   med   = 2500ms — outside the gesture window but inside the fight
+ *                    window (3000ms): fights accumulate
  *   slow  = 3500ms — clears the fight window: fight count forgiven
+ *
+ * The 'echo' op simulates the browser's queued ratechange for our own
+ * preceding write. It exists ONLY in the pipeline world — the pure model
+ * has no echo concept, our writes simply don't produce events there — so
+ * differential equivalence proves the write-token filter absorbs echoes
+ * completely. Place it only right after write-producing ops (userVsc,
+ * fought siteRate): an unmatched echo elsewhere is a genuine external
+ * event by definition and would rightly diverge.
  */
 
 import { vi } from 'vitest';
@@ -33,7 +40,7 @@ const A = window.VSC.SpeedArbiter;
 const IC = window.VSC.IntentClassifier;
 
 const PACE_MS = { quick: 50, med: 2500, slow: 3500 };
-const FIGHT_WINDOW_MS = 3000; // EventManager.FIGHT_WINDOW_MS
+const FIGHT_WINDOW_MS = 3000; // SpeedArbitration.FIGHT_WINDOW_MS
 const round2 = (v) => Number(v.toFixed(2));
 
 function initialRegister(init) {
@@ -129,6 +136,18 @@ async function legacyStep(world, op) {
     }
     case 'siteRate':
       world.video.playbackRate = op.rate;
+      world.eventManager.handleRateChange({
+        composedPath: () => [world.video],
+        target: world.video,
+        detail: null,
+        timeStamp: world.now,
+        stopImmediatePropagation() {},
+      });
+      break;
+    case 'echo':
+      // The queued native ratechange for our own last write: same video,
+      // current register value, no origin marker — indistinguishable from
+      // a site event except by the in-flight write token.
       world.eventManager.handleRateChange({
         composedPath: () => [world.video],
         target: world.video,
@@ -288,6 +307,8 @@ function arbStep(world, op) {
       arbApply(world, r.effects);
       break;
     }
+    case 'echo':
+      break; // our own writes produce no events in the model
     default:
       throw new Error(`unknown op ${op.op}`);
   }
@@ -425,6 +446,31 @@ describe('Differential: production pipeline ≡ pure arbiter model', () => {
     ]);
   });
 
+  it('write echoes are fully absorbed by tokens (user set, fight-back, lifecycle)', async () => {
+    await runDifferential({ rememberEnabled: true, rememberedSpeed: 1.5 }, [
+      { op: 'userVsc', speed: 2.0 },
+      { op: 'echo', pace: 'quick' }, // echo of our write: must be a perfect no-op
+      { op: 'siteRate', rate: 1.0 }, // autonomous -> fight-back writes 2.0
+      { op: 'echo', pace: 'quick' }, // echo of the fight-back write
+      { op: 'siteRate', rate: 1.0 }, // the war continues: budget still accounts
+      { op: 'echo', pace: 'quick' },
+      { op: 'play' },
+    ]);
+  });
+
+  it('dense user sequence with a coalesced echo (impossible under the old cooldown)', async () => {
+    await runDifferential({ rememberEnabled: true, rememberedSpeed: 1.0 }, [
+      // Held-key style burst: three writes inside 150ms. The player fires
+      // one ratechange for the final value; FIFO retirement must absorb it.
+      { op: 'userVsc', speed: 1.5 },
+      { op: 'userVsc', speed: 2.0, pace: 'quick' },
+      { op: 'userVsc', speed: 2.5, pace: 'quick' },
+      { op: 'echo', pace: 'quick' },
+      { op: 'siteRate', rate: 1.0 }, // and a genuine reset is still fought
+      { op: 'play' },
+    ]);
+  });
+
   it('keyboard evidence: speed keys arm, arrow keys do not (TARGET_RULES)', async () => {
     await runDifferential({ rememberEnabled: true, rememberedSpeed: 2.0 }, [
       { op: 'gestureKey', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
@@ -473,6 +519,12 @@ describe('Differential: production pipeline ≡ pure arbiter model', () => {
           lastWasGesture = false;
         } else if (roll < 0.75) {
           ops.push({ op: 'userVsc', speed: pick(speeds) });
+          if (rand() < 0.5) {
+            // After a user write we are HOLDING with register == desired,
+            // so an echo is safe here whether or not a token was taken
+            // (same-value writes take none and demote to observe).
+            ops.push({ op: 'echo', pace: 'quick' });
+          }
           lastWasGesture = false;
         } else if (roll < 0.9) {
           ops.push({ op: 'play' });

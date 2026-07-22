@@ -9,16 +9,16 @@ class EventManager {
     this.config = config;
     this.actionHandler = actionHandler;
     this.listeners = new Map();
-    this.coolDown = false;
 
     // Event deduplication to prevent duplicate key processing
     this.lastKeyEventSignature = null;
 
     // Decision core: classifier (gesture evidence -> verdicts) + arbiter
     // (pure transition table). See docs/speed-arbitration.md. This module
-    // is now an adapter: it owns DOM listeners and the cooldown echo
-    // filter; all accept/enforce/ignore decisions live in the arbiter, and
-    // fight/gesture state lives on the arbitration adapter.
+    // is an adapter: it owns DOM listeners and consumes the write-token
+    // echo filter; all accept/enforce/ignore decisions live in the
+    // arbiter, and fight/gesture/echo state lives on the arbitration
+    // adapter.
     this.arbitration = new window.VSC.SpeedArbitration(config, this);
   }
 
@@ -286,34 +286,6 @@ class EventManager {
    * @private
    */
   handleRateChange(event) {
-    if (this.coolDown) {
-      window.VSC.logger.debug('Rate change event blocked by cooldown');
-
-      // Get the video element to restore authoritative speed
-      const video = event.composedPath ? event.composedPath()[0] : event.target;
-
-      // Don't fight back during video initialization — the player's own setup
-      // fires ratechange at readyState=0; overwriting it can break the player.
-      if (video.readyState < 1) {
-        window.VSC.logger.debug('Skipping cooldown fight-back during video init (readyState < 1)');
-        return;
-      }
-
-      // RESTORE our authoritative value since external change already happened
-      if (video.vsc && this.config.settings.lastSpeed !== null) {
-        const authoritativeSpeed = this.config.settings.lastSpeed;
-        if (Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
-          window.VSC.logger.info(
-            `Restoring speed during cooldown from external ${video.playbackRate} to authoritative ${authoritativeSpeed}`
-          );
-          window.VSC.siteHandlerManager.handleSpeedChange(video, authoritativeSpeed);
-        }
-      }
-
-      event.stopImmediatePropagation();
-      return;
-    }
-
     // Get the actual video element (handle shadow DOM)
     const video = event.composedPath ? event.composedPath()[0] : event.target;
 
@@ -323,9 +295,24 @@ class EventManager {
       return;
     }
 
-    // Check if this is our own event
+    // Echo filter: our own write coming back through the register. A
+    // consumed token identifies exactly one expected echo — unlike the
+    // legacy time-based cooldown, nothing genuinely external is ever
+    // masked, so reactive sites that rewrite the rate in response to our
+    // writes produce budget-accounted fight exchanges instead of an
+    // invisible write war.
+    if (this.arbitration.consumeEcho(video, video.playbackRate)) {
+      window.VSC.logger.debug('Ignoring own write echo (in-flight token consumed)');
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    // Belt: origin-tagged synthetic events. This extension no longer
+    // dispatches them (the token filter replaced that mechanism), but a
+    // stale page-world script from a previous version may still emit them
+    // during an extension update; the classifier's SELF verdict mirrors
+    // this guard.
     if (event.detail && event.detail.origin === 'videoSpeed') {
-      // This is our change, don't process it again
       window.VSC.logger.debug('Ignoring extension-originated rate change');
       return;
     }
@@ -363,23 +350,6 @@ class EventManager {
   }
 
   /**
-   * Start cooldown period to prevent event spam
-   */
-  refreshCoolDown(duration = EventManager.BASE_COOLDOWN_MS) {
-    window.VSC.logger.debug(`Begin refreshCoolDown (${duration}ms)`);
-
-    if (this.coolDown) {
-      clearTimeout(this.coolDown);
-    }
-
-    this.coolDown = setTimeout(() => {
-      this.coolDown = false;
-    }, duration);
-
-    window.VSC.logger.debug('End refreshCoolDown');
-  }
-
-  /**
    * Clean up all event listeners
    */
   cleanup() {
@@ -395,11 +365,6 @@ class EventManager {
 
     this.listeners.clear();
 
-    if (this.coolDown) {
-      clearTimeout(this.coolDown);
-      this.coolDown = false;
-    }
-
     this.arbitration.cleanup();
   }
 }
@@ -412,15 +377,9 @@ EventManager.modifiersMatch = function (mods, ctrl, alt, meta, shift) {
   return mods.ctrl === ctrl && mods.alt === alt && mods.meta === meta && mods.shift === shift;
 };
 
-// Cooldown timing — the echo-suppression mechanism this module still owns.
-// Gesture-window timing lives on IntentClassifier; fight-window timing and
-// the fight budget live on SpeedArbitration/SpeedArbiter.
-
-// Base cooldown duration (ms) for ratechange handling; doubles each fight-back retry
-EventManager.BASE_COOLDOWN_MS = 200;
-
-// Maximum cooldown duration (ms) during fight-back backoff
-EventManager.MAX_COOLDOWN_MS = 2000;
+// Timing constants live where the state lives: gesture-window timing on
+// IntentClassifier; fight-window timing, the fight budget, and the echo
+// filter (write tokens) on SpeedArbitration/SpeedArbiter.
 
 // Create singleton instance
 window.VSC.EventManager = EventManager;

@@ -1,6 +1,7 @@
 /**
  * Unit tests for EventManager class
- * Tests cooldown behavior to prevent rapid changes
+ * Tests the write-token echo filter and the ratechange decision pipeline
+ * (classifier -> arbiter -> effect execution).
  */
 
 import { vi } from 'vitest';
@@ -22,109 +23,128 @@ describe('EventManager', () => {
     cleanupChromeMock();
   });
 
-  it('EventManager should initialize with cooldown disabled', async () => {
+  // Echo filter (write-token registry) tests
+
+  it('handleRateChange should consume a matching write token and stop the event', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const eventManager = new window.VSC.EventManager(config, actionHandler);
 
-    expect(eventManager.coolDown).toBe(false);
-  });
+    const mockVideo = createMockVideo({ playbackRate: 2.0 });
+    mockVideo.vsc = { speedIndicator: { textContent: '2.00' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
-  it('refreshCoolDown should activate cooldown period', async () => {
-    const config = window.VSC.videoSpeedConfig;
-    await config.load();
-
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
-
-    expect(eventManager.coolDown).toBe(false);
-
-    eventManager.refreshCoolDown();
-
-    expect(eventManager.coolDown).not.toBe(false);
-  });
-
-  it('handleRateChange should block events during cooldown', async () => {
-    const config = window.VSC.videoSpeedConfig;
-    await config.load();
-
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
-
-    const mockVideo = createMockVideo({ playbackRate: 1.0 });
-    mockVideo.vsc = { speedIndicator: { textContent: '1.00' } };
+    eventManager.arbitration.noteWrite(mockVideo, 2.0);
 
     let eventStopped = false;
-    const mockEvent = {
+    eventManager.handleRateChange({
       composedPath: () => [mockVideo],
       target: mockVideo,
-      detail: { origin: 'external' },
+      detail: null,
       stopImmediatePropagation: () => {
         eventStopped = true;
       },
-    };
+    });
 
-    eventManager.refreshCoolDown();
-
-    eventManager.handleRateChange(mockEvent);
+    // Consumed as our own echo: no fight, no adoption, event stopped.
     expect(eventStopped).toBe(true);
+    expect(eventManager.arbitration.fightCount).toBe(0);
   });
 
-  it('cooldown should expire after timeout', async () => {
+  it('tokens are consume-once: a second identical rate is treated as external', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.5;
+
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+
+    const mockVideo = createMockVideo({ playbackRate: 2.0 });
+    mockVideo.vsc = { speedIndicator: { textContent: '2.00' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
+
+    eventManager.arbitration.noteWrite(mockVideo, 2.0);
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 2.0)).toBe(true);
+    // Same value again — token is gone, this is a genuine external event.
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 2.0)).toBe(false);
+  });
+
+  it('echo matching is value-tolerant for player-quantized echoes', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
 
-    eventManager.refreshCoolDown();
-    expect(eventManager.coolDown).not.toBe(false);
+    // One 2-decimal rounding step off — a player quantized our write.
+    eventManager.arbitration.noteWrite(mockVideo, 2.0);
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 2.01)).toBe(true);
 
-    const waitMs = (window.VSC.EventManager?.BASE_COOLDOWN_MS || 50) + 50;
-    await vi.advanceTimersByTimeAsync(waitMs);
-
-    expect(eventManager.coolDown).toBe(false);
+    eventManager.arbitration.noteWrite(mockVideo, 2.0);
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 2.1)).toBe(false);
   });
 
-  it('multiple refreshCoolDown calls should reset timer', async () => {
+  it('a matched echo retires older coalesced writes (FIFO)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
 
-    eventManager.refreshCoolDown();
-    const firstTimeout = eventManager.coolDown;
-    expect(firstTimeout).not.toBe(false);
+    // Rapid successive writes; the player fires one ratechange for the last.
+    eventManager.arbitration.noteWrite(mockVideo, 1.1);
+    eventManager.arbitration.noteWrite(mockVideo, 1.2);
+    eventManager.arbitration.noteWrite(mockVideo, 1.3);
 
-    await vi.advanceTimersByTimeAsync(100);
-
-    eventManager.refreshCoolDown();
-    const secondTimeout = eventManager.coolDown;
-
-    expect(secondTimeout).not.toBe(firstTimeout);
-    expect(secondTimeout).not.toBe(false);
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 1.3)).toBe(true);
+    // The earlier writes' echoes were coalesced — their tokens are retired.
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 1.1)).toBe(false);
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 1.2)).toBe(false);
   });
 
-  it('cleanup should clear cooldown', async () => {
+  it('tokens expire after ECHO_TTL_MS', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
 
-    eventManager.refreshCoolDown();
-    expect(eventManager.coolDown).not.toBe(false);
+    const nowSpy = vi.spyOn(performance, 'now');
+    try {
+      nowSpy.mockReturnValue(10000);
+      eventManager.arbitration.noteWrite(mockVideo, 2.0);
 
-    eventManager.cleanup();
-    expect(eventManager.coolDown).toBe(false);
+      nowSpy.mockReturnValue(10000 + window.VSC.SpeedArbitration.ECHO_TTL_MS + 1);
+      expect(eventManager.arbitration.consumeEcho(mockVideo, 2.0)).toBe(false);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
-  // Cooldown timing race tests
+  it('the in-flight queue is bounded by ECHO_MAX_PENDING', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
 
-  it('cooldown should be active BEFORE playbackRate assignment in setSpeed', async () => {
+    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const mockVideo = createMockVideo({ playbackRate: 1.0 });
+
+    const cap = window.VSC.SpeedArbitration.ECHO_MAX_PENDING;
+    for (let i = 0; i <= cap; i++) {
+      eventManager.arbitration.noteWrite(mockVideo, 2 + i / 10);
+    }
+
+    expect(eventManager.arbitration.pendingWrites.get(mockVideo).length).toBe(cap);
+    // The oldest write was evicted.
+    expect(eventManager.arbitration.consumeEcho(mockVideo, 2.0)).toBe(false);
+  });
+
+  it('token is registered BEFORE the playbackRate assignment in writeRate', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
@@ -137,7 +157,7 @@ describe('EventManager', () => {
       speedIndicator: { textContent: '1.00' },
     };
 
-    let cooldownActiveDuringAssignment = false;
+    let tokenPresentDuringAssignment = false;
 
     let currentRate = 1.0;
     Object.defineProperty(mockVideo, 'playbackRate', {
@@ -145,42 +165,69 @@ describe('EventManager', () => {
         return currentRate;
       },
       set(v) {
-        cooldownActiveDuringAssignment = eventManager.coolDown !== false;
+        // The (possibly synchronous) echo must find its token already there.
+        const queue = eventManager.arbitration.pendingWrites.get(mockVideo);
+        tokenPresentDuringAssignment = !!queue && queue.length > 0;
         currentRate = v;
       },
       configurable: true,
     });
 
-    actionHandler.setSpeed(mockVideo, 2.0, 'internal');
+    actionHandler.writeRate(mockVideo, 2.0);
 
-    expect(cooldownActiveDuringAssignment).toBe(true);
+    expect(tokenPresentDuringAssignment).toBe(true);
   });
 
-  it('setSpeed should not cause handleRateChange to process event as external', async () => {
+  it("adjustSpeed's own write echo is not processed as an external change", async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    eventManager.actionHandler = actionHandler;
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = {
       div: document.createElement('div'),
       speedIndicator: { textContent: '1.00' },
     };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
-    let externalAdjustCalled = false;
-    const originalAdjust = actionHandler.adjustSpeed.bind(actionHandler);
-    actionHandler.adjustSpeed = function (video, value, options = {}) {
-      if (options.source === 'external') {
-        externalAdjustCalled = true;
-      }
-      return originalAdjust(video, value, options);
-    };
+    actionHandler.adjustSpeed(mockVideo, 2.0);
+    expect(config.settings.lastSpeed).toBe(2.0);
 
-    actionHandler.setSpeed(mockVideo, 2.0, 'internal');
+    // Simulate the native echo the write produced.
+    let eventStopped = false;
+    eventManager.handleRateChange({
+      composedPath: () => [mockVideo],
+      target: mockVideo,
+      detail: null,
+      stopImmediatePropagation: () => {
+        eventStopped = true;
+      },
+    });
 
-    expect(externalAdjustCalled).toBe(false);
+    // Swallowed as our own echo: no fight, authority untouched.
+    expect(eventStopped).toBe(true);
+    expect(eventManager.arbitration.fightCount).toBe(0);
+    expect(config.settings.lastSpeed).toBe(2.0);
+  });
+
+  it('writeRate takes no token for a same-value write (no echo will fire)', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const mockVideo = createMockVideo({ playbackRate: 2.0 });
+    mockVideo.vsc = { speedIndicator: { textContent: '2.00' } };
+
+    // Lifecycle re-asserts write the value already in the register.
+    actionHandler.writeRate(mockVideo, 2.0);
+
+    const queue = eventManager.arbitration.pendingWrites.get(mockVideo);
+    expect(queue === undefined || queue.length === 0).toBe(true);
   });
 
   // Fight back / extension event tests
@@ -275,15 +322,9 @@ describe('EventManager', () => {
     await config.load();
     config.settings.lastSpeed = 2.0;
 
-    const externalAdjustSpy = vi.fn();
     const actionHandler = new window.VSC.ActionHandler(config, null);
-    actionHandler.adjustSpeed = function (_video, _value, options = {}) {
-      if (options.source === 'external') {
-        externalAdjustSpy();
-      }
-    };
-
     const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const observeSpy = vi.spyOn(actionHandler, 'syncIndicator');
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = { speedIndicator: { textContent: '1.00' } };
@@ -292,7 +333,6 @@ describe('EventManager', () => {
     const maxFights = window.VSC.SpeedArbiter.DEFAULT_MAX_FIGHT + 1;
 
     for (let i = 0; i < maxFights - 1; i++) {
-      eventManager.coolDown = false;
       mockVideo.playbackRate = 1.0;
       eventManager.handleRateChange({
         composedPath: () => [mockVideo],
@@ -302,9 +342,8 @@ describe('EventManager', () => {
       });
     }
 
-    eventManager.coolDown = false;
     mockVideo.playbackRate = 1.0;
-    externalAdjustSpy.mockClear();
+    observeSpy.mockClear();
     eventManager.handleRateChange({
       composedPath: () => [mockVideo],
       target: mockVideo,
@@ -312,7 +351,9 @@ describe('EventManager', () => {
       stopImmediatePropagation: () => {},
     });
 
-    expect(externalAdjustSpy).toHaveBeenCalled();
+    // Surrender: authority cleared, site speed merely observed (SYNC_UI).
+    expect(config.settings.lastSpeed).toBe(null);
+    expect(observeSpy).toHaveBeenCalledWith(mockVideo, 1.0);
   });
 
   it('fight count should reset after quiet period', async () => {
@@ -328,7 +369,6 @@ describe('EventManager', () => {
     Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
     for (let i = 0; i < 2; i++) {
-      eventManager.coolDown = false;
       mockVideo.playbackRate = 1.0;
       eventManager.handleRateChange({
         composedPath: () => [mockVideo],

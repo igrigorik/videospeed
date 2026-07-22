@@ -154,18 +154,18 @@ class ActionHandler {
 
       case 'SET_SPEED':
         window.VSC.logger.info('Setting speed to:', value);
-        this.adjustSpeed(video, value, { source: 'internal' });
+        this.adjustSpeed(video, value);
         break;
 
       case 'ADJUST_SPEED':
         window.VSC.logger.info('Adjusting speed by:', value);
-        this.adjustSpeed(video, value, { relative: true, source: 'internal' });
+        this.adjustSpeed(video, value, { relative: true });
         break;
 
       case 'RESET_SPEED': {
         window.VSC.logger.info('Resetting speed');
         const preferredSpeed = this.config.getKeyBinding('fast') || 1.0;
-        this.adjustSpeed(video, preferredSpeed, { source: 'internal' });
+        this.adjustSpeed(video, preferredSpeed);
         break;
       }
 
@@ -371,14 +371,20 @@ class ActionHandler {
   }
 
   /**
-   * Adjust video playback speed (absolute or relative)
-   * Simplified to use proven working logic from setSpeed method
+   * Adjust video playback speed (absolute or relative).
+   *
+   * This IS the USER_SET event (contract cells 5/12): every caller is a
+   * user acting through VSC — shortcuts, controller UI, popup, wheel. The
+   * arbiter's USER_SET row is unconditional, so no classification happens
+   * here; the effect row (PERSIST, WRITE, SYNC_UI) executes in
+   * _adjustSpeedInternal. Non-user speed changes never come through this
+   * method: lifecycle restores call writeRate/syncIndicator directly, and
+   * external rates are decided by SpeedArbitration.onExternalRate.
    *
    * @param {HTMLMediaElement} video - Target video element
    * @param {number} value - Speed value (absolute) or delta (relative)
    * @param {Object} options - Configuration options
    * @param {boolean} options.relative - If true, value is a delta; if false, absolute speed
-   * @param {string} options.source - 'internal' (user action) or 'external' (site/other)
    */
   adjustSpeed(video, value, options = {}) {
     return window.VSC.logger.withContext(video, () => {
@@ -402,7 +408,7 @@ class ActionHandler {
    * @private
    */
   _adjustSpeedInternal(video, value, options) {
-    const { relative = false, source = 'internal' } = options;
+    const { relative = false } = options;
 
     // Calculate target speed
     let targetSpeed;
@@ -434,16 +440,16 @@ class ActionHandler {
     // Round to 2 decimal places to avoid floating point issues
     targetSpeed = Number(targetSpeed.toFixed(2));
 
-    // Fight detection is enforced upstream in the arbitration adapter.
-    // External changes that reach here have already been approved (fight surrendered or speed matched).
-
-    // A user action claims authority with a clean fight budget (contract
-    // cells 5/12) — inform the adapter before the write lands.
-    if (source === 'internal' && this.eventManager?.arbitration) {
+    // USER_SET effect row, in order. A user action claims authority with a
+    // clean fight budget (cells 5/12); authority must be current BEFORE the
+    // register write, so any handler observing the resulting ratechange
+    // reads fresh state.
+    if (this.eventManager?.arbitration) {
       this.eventManager.arbitration.noteUserSet();
     }
-
-    this.setSpeed(video, targetSpeed, source);
+    this.config.persistAuthority(targetSpeed);
+    this.writeRate(video, targetSpeed);
+    this.syncIndicator(video, targetSpeed);
   }
 
   /**
@@ -458,51 +464,39 @@ class ActionHandler {
   }
 
   /**
-   * Set video playback speed with complete state management
-   * Unified implementation with all functionality - no fragmented logic
+   * WRITE effect primitive: set the register (video.playbackRate) through
+   * the per-site strategy, first registering the value with the in-flight
+   * write registry so the native ratechange echo is filtered
+   * (SpeedArbitration.noteWrite/consumeEcho) instead of being classified
+   * as an external change.
+   *
+   * A same-value assignment fires no ratechange (per spec), so no token is
+   * taken for it — lifecycle re-asserts on every play/seeked would
+   * otherwise accumulate stale tokens.
+   *
+   * Never touches authority (lastSpeed) or the UI: callers compose this
+   * with persistAuthority/syncIndicator per the contract's effect rows.
+   *
    * @param {HTMLMediaElement} video - Video element
-   * @param {number} speed - Target speed
-   * @param {string} source - Change source: 'internal' (user/extension) or 'external' (site)
+   * @param {number} rate - Target speed
    */
-  setSpeed(video, speed, source = 'internal') {
-    const speedValue = speed.toFixed(2);
-    const numericSpeed = Number(speedValue);
-
-    // 1. Update lastSpeed BEFORE touching playbackRate. The playbackRate
-    //    assignment (step 3) fires a synchronous native ratechange event.
-    //    The cooldown handler reads lastSpeed as the "authoritative" speed
-    //    to restore during fight-back. If lastSpeed is stale, the handler
-    //    undoes the very change we're making.
-    //    'init' source: skip — don't arm fight-back with the initialization
-    //    default; let the first real user/site action establish authority.
-    if (source !== 'external' && source !== 'init') {
-      this.config.settings.lastSpeed = numericSpeed;
+  writeRate(video, rate) {
+    const numericSpeed = Number(rate.toFixed(2));
+    if (video.playbackRate !== numericSpeed && this.eventManager?.arbitration) {
+      this.eventManager.arbitration.noteWrite(video, numericSpeed);
     }
-
-    // 2. Start cooldown — the playbackRate assignment below triggers a
-    //    native ratechange event synchronously. Without cooldown active,
-    //    handleRateChange would misclassify it as an external site change.
-    if (this.eventManager) {
-      this.eventManager.refreshCoolDown();
-    }
-
-    // 3. Set the actual playback rate via site handler (native ratechange fires here, blocked by cooldown)
     window.VSC.siteHandlerManager.handleSpeedChange(video, numericSpeed);
+  }
 
-    // 4. Dispatch synthetic event with source tracking
-    video.dispatchEvent(
-      new CustomEvent('ratechange', {
-        bubbles: true,
-        composed: true,
-        detail: {
-          origin: 'videoSpeed',
-          speed: speedValue,
-          source: source,
-        },
-      })
-    );
-
-    // 5. Update UI indicator
+  /**
+   * SYNC_UI effect primitive: reflect a speed in the controller badge and
+   * flash for visual feedback. Never touches the register or authority.
+   *
+   * @param {HTMLMediaElement} video - Video element
+   * @param {number} rate - Speed to display
+   */
+  syncIndicator(video, rate) {
+    const numericSpeed = Number(rate.toFixed(2));
     const speedIndicator = video.vsc?.speedIndicator;
     if (!speedIndicator) {
       window.VSC.logger.warn(
@@ -512,16 +506,6 @@ class ActionHandler {
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    // 6. Persist to storage only for user-attributed changes (persistence
-    //    purity, invariant I2). 'init' excluded symmetrically with step 1:
-    //    before this fix, a lifecycle restore with rememberSpeed on leaked
-    //    to storage AND — because save() merges into in-memory settings —
-    //    silently promoted the restored value to fightable authority (F1).
-    if (source !== 'external' && source !== 'init' && this.config.settings.rememberSpeed) {
-      this.config.save({ lastSpeed: numericSpeed });
-    }
-
-    // 7. Flash controller briefly for visual feedback
     if (video.vsc?.div) {
       this.flashController(video.vsc.div);
     }

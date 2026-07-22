@@ -224,6 +224,21 @@ if (!window.VSC.VideoSpeedConfig) {
     }
 
     /**
+     * Commit a speed as the SESSION authority (in-memory lastSpeed) and
+     * persist it when the user asked us to remember speed. Executes the
+     * arbiter's PERSIST effect (cells 2/5/7/12). Persistence purity (I2)
+     * holds by construction: only user-attributed choices reach this —
+     * lifecycle, fight and observe paths never call it.
+     * @param {number} speed
+     */
+    persistAuthority(speed) {
+      this.settings.lastSpeed = speed;
+      if (this.settings.rememberSpeed) {
+        this.save({ lastSpeed: speed });
+      }
+    }
+
+    /**
      * Restore the SESSION speed authority (in-memory lastSpeed) to a
      * previously user-held value, without touching storage. Executes the
      * arbiter's RESTORE_AUTHORITY effect (cell 14, quiet-war re-arm); the

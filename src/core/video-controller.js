@@ -61,9 +61,9 @@ class VideoController {
   /**
    * Initialize video speed based on settings.
    *
-   * Uses source:'init' so setSpeed skips the lastSpeed update — during init
-   * we don't want to arm fight-back with a stale/default value that could
-   * conflict with the player's own initialization sequence.
+   * Lifecycle writes execute WRITE + SYNC_UI only — never PERSIST (cell 6,
+   * persistence purity I2): re-asserting existing authority must not
+   * refresh it or leak an initialization value into storage.
    * @private
    */
   initializeSpeed() {
@@ -91,12 +91,14 @@ class VideoController {
       const handler = () => {
         this.video.removeEventListener('loadedmetadata', handler);
         if (targetSpeed !== this.video.playbackRate) {
-          this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'init' });
+          this.actionHandler.writeRate(this.video, targetSpeed);
+          this.actionHandler.syncIndicator(this.video, targetSpeed);
         }
       };
       this.video.addEventListener('loadedmetadata', handler);
     } else {
-      this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'init' });
+      this.actionHandler.writeRate(this.video, targetSpeed);
+      this.actionHandler.syncIndicator(this.video, targetSpeed);
     }
   }
 
@@ -227,9 +229,10 @@ class VideoController {
         return;
       }
 
-      // Lifecycle restore, not a user choice — don't persist to lastSpeed.
+      // Lifecycle restore, not a user choice — WRITE + SYNC_UI, no PERSIST.
       window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
-      this.actionHandler.adjustSpeed(event.target, targetSpeed, { source: 'init' });
+      this.actionHandler.writeRate(event.target, targetSpeed);
+      this.actionHandler.syncIndicator(event.target, targetSpeed);
     };
 
     // Bind event handlers

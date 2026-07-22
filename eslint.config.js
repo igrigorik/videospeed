@@ -39,13 +39,14 @@ export default [
     // Single-write discipline (docs/speed-arbitration.md): playbackRate and
     // lastSpeed are the arbitrated register and its authority. Only the
     // effect-execution layer may assign them — site handlers execute WRITE
-    // (per-site strategies), and settings/action-handler own lastSpeed
-    // persistence. Anywhere else, route the change through
-    // ActionHandler.adjustSpeed / the arbitration adapter so the arbiter
-    // stays the single decision point. Exceptional sites need a visible
-    // inline disable with a justification.
+    // (per-site strategies) and settings.js owns lastSpeed (persistAuthority
+    // and friends). Anywhere else, route the change through the effect
+    // primitives (ActionHandler.writeRate / config.persistAuthority) or
+    // ActionHandler.adjustSpeed so the arbiter stays the single decision
+    // point. Exceptional sites need a visible inline disable with a
+    // justification.
     files: ['src/**/*.js'],
-    ignores: ['src/site-handlers/**', 'src/core/settings.js', 'src/core/action-handler.js'],
+    ignores: ['src/site-handlers/**', 'src/core/settings.js'],
     rules: {
       'no-restricted-syntax': [
         'error',

@@ -60,9 +60,9 @@ const ARBITER_EFFECTS = Object.freeze({
   RESTORE_AUTHORITY: 'RESTORE_AUTHORITY',
 });
 
-// Effective fight budget. EventManager.MAX_FIGHT_COUNT is 5, but the legacy
-// handler increments THEN checks `>= MAX`, so the 5th reset surrenders after
-// only 4 fight-backs — the arbiter default preserves that observable budget.
+// Effective fight budget. The legacy handler's MAX_FIGHT_COUNT was 5, but it
+// incremented THEN checked `>= MAX`, so the 5th reset surrendered after only
+// 4 fight-backs — the arbiter default preserves that observable budget.
 const DEFAULT_MAX_FIGHT = 4;
 
 // Quiet-war re-arms per session. One: the user's speed gets a single second
