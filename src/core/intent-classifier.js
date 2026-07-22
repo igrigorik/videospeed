@@ -8,16 +8,8 @@
  * ALL such heuristics live here and only here. The arbiter guarantees that
  * classifier mistakes are recoverable, never correct — see the contract doc.
  *
- * Two rule sets:
- *   LEGACY_RULES — current master behavior, for differential verification:
- *     any unhandled key and any click arm the gesture window. Known false
- *     positives: arrow-key seek (#1562/#1546), progress-bar clicks (#1581).
- *   TARGET_RULES — tiered evidence (see below). Only native speed
- *     shortcut keys arm strong key intent (PR #1563); clicks feed a
- *     sequence detector; adoption of a reset-to-1.0 requires STRONG
- *     evidence (#1581, fixed generically).
- *
- * Evidence tiers (TARGET_RULES):
+ * Evidence tiers (TARGET_RULES; the legacy flat-window rule set lives at
+ * git tag `arbitration-executable-history`):
  *   STRONG — native speed key, site signature (YT hold/space), or a click
  *     SEQUENCE (two clicks within CLICK_SEQUENCE_WINDOW_MS, the last
  *     within the gesture window). Real speed menus are always >= 2 clicks
@@ -57,18 +49,9 @@ const CLASSIFIER_VERDICTS = Object.freeze({
   INIT_NOISE: 'INIT_NOISE',
 });
 
-const LEGACY_RULES = Object.freeze({
-  tiered: false, // flat 300ms window, any evidence adopts any value
-  anyUnhandledKeyArms: true, // any key blesses the next ratechange
-  clickArms: true,
-  pointerHoldArms: false, // click-and-hold invisible until mouseup (#1554)
-});
-
 const TARGET_RULES = Object.freeze({
-  tiered: true, // evidence tiers + value asymmetry (see header)
-  anyUnhandledKeyArms: false, // only native speed shortcuts (PR #1563)
-  // NOTE: no clickArms here — the tiered path always feeds clicks to the
-  // sequence detector; the flag exists only for the legacy flat-window path.
+  // Only native speed shortcuts arm strong key intent (PR #1563); clicks
+  // always feed the sequence detector; site signatures add per-host trust.
   pointerHoldArms: false, // YouTube-only addition via SITE_RULE_OVERRIDES (#1554)
 });
 
@@ -92,7 +75,7 @@ const SITE_RULE_OVERRIDES = Object.freeze({
  * Compose the effective rule set for a host: base rules plus any per-site
  * override whose key suffix-matches the hostname.
  *
- * @param {Object} base - TARGET_RULES / LEGACY_RULES / POLICY rules
+ * @param {Object} base - TARGET_RULES (or a test-supplied rule set)
  * @param {string} hostname - e.g. window.location.hostname
  * @returns {Object} effective rules
  */
@@ -152,11 +135,7 @@ class IntentClassifier {
   observeUnhandledKey(event) {
     this.lastInputAt = event.timeStamp;
     const isSpace = event.code === 'Space' || event.keyCode === 32;
-    if (
-      this.rules.anyUnhandledKeyArms ||
-      isNativeSpeedShortcutKey(event) ||
-      (this.rules.spacebarArms && isSpace)
-    ) {
+    if (isNativeSpeedShortcutKey(event) || (this.rules.spacebarArms && isSpace)) {
       this.lastGestureAt = event.timeStamp;
     }
   }
@@ -164,12 +143,8 @@ class IntentClassifier {
   /** A click that did not target the VSC controller. */
   observeClick(event) {
     this.lastInputAt = event.timeStamp;
-    if (this.rules.tiered) {
-      this.prevClickAt = this.lastClickAt;
-      this.lastClickAt = event.timeStamp;
-    } else if (this.rules.clickArms) {
-      this.lastGestureAt = event.timeStamp;
-    }
+    this.prevClickAt = this.lastClickAt;
+    this.lastClickAt = event.timeStamp;
     if (this.rules.pointerHoldArms) {
       this.pointerHeld = false; // click fires on release
     }
@@ -204,14 +179,6 @@ class IntentClassifier {
 
     const withinWindow = (ts) =>
       ts > 0 && ctx.timeStamp - ts >= 0 && ctx.timeStamp - ts < USER_GESTURE_WINDOW_MS;
-
-    if (!this.rules.tiered) {
-      // Legacy flat window: any armed evidence adopts any value.
-      if (withinWindow(this.lastGestureAt) || (this.rules.pointerHoldArms && this.pointerHeld)) {
-        return CLASSIFIER_VERDICTS.USER_INTENT;
-      }
-      return CLASSIFIER_VERDICTS.AUTONOMOUS;
-    }
 
     // Tiered evidence (see header).
     const clickInWindow = withinWindow(this.lastClickAt);
@@ -256,7 +223,6 @@ class IntentClassifier {
 
 window.VSC.IntentClassifier = IntentClassifier;
 window.VSC.IntentClassifier.VERDICTS = CLASSIFIER_VERDICTS;
-window.VSC.IntentClassifier.LEGACY_RULES = LEGACY_RULES;
 window.VSC.IntentClassifier.TARGET_RULES = TARGET_RULES;
 window.VSC.IntentClassifier.USER_GESTURE_WINDOW_MS = USER_GESTURE_WINDOW_MS;
 window.VSC.IntentClassifier.CLICK_SEQUENCE_WINDOW_MS = CLICK_SEQUENCE_WINDOW_MS;

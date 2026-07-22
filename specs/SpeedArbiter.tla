@@ -31,26 +31,22 @@
 (*     the post-init world. v2 must add an InitNoise observation and       *)
 (*     restate convergence as conditional on a subsequent Lifecycle.       *)
 (*                                                                         *)
-(* The Buggy* constants enable single-defect variants reproducing known    *)
-(* deviations of current master from the contract:                         *)
-(*   BuggyNoOpinionLifecycle: cell 1 writes the 1.0 baseline (issue #1537) *)
-(*   BuggyLifecyclePersist:   cell 6 persists on lifecycle restore (F1)    *)
+(* Historical note: Buggy* single-defect variants reproduced the           *)
+(* pre-migration bugs (#1537, F1) during the strangler-fig rewrite; they   *)
+(* were removed with the legacy-compat machinery. See git tag              *)
+(* arbitration-executable-history.                                         *)
 (***************************************************************************)
 EXTENDS Naturals
 
 CONSTANTS
-  Speeds,                   \* e.g. {"one", "v", "w"}; must contain "one"
-  MaxFight,                 \* fight-back budget per window (impl: 5)
-  BuggyNoOpinionLifecycle,  \* BOOLEAN: model pre-#1537 behavior
-  BuggyLifecyclePersist     \* BOOLEAN: model finding F1
+  Speeds,   \* e.g. {"one", "v", "w"}; must contain "one"
+  MaxFight  \* fight-back budget per window (impl: 4 effective)
 
 None == "NONE"
 
 ASSUME /\ "one" \in Speeds
        /\ None \notin Speeds
        /\ MaxFight \in Nat /\ MaxFight > 0
-       /\ BuggyNoOpinionLifecycle \in BOOLEAN
-       /\ BuggyLifecyclePersist \in BOOLEAN
 
 VARIABLES
   rate,         \* the shared register: video.playbackRate
@@ -209,7 +205,7 @@ ObserveNoop ==
 Lifecycle ==
   \/ /\ mode = "Holding"
      /\ rate' = desired
-     /\ stored' = IF BuggyLifecyclePersist THEN desired ELSE stored
+     /\ stored' = stored
      /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
      /\ UNCHANGED <<mode, desired, fightCount, pending, pendingQuiet, warQuiet,
                     rearmBudget, quiet>>
@@ -221,12 +217,6 @@ Lifecycle ==
      /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
      /\ UNCHANGED <<desired, stored, fightCount, pending, pendingQuiet, warQuiet,
                     rearmBudget, quiet>>
-  \/ /\ mode = "NoOpinion"
-     /\ BuggyNoOpinionLifecycle
-     /\ rate' = "one"
-     /\ lastWriter' = IF rate # "one" THEN "vsc" ELSE lastWriter
-     /\ UNCHANGED <<mode, desired, stored, fightCount, pending, pendingQuiet,
-                    warQuiet, rearmBudget, quiet>>
 
 (* Rule 13: FIGHT_WINDOW_MS elapsed without new fights — forgive. *)
 FightWindowExpire ==
@@ -282,8 +272,8 @@ QuiescentConvergence ==
 -----------------------------------------------------------------------------
 (* ACTION PROPERTIES *)
 
-(* I1: in NoOpinion, VSC never writes the register. Violated by the
-   BuggyNoOpinionLifecycle variant (issue #1537). *)
+(* I1: in NoOpinion, VSC never writes the register (historically violated
+   by the pre-#1537 lifecycle baseline write). *)
 NoOpinionNeverWrites ==
   [][ (mode = "NoOpinion" /\ mode' = "NoOpinion" /\ rate' # rate)
         => lastWriter' # "vsc" ]_vars
@@ -294,7 +284,7 @@ RearmBudgetMonotone ==
 
 (* I2: persisted state moves only on a user action or a user-intent
    adoption (both consume: UserSet sets lastWriter'="user"; adoption
-   consumes pending). Violated by the BuggyLifecyclePersist variant (F1).
+   consumes pending). This is invariant I2, historically violated by F1.
    Note rule 14 (re-arm) restores in-memory authority WITHOUT touching
    stored — this property is exactly why that distinction matters. *)
 PersistencePurity ==

@@ -3,20 +3,17 @@
  *
  * 1. DIFFERENTIAL EQUIVALENCE — the same scenario streams drive (a) the real
  *    production pipeline (EventManager + VideoController + ActionHandler +
- *    settings) and (b) the pure arbiter model under the SAME policy
- *    (SpeedArbitration.POLICY). Observables (register, in-memory lastSpeed,
+ *    settings) and (b) the pure arbiter model under the same composed
+ *    classifier rules. Observables (register, in-memory lastSpeed,
  *    persisted lastSpeed) must match at every step. This permanently pins
  *    the pipeline to the verified model: any adapter-wiring drift or
  *    policy/model mismatch fails here with a step-by-step trace.
  *
- * 2. BUG LEDGER — one deterministic test per known bug (open and resolved).
- *    Each entry pins three configurations: the historical legacy model
- *    ('legacy' — reproduces the original bug, forever, as executable
- *    history), the live production pipeline (fixed or still-open per
- *    SpeedArbitration.POLICY), and the full target contract ('target').
- *    Flipping a policy line flips the corresponding pipeline assertions
- *    here; what remains debatable is which behavior we want per cell,
- *    never whether the implementation is correct.
+ * 2. BUG LEDGER — one deterministic regression test per known bug,
+ *    pinning the live pipeline and the pure model to the fixed behavior.
+ *    The pre-migration reproductions (the 'legacy' model runs) were
+ *    retired with the compat machinery; check out git tag
+ *    arbitration-executable-history to run them.
  *
  * Pacing model (mirrors production timing constants):
  *   quick =   50ms — inside the 300ms gesture window; only ever follows
@@ -86,7 +83,7 @@ async function createLegacyWorld(init) {
   // (localhost); re-compose for the scenario's simulated host so per-site
   // signatures (e.g. YouTube hold-for-2x) are exercised.
   eventManager.arbitration.classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-    window.VSC.SpeedArbitration.POLICY.rules,
+    window.VSC.IntentClassifier.TARGET_RULES,
     init.hostname || 'localhost'
   );
 
@@ -115,9 +112,8 @@ async function legacyStep(world, op) {
       world.eventManager.arbitration.classifier.observeClick({ timeStamp: world.now });
       break;
     case 'pointerDown':
-      // Exactly what EventManager's pointerdown listener does now. (Under
-      // LEGACY_RULES this is a no-op — that WAS bug #1554; TARGET_RULES
-      // treat a held pointer as ongoing intent.)
+      // Exactly what EventManager's pointerdown listener does now (a
+      // held pointer is intent only under YouTube's site signature).
       world.eventManager.arbitration.classifier.observePointerDown({ timeStamp: world.now });
       break;
     case 'gestureKey': {
@@ -169,24 +165,10 @@ async function destroyLegacyWorld(world) {
 /* Arbiter world: pure core + classifier + effect application          */
 /* ------------------------------------------------------------------ */
 
-function createArbiterWorld(init, variant) {
-  const POLICY = window.VSC.SpeedArbitration.POLICY;
-  const compat =
-    variant === 'legacy' ? A.LEGACY_COMPAT : variant === 'policy' ? POLICY.compat : A.TARGET_COMPAT;
-  // Per-site signature composition mirrors the production adapter — except
-  // for the historical 'legacy' variant, which predates the signature table
-  // and must reproduce old behavior on every host.
-  const rules =
-    variant === 'legacy'
-      ? IC.LEGACY_RULES
-      : IC.rulesForHost(
-          variant === 'policy' ? POLICY.rules : IC.TARGET_RULES,
-          init.hostname || 'localhost'
-        );
+function createArbiterWorld(init) {
+  const rules = IC.rulesForHost(IC.TARGET_RULES, init.hostname || 'localhost');
   return {
-    variant,
-    compat,
-    state: A.loadState(init, compat),
+    state: A.loadState(init),
     register: initialRegister(init),
     // chrome.storage ships lastSpeed: 1.0 as the install default
     stored: init.rememberedSpeed ?? 1.0,
@@ -204,7 +186,6 @@ function arbApply(world, effects) {
         world.register = round2(e.speed);
         break;
       case A.EFFECTS.PERSIST:
-      case A.EFFECTS.LEGACY_PERSIST_STORAGE_ONLY:
         if (world.rememberEnabled) {
           world.stored = round2(e.speed);
         }
@@ -239,11 +220,10 @@ function arbAdvance(world, paceMs) {
 
 function arbStep(world, op) {
   arbAdvance(world, PACE_MS[op.pace || 'med']);
-  const opts = { compat: world.compat };
 
   switch (op.op) {
     case 'userVsc': {
-      const r = A.step(world.state, { type: A.EVENTS.USER_SET, speed: op.speed }, opts);
+      const r = A.step(world.state, { type: A.EVENTS.USER_SET, speed: op.speed });
       world.state = r.state;
       world.sinceFight = 0;
       arbApply(world, r.effects);
@@ -275,10 +255,9 @@ function arbStep(world, op) {
       if (verdict === IC.VERDICTS.SELF) {
         break;
       }
-      // Legacy diff-gate parity (cell 10): a same-value change never reaches
-      // the legacy accept branch, so the gesture is not consumed.
+      // Tolerance parity (cell 10): a same-value change is no divergence
+      // and must not consume the gesture — mirror the adapter's demotion.
       if (
-        world.variant === 'legacy' &&
         verdict === IC.VERDICTS.USER_INTENT &&
         world.state.mode === A.MODES.HOLDING &&
         Math.abs(round2(op.rate) - world.state.desired) <= 0.01
@@ -286,16 +265,12 @@ function arbStep(world, op) {
         verdict = IC.VERDICTS.AUTONOMOUS;
       }
       const prevFight = world.state.fightCount;
-      const r = A.step(
-        world.state,
-        {
-          type: A.EVENTS.EXT_RATE,
-          speed: op.rate,
-          rateClass: verdict,
-          quiet: world.classifier.isQuietContext(world.now),
-        },
-        opts
-      );
+      const r = A.step(world.state, {
+        type: A.EVENTS.EXT_RATE,
+        speed: op.rate,
+        rateClass: verdict,
+        quiet: world.classifier.isQuietContext(world.now),
+      });
       world.state = r.state;
       if (world.state.fightCount > prevFight) {
         world.sinceFight = 0;
@@ -308,7 +283,7 @@ function arbStep(world, op) {
     }
     case 'play':
     case 'seeked': {
-      const r = A.step(world.state, { type: A.EVENTS.LIFECYCLE }, opts);
+      const r = A.step(world.state, { type: A.EVENTS.LIFECYCLE });
       world.state = r.state;
       arbApply(world, r.effects);
       break;
@@ -331,7 +306,7 @@ function arbObservables(world) {
 
 async function runDifferential(init, ops) {
   const legacy = await createLegacyWorld(init);
-  const arb = createArbiterWorld(init, 'policy');
+  const arb = createArbiterWorld(init);
   const trace = [];
 
   for (const op of ops) {
@@ -364,8 +339,8 @@ async function runLegacyModules(init, ops) {
   return { ...obs, stored: getMockStorage().lastSpeed ?? null };
 }
 
-function runArbiter(init, ops, variant) {
-  const world = createArbiterWorld(init, variant);
+function runArbiter(init, ops) {
+  const world = createArbiterWorld(init);
   for (const op of ops) {
     arbStep(world, op);
   }
@@ -377,7 +352,7 @@ function runArbiter(init, ops, variant) {
 /* Part 1: differential equivalence                                    */
 /* ------------------------------------------------------------------ */
 
-describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
+describe('Differential: production pipeline ≡ pure arbiter model', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     resetMockStorage();
@@ -517,7 +492,7 @@ describe('Differential: arbiter(LEGACY flags) ≡ real legacy modules', () => {
 /* Part 2: the bug ledger                                              */
 /* ------------------------------------------------------------------ */
 
-describe('Bug ledger: history reproduces, policy/target fix — deterministically', () => {
+describe('Bug ledger: deterministic regression pins for every known bug', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     resetMockStorage();
@@ -532,10 +507,9 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'siteRate', rate: 1.5 }, // user picked 1.5 in the native menu
       { op: 'play' },
     ];
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // history: bug reproduced
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline.rate).toBe(1.5); // production: fixed (release N)
-    expect(runArbiter(init, ops, 'target').rate).toBe(1.5);
+    expect(runArbiter(init, ops).rate).toBe(1.5);
   });
 
   it('#1494 (cell 6, resolved): lifecycle restore never overwrites lastSpeed', async () => {
@@ -547,8 +521,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.8, mem: 1.8 }); // stays fixed
 
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.8, mem: 1.8 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.8, mem: 1.8 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.8, mem: 1.8 });
   });
 
   it('#1554/#1568 (classifier): FIXED on YouTube — click-and-hold 2x boost accepted as intent', async () => {
@@ -561,10 +534,9 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'pointerDown' }, // user holds the mouse button on YouTube
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // site applies the 2x boost
     ];
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.0); // history: boost was fought
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (YT signature)
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('#1554 spacebar variant: FIXED on YouTube — space-hold boost accepted', async () => {
@@ -579,7 +551,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('space on a generic site does NOT bless a rate change', async () => {
@@ -590,7 +562,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
   });
 
   it('held pointer on a generic site does NOT bless a rate change', async () => {
@@ -600,7 +572,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     const ops = [{ op: 'pointerDown' }, { op: 'siteRate', rate: 2.0, pace: 'quick' }];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought back
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
   });
 
   it('#1562/#1546 (classifier): FIXED — arrow-key seek reset is fought, not adopted', async () => {
@@ -609,19 +581,17 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'gestureKey', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
       { op: 'siteRate', rate: 1.0, pace: 'quick' }, // YouTube's seek reset
     ];
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 }); // history
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (TARGET_RULES)
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('F1 (cell 6): FIXED — site-rule lifecycle restore no longer clobbers stored lastSpeed', async () => {
     const init = { siteRuleSpeed: 1.25, rememberEnabled: true, rememberedSpeed: 1.8 };
     const ops = [{ op: 'play' }]; // ZERO user actions
-    expect(runArbiter(init, ops, 'legacy').stored).toBe(1.25); // history: silent clobber
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline.stored).toBe(1.8); // production: persistence purity (setSpeed init fix)
-    expect(runArbiter(init, ops, 'target').stored).toBe(1.8);
+    expect(runArbiter(init, ops).stored).toBe(1.8);
   });
 
   it('F2 (cells 9/9b): FIXED — surrender stands down; no automatic war restart', async () => {
@@ -629,16 +599,13 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     const surrenderOps = Array.from({ length: 6 }, () => ({ op: 'siteRate', rate: 1.0 }));
     const restartOps = [...surrenderOps, { op: 'siteRate', rate: 1.0 }]; // one more after surrender
 
-    // History: authority silently retained — fighting again after surrender.
-    expect(runArbiter(init, restartOps, 'legacy')).toMatchObject({ rate: 1.5, mem: 1.5 });
-
     // Production: this war is input-quiet (no gestures in the scenario), so
     // the stand-down is REARMABLE — but the extra reset is only OBSERVED
     // (no fight): the war did not restart. Session authority is cleared;
     // the stored speed survives for the next page load.
     const pipeline = await runLegacyModules(init, restartOps);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
-    const target = runArbiter(init, restartOps, 'target');
+    const target = runArbiter(init, restartOps);
     expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.REARMABLE, stored: 1.5 });
   });
 
@@ -650,13 +617,13 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     const rearmOps = [...war, { op: 'play' }];
     const pipeline = await runLegacyModules(init, rearmOps);
     expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5, stored: 1.5 });
-    expect(runArbiter(init, rearmOps, 'target')).toMatchObject({ rate: 1.5, mem: 1.5 });
+    expect(runArbiter(init, rearmOps)).toMatchObject({ rate: 1.5, mem: 1.5 });
 
     // A second quiet war exhausts the budget: terminal, play stays silent.
     const secondWar = [...rearmOps, ...war, { op: 'play' }];
     const pipeline2 = await runLegacyModules(init, secondWar);
     expect(pipeline2).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
-    expect(runArbiter(init, secondWar, 'target')).toMatchObject({
+    expect(runArbiter(init, secondWar)).toMatchObject({
       rate: 1.0,
       mem: null,
       mode: A.MODES.NO_OPINION,
@@ -675,7 +642,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: null });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({
+    expect(runArbiter(init, ops)).toMatchObject({
       rate: 1.0,
       mem: null,
       mode: A.MODES.NO_OPINION,
@@ -689,13 +656,11 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'siteRate', rate: 1.75, pace: 'quick' },
       { op: 'play' },
     ];
-    // History: not adopted AND then stomped to 1.0 (#1537 compounded).
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: null });
     // Production: adopted as session authority — re-asserted on play, and a
     // later autonomous reset would be fought.
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.75, mem: 1.75 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.75, mem: 1.75 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.75, mem: 1.75 });
   });
 
   it('F5 (LOAD): FIXED — under a site rule, user native changes now stick', async () => {
@@ -705,12 +670,11 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // user picks 2x natively
       { op: 'play' },
     ];
-    expect(runArbiter(init, ops, 'legacy').rate).toBe(1.25); // history: reverted on play
     const pipeline = await runLegacyModules(init, ops);
     // Production: rule is initial authority, so adoption works (HOLDING mode)
     // and lifecycle re-asserts the user's 2x instead of snapping back.
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('#1581 (classifier): FIXED — single-click seek reset to 1.0 is fought, not adopted', async () => {
@@ -722,10 +686,9 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
       { op: 'gestureClick' }, // click on the Facebook progress bar
       { op: 'siteRate', rate: 1.0, pace: 'quick' }, // player resets on seek
     ];
-    expect(runArbiter(init, ops, 'legacy')).toMatchObject({ rate: 1.0, mem: 1.0 }); // history
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fought
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('menu "Normal" (click sequence -> 1.0) is still adopted', async () => {
@@ -740,7 +703,7 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // adopted
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
   });
 
   it('single click still adopts non-1.0 values (weak tier suffices)', async () => {
@@ -751,6 +714,6 @@ describe('Bug ledger: history reproduces, policy/target fix — deterministicall
     ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5 });
-    expect(runArbiter(init, ops, 'target')).toMatchObject({ rate: 1.5, mem: 1.5 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.5, mem: 1.5 });
   });
 });

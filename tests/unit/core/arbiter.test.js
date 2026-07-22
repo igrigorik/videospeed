@@ -2,9 +2,8 @@
  * Conformance tests for the speed arbitration core (src/core/arbiter.js).
  *
  * Structure mirrors docs/speed-arbitration.md:
- *  1. one test per transition-table cell (target contract)
- *  2. legacy-compat flags reproduce the documented current-master deviations
- *  3. a mini model checker: exhaustive BFS over the reachable state space,
+ *  1. one test per transition-table cell
+ *  2. a mini model checker: exhaustive BFS over the reachable state space,
  *     asserting the contract invariants I1-I6 on every edge — the in-repo,
  *     no-Java mirror of what TLC checks over specs/SpeedArbiter.tla
  */
@@ -289,61 +288,6 @@ describe('SpeedArbiter LOAD rules', () => {
   });
 });
 
-describe('SpeedArbiter legacy-compat flags reproduce current-master deviations', () => {
-  const legacy = { compat: A.LEGACY_COMPAT };
-
-  it('legacy cell 1 (#1537): NO_OPINION + LIFECYCLE writes the baseline', () => {
-    const { effects } = A.step(noOpinion(), { type: EVENTS.LIFECYCLE }, legacy);
-    expect(effects).toEqual([{ type: EFFECTS.WRITE, speed: 1.0 }]);
-  });
-
-  it('legacy F5 + F1: site-rule lifecycle enforces rule as baseline and leaks to storage', () => {
-    const s = A.loadState({ siteRuleSpeed: 1.25 }, A.LEGACY_COMPAT);
-    expect(s.mode).toBe(MODES.NO_OPINION); // rule is NOT fightable authority
-    const { effects } = A.step(s, { type: EVENTS.LIFECYCLE }, legacy);
-    expect(effects).toEqual([{ type: EFFECTS.WRITE, speed: 1.25 }]);
-  });
-
-  it('legacy F1: HOLDING lifecycle restore leaks desired to storage', () => {
-    const { effects } = A.step(holding(1.5), { type: EVENTS.LIFECYCLE }, legacy);
-    expect(types(effects)).toEqual([EFFECTS.WRITE, EFFECTS.LEGACY_PERSIST_STORAGE_ONLY]);
-  });
-
-  it('legacy F3: user-intent without prior authority is displayed, not adopted', () => {
-    const { state, effects } = A.step(
-      noOpinion(),
-      { type: EVENTS.EXT_RATE, speed: 1.5, rateClass: RATE_CLASSES.USER_INTENT },
-      legacy
-    );
-    expect(state.mode).toBe(MODES.NO_OPINION);
-    expect(types(effects)).toEqual([EFFECTS.SYNC_UI]);
-  });
-
-  it('legacy F2: surrender keeps authority — the war can restart', () => {
-    let s = holding(1.5);
-    for (let i = 0; i < A.DEFAULT_MAX_FIGHT; i++) {
-      s = A.step(
-        s,
-        { type: EVENTS.EXT_RATE, speed: 1.0, rateClass: RATE_CLASSES.AUTONOMOUS },
-        legacy
-      ).state;
-    }
-    const { state } = A.step(
-      s,
-      { type: EVENTS.EXT_RATE, speed: 1.0, rateClass: RATE_CLASSES.AUTONOMOUS },
-      legacy
-    );
-    expect(state).toMatchObject({ mode: MODES.HOLDING, desired: 1.5, fightCount: 0 });
-    // ...and after "surrendering", the next diverging reset is fought again:
-    const again = A.step(
-      state,
-      { type: EVENTS.EXT_RATE, speed: 1.0, rateClass: RATE_CLASSES.AUTONOMOUS },
-      legacy
-    );
-    expect(again.effects[0].type).toBe(EFFECTS.WRITE);
-  });
-});
-
 /**
  * Mini model checker: BFS over the full reachable (arbiter state, register)
  * graph for a small symbolic speed domain, asserting the contract invariants
@@ -447,7 +391,6 @@ describe('SpeedArbiter model checking (exhaustive over small domain)', () => {
               (event.type === EVENTS.EXT_RATE && event.rateClass === RATE_CLASSES.USER_INTENT)
           ).toBe(true);
         }
-        expect(effects.some((e) => e.type === EFFECTS.LEGACY_PERSIST_STORAGE_ONLY)).toBe(false);
 
         // I4 (convergence): after arbitrating any event that engages the
         // register (USER_SET, LIFECYCLE, non-noise EXT_RATE), a held

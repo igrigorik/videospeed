@@ -16,11 +16,12 @@
  *   surrendered mode to remember, so derivation stays total. Fight
  *   bookkeeping (count + window timer) is the only adapter-owned state.
  *
- * - Effects execute through ActionHandler.adjustSpeed with the legacy
- *   source taxonomy ('internal'/'external'/'init'), so persistence behavior
- *   (including the F1 save-merge quirk) stays bit-for-bit until the
- *   corresponding flags flip. The differential suite
- *   (tests/integration/arbiter-differential.test.js) is the proof.
+ * - Effects execute through ActionHandler.adjustSpeed with the source
+ *   taxonomy ('internal'/'external'/'init') — a transitional shape slated
+ *   for replacement by explicit executor primitives (see the deferred-work
+ *   register in the contract doc). The differential suite
+ *   (tests/integration/arbiter-differential.test.js) pins the pipeline to
+ *   the model either way.
  *
  * - Fight-back mechanics (exponential cooldown backoff, fight-window timer,
  *   stopImmediatePropagation) are execution details of the WRITE effect in
@@ -40,12 +41,11 @@ class SpeedArbitration {
   constructor(config, eventManager) {
     this.config = config;
     this.eventManager = eventManager;
-    this.compat = SpeedArbitration.POLICY.compat;
     this.classifier = new window.VSC.IntentClassifier({
       // Generic policy rules composed with evidence-driven per-site
       // exceptions (e.g. YouTube's hold-for-2x) for the current host.
       rules: window.VSC.IntentClassifier.rulesForHost(
-        SpeedArbitration.POLICY.rules,
+        window.VSC.IntentClassifier.TARGET_RULES,
         typeof window !== 'undefined' && window.location ? window.location.hostname : ''
       ),
       minRate: window.VSC.Constants.SPEED_LIMITS.MIN,
@@ -61,24 +61,19 @@ class SpeedArbitration {
   }
 
   /**
-   * Derive the arbiter state from settings (see the Wave-2 note above).
-   * Mirrors the legacy authority tests: lastSpeed !== null <=> HOLDING;
-   * siteDefaultSpeed (or 1.0) is the F5 baseline.
+   * Derive the arbiter state: lastSpeed is the session authority
+   * (null = no opinion), with adapter-owned rearm bookkeeping layered on.
    * @private
    */
   deriveState() {
     const A = window.VSC.SpeedArbiter;
     const s = this.config.settings;
-    const baseline = s.siteDefaultSpeed ?? 1.0;
-    const rememberEnabled = !!s.rememberSpeed;
 
     if (s.lastSpeed !== null && s.lastSpeed !== undefined) {
       return {
         mode: A.MODES.HOLDING,
         desired: s.lastSpeed,
         fightCount: this.fightCount,
-        baseline,
-        rememberEnabled,
         warQuiet: this.warQuiet,
         rearmBudget: this.rearmBudget,
       };
@@ -88,8 +83,6 @@ class SpeedArbitration {
         mode: A.MODES.REARMABLE,
         desired: this.rearmPendingSpeed,
         fightCount: this.fightCount,
-        baseline,
-        rememberEnabled,
         warQuiet: this.warQuiet,
         rearmBudget: this.rearmBudget,
       };
@@ -98,8 +91,6 @@ class SpeedArbitration {
       mode: A.MODES.NO_OPINION,
       desired: null,
       fightCount: this.fightCount,
-      baseline,
-      rememberEnabled,
       warQuiet: this.warQuiet,
       rearmBudget: this.rearmBudget,
     };
@@ -134,16 +125,12 @@ class SpeedArbitration {
     }
 
     const prevFight = this.fightCount;
-    const { state: next, effects } = A.step(
-      state,
-      {
-        type: A.EVENTS.EXT_RATE,
-        speed: speedForDecision,
-        rateClass: cls,
-        quiet: this.classifier.isQuietContext(event.timeStamp),
-      },
-      { compat: this.compat }
-    );
+    const { state: next, effects } = A.step(state, {
+      type: A.EVENTS.EXT_RATE,
+      speed: speedForDecision,
+      rateClass: cls,
+      quiet: this.classifier.isQuietContext(event.timeStamp),
+    });
     this.fightCount = next.fightCount;
     this.warQuiet = next.warQuiet;
     this.rearmBudget = next.rearmBudget;
@@ -239,17 +226,12 @@ class SpeedArbitration {
    * Lifecycle decision (cells 1/6): what, if anything, should the
    * register be set to on play/seeked/deferred-init?
    *
-   * @returns {number|null} target speed, or null for "no write" (cell 1;
-   *   never null under full legacy compat)
+   * @returns {number|null} target speed, or null for "no write" (cell 1)
    */
   lifecycleTarget() {
     const A = window.VSC.SpeedArbiter;
     const state = this.deriveState();
-    const { state: next, effects } = A.step(
-      state,
-      { type: A.EVENTS.LIFECYCLE },
-      { compat: this.compat }
-    );
+    const { state: next, effects } = A.step(state, { type: A.EVENTS.LIFECYCLE });
     const restore = effects.find((e) => e.type === A.EFFECTS.RESTORE_AUTHORITY);
     if (restore) {
       // Cell 14: quiet-war re-arm fires — restore session authority (memory
@@ -278,28 +260,10 @@ class SpeedArbitration {
 SpeedArbitration.FIGHT_WINDOW_MS = 3000;
 
 /**
- * Production arbitration policy — the single place behavior flips happen.
- * Every line cites its bug-ledger entry in
- * tests/integration/arbiter-differential.test.js; flipping a line is a
- * complete, individually revertable behavior change.
- *
- * NOTE the cell-1 / F5 coupling: with legacyNoOpinionLifecycle=false,
- * lifecycle events no longer write a baseline, so site rules MUST be
- * initial authority (legacySiteRuleLoad=false + settings.load() seeding
- * lastSpeed from the rule) or rules would never be enforced at all. These
- * two flags flip together or not at all.
+ * The migration-era POLICY object (per-flag compat switches + rule-set
+ * selection) was retired when every flag reached target position; behavior
+ * is now the contract itself. Flip history and rationale live in the git
+ * log and at tag `arbitration-executable-history`.
  */
-SpeedArbitration.POLICY = {
-  compat: Object.freeze({
-    legacyNoOpinionLifecycle: false, // cell 1 fixed (#1537) — release N
-    legacyLifecyclePersist: false, // F1 fixed (with setSpeed init-persist fix) — release N
-    legacySiteRuleLoad: false, // F5 fixed (rule = initial authority) — release N, coupled to cell 1
-    legacyShallowSurrender: false, // F2 fixed (real surrender = stand down to NO_OPINION)
-    legacyNoAdoption: false, // F3 fixed (native speed choices become authority)
-  }),
-  rules: null, // assigned below; IntentClassifier must be loaded first
-};
-SpeedArbitration.POLICY.rules = window.VSC.IntentClassifier.TARGET_RULES; // #1562/#1546/#1554/#1568 fixed — release N
-Object.freeze(SpeedArbitration.POLICY);
 
 window.VSC.SpeedArbitration = SpeedArbitration;

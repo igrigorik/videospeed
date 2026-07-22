@@ -265,13 +265,16 @@ Deliberately deferred, in priority order:
    (echo filtering), so it is a spec-first change.
 2. **Multi-tab authority (#1559)** as an explicit spec extension — the
    current cross-tab bleed is inherited accident, not decision.
-3. **Per-video gesture scoping (F4)** — the evidence ledger is
-   per-document; multi-video pages share it.
+3. **Per-video gesture scoping (F4)** — DECLINED (2026-07): document-wide
+   evidence is the accepted design position; the tiered value asymmetry
+   already shrank the cross-video blast radius. Revisit only on field
+   evidence from multi-video feed sites.
 4. **`setSpeed` decomposition** into dumb effect primitives — the
    source-taxonomy ('internal'/'external'/'init') is half-dissolved
    (F1 fix); full dissolution pending.
-5. **Legacy compat branches** are retained on purpose: they power the
-   ledger's executable history. Revisit only if arbiter clutter grows.
+5. **Legacy compat branches** — DONE (2026-07): deleted once their
+   migration and ledger-history purposes were served; the executable
+   history is one checkout away at tag `arbitration-executable-history`.
 
 ## Verification status
 
@@ -329,7 +332,12 @@ looser assumptions about misclassification.
 
 ## Production policy
 
-`SpeedArbitration.POLICY` (src/core/speed-arbitration.js) is the single
+The migration-era `SpeedArbitration.POLICY` flag object was retired when
+every flag reached target position — behavior is now the contract
+itself. The table below records what shipped and when; flip rationale
+lives in the git log, and the pre-migration machinery (compat flags,
+legacy rule set, executable bug reproductions) is preserved at git tag
+`arbitration-executable-history`.
 place behavior flips happen; every line cites its ledger entry. Status:
 
 | Fix                                                | Status      | Notes                                                                                                                                                             |

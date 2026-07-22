@@ -120,8 +120,8 @@ class EventManager {
       }
     } else {
       // Unhandled key — possibly a native site shortcut. Whether it counts
-      // as gesture evidence is the classifier's ruling (LEGACY_RULES: any
-      // key; TARGET_RULES: only native speed shortcuts, per PR #1563).
+      // as gesture evidence is the classifier's ruling (native speed
+      // shortcuts and site signatures only, per PR #1563).
       this.arbitration.classifier.observeUnhandledKey(event);
       window.VSC.logger.verbose(
         `No key binding found for code=${event.code}, keyCode=${event.keyCode}`
