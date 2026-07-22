@@ -98,6 +98,17 @@ a POSIX shell. Windows users need:
 13. Open your branch up on the github website then click `New pull request` and
     write up a description of your changes.
 
+## Changing speed behavior
+
+Anything that affects how VSC decides `video.playbackRate` — fight-back,
+adoption of native speed changes, lifecycle restores, site rules — is
+governed by the arbitration contract in `docs/speed-arbitration.md`
+(machine-checked twin: `specs/SpeedArbiter.tla`). PRs touching speed
+behavior must identify which transition-table cell(s) they change and
+why. Classifier heuristics (gesture evidence) must cite the issue that
+motivated them. `npm test` runs the conformance, model-checking, and
+differential suites that enforce this.
+
 ## Optional
 
 ### Run Git Hooks Manually

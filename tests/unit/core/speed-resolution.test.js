@@ -2,7 +2,7 @@
  * Unit tests for lifecycle speed resolution (arbiter LOAD priority as seen
  * through a real VideoController + arbitration adapter).
  *
- * Covers all rows of the truth table from plan.md:
+ * Covers the LOAD-priority truth table (docs/speed-arbitration.md):
  *   baseline = siteDefaultSpeed ?? 1.0
  *   lastSpeed wins if user has changed it (in-memory, !== 1.0)
  *   rememberSpeed controls cross-session storage persistence only

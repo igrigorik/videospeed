@@ -70,10 +70,12 @@ re-establishes authority) and can never cause writes in `NO_OPINION` mode.
 | `warQuiet`    | boolean                                  | Every fight of the current war was input-quiet (no reset could be a misclassified user action)                                       |
 | `rearmBudget` | 0..1                                     | Quiet-war re-arms remaining this session                                                                                             |
 
-Correspondence to today's code: `desired` is `settings.lastSpeed`
-(`null` = none), except under a site rule — see finding F5. `mode` is
-implicit today (derived from `lastSpeed === null`), which is part of why
-the lifecycle and ratechange paths could disagree.
+Correspondence to the code: `desired` is `settings.lastSpeed` (`null` =
+none; a site rule seeds it at load per the F5 fix), except in REARMABLE
+where the pending speed is adapter-owned (`rearmPendingSpeed`) and
+`lastSpeed` is null. `mode` is derived per decision by the arbitration
+adapter — the historical bugs came from lifecycle and ratechange paths
+deriving it differently; now one function does.
 
 State the arbiter does _not_ own: the evidence ledger
 (`lastUserInteractionAt`, click-held flag, key identity) belongs to the
@@ -105,7 +107,8 @@ that filtering is classifier/adapter duty; the arbiter never sees them.
 | —                      | No effect                                                                                                            |
 
 `PERSIST` is atomic by contract: in-memory and storage move together or
-not at all. (Today they can diverge — finding F1.)
+not at all. (They historically diverged — finding F1, fixed in the
+`setSpeed` init-persist change.)
 
 ## Initial mode (LOAD)
 
@@ -245,29 +248,37 @@ speed-intent key, pointer-held). No positions, key identities, element
 info, or event payloads are retained; nothing is persisted or leaves the
 page context, and every value is semantically dead after ~5 seconds.
 
-## Migration plan
+## Migration status (complete) and deferred work
 
-1. This document + `specs/SpeedArbiter.tla` reviewed and agreed (spec
-   before code).
-2. Pure `speed-arbiter.js` implementing `step()`, with a conformance
-   suite generated from TLC's reachable-state graph (every transition
-   edge becomes a test), alongside the existing unit tests.
-3. Strangler-fig: `event-manager.js` and `video-controller.js` delegate
-   decisions to the arbiter; they become adapters (DOM in → classified
-   event → arbiter → effects out). Behavior change should be zero
-   except cells deliberately fixed (1, 2, 9; F1, F5).
-4. Pending PRs #1563 and #1555 land as classifier changes referencing
-   the table.
-5. Multi-tab semantics (#1559) specified as an explicit extension —
-   today's cross-tab bleed is an accident of shared storage, not a
-   decision; the spec forces the decision.
+The original migration plan is done: spec agreed, pure arbiter landed
+with conformance + differential suites, event-manager/video-controller
+are adapters, community PRs #1563/#1555 are subsumed as classifier
+rules, and every policy flag is in target position.
+
+Deliberately deferred, in priority order:
+
+1. **Cooldown → write-token echo filter.** The cooldown time-window
+   blocks ALL ratechange processing after our writes (an undocumented
+   decision path with its own restore logic). Replacing it with
+   precise write-token matching deletes that branch and the backoff
+   plumbing — but it changes this spec's stated adapter assumption
+   (echo filtering), so it is a spec-first change.
+2. **Multi-tab authority (#1559)** as an explicit spec extension — the
+   current cross-tab bleed is inherited accident, not decision.
+3. **Per-video gesture scoping (F4)** — the evidence ledger is
+   per-document; multi-video pages share it.
+4. **`setSpeed` decomposition** into dumb effect primitives — the
+   source-taxonomy ('internal'/'external'/'init') is half-dissolved
+   (F1 fix); full dissolution pending.
+5. **Legacy compat branches** are retained on purpose: they power the
+   ledger's executable history. Revisit only if arbiter clutter grows.
 
 ## Verification status
 
 Three independent layers, all runnable locally:
 
 1. **TLC over `specs/SpeedArbiter.tla`** — target contract exhaustively
-   checked (582 states); two single-defect configs reproduce #1537 and
+   checked (2,820 states); two single-defect configs reproduce #1537 and
    F1 as property violations with minimal traces. Design-time oracle.
 2. **Mini model checker in `tests/unit/core/arbiter.test.js`** —
    exhaustive BFS over the reachable (state × register) graph asserting

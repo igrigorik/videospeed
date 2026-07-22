@@ -37,19 +37,15 @@
  *
  * Per-site signature overrides (SITE_RULE_OVERRIDES): the generic temporal
  * heuristic is the scalable default; overrides exist only for documented
- * exceptions, in either direction:
- *   - additions: YouTube's press-and-hold 2x boost (#1554/#1568) — the only
- *     web player with this interaction in the evidence base, so
- *     pointerHoldArms is scoped to YouTube rather than trusted globally
- *     (rate changes during a held pointer have innocent causes elsewhere,
- *     e.g. scrub-preview).
- *   - suppressions: sites whose players reset playbackRate as a side
- *     effect of click-triggered seeks (#1581, Facebook) can turn click
- *     arming off — pending verification that the site has no native speed
- *     menu that would become collateral.
- * Every entry must cite its issue. This table IS the scaling strategy:
- * generic signal + evidence-driven exception list, mirroring how site
- * handlers already work for positioning.
+ * exceptions — currently additions only (YouTube's press-and-hold 2x boost,
+ * #1554/#1568: the only web player with this interaction in the evidence
+ * base, so pointer/space hold is scoped there rather than trusted globally;
+ * held-pointer rate changes have innocent causes elsewhere, e.g.
+ * scrub-preview). The once-planned click-arming suppressions became
+ * unnecessary when the tiered rules fixed #1581 generically. Every entry
+ * must cite its issue. This table IS the scaling strategy: generic signal +
+ * evidence-driven exception list, mirroring how site handlers already work
+ * for positioning.
  */
 
 window.VSC = window.VSC || {};
@@ -71,7 +67,8 @@ const LEGACY_RULES = Object.freeze({
 const TARGET_RULES = Object.freeze({
   tiered: true, // evidence tiers + value asymmetry (see header)
   anyUnhandledKeyArms: false, // only native speed shortcuts (PR #1563)
-  clickArms: true, // clicks feed the sequence detector
+  // NOTE: no clickArms here — the tiered path always feeds clicks to the
+  // sequence detector; the flag exists only for the legacy flat-window path.
   pointerHoldArms: false, // YouTube-only addition via SITE_RULE_OVERRIDES (#1554)
 });
 
