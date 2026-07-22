@@ -132,6 +132,12 @@ Priority at page load:
 2. `rememberSpeed = on` and stored `lastSpeed` present → `HOLDING(stored)`
 3. Otherwise → `NO_OPINION`
 
+LOAD is the ONLY moment storage feeds authority. Each tab runs its own
+independent instance of this machine; stored `lastSpeed` is a shared
+last-writer-wins register that seeds new sessions and is written by
+`PERSIST`, never a live channel between running tabs (see "Design note:
+multi-tab authority").
+
 ## The transition table (target contract)
 
 | #   | State        | Event                                                                                                    | Effects                        | Next state             | Rationale / provenance                                                                                                                                                                                                 |
@@ -278,8 +284,11 @@ Deliberately deferred, in priority order:
    not the rate; and every exchange with a reactive site is now visible
    to the fight budget instead of being invisibly absorbed by the
    cooldown window (the suspected #1587 write-war engine).
-2. **Multi-tab authority (#1559)** as an explicit spec extension — the
-   current cross-tab bleed is inherited accident, not decision.
+2. **Multi-tab authority (#1559)** — DONE (2026-07): session isolation.
+   The storage listener no longer adopts remote `lastSpeed`; each tab is
+   an independent machine instance and storage is a last-writer-wins
+   register read only at LOAD (see the design note below). The
+   `_lastWrittenSpeed` self-echo token died with the channel it guarded.
 3. **Per-video gesture scoping (F4)** — DECLINED (2026-07): document-wide
    evidence is the accepted design position; the tiered value asymmetry
    already shrank the cross-video blast radius. Revisit only on field
@@ -361,6 +370,35 @@ quiet resets would resurrect the infinite periodic war — passive
 VIEWING is input-quiet, so quiet must never justify more fighting, only
 looser assumptions about misclassification.
 
+## Design note: multi-tab authority (#1559)
+
+Chosen model — **session isolation with last-writer-wins storage**: each
+tab runs an independent instance of the machine; stored `lastSpeed` is a
+shared register that (a) seeds authority at LOAD and (b) is written by
+`PERSIST` on user events. Tabs never exchange authority mid-session.
+The user-visible behavior: the speed you set in one tab stays put in
+other already-open tabs; whichever tab you adjusted last is what a NEW
+tab (or reload) picks up — which is native `chrome.storage` semantics,
+not machinery we maintain.
+
+What this replaced: the storage listener used to apply remote
+`lastSpeed` writes into the running session, making session authority a
+shared mutable cell across all tabs. That was the #1559 bleed — a speed
+change (or a per-site rule seeding, via F1) in one tab silently mutated
+every other tab's FIGHTABLE authority — and it was also a soundness
+hole: `desired` could change with no event in the verified alphabet, a
+channel neither the table, TLC, the mini-checker, nor the differential
+harness modeled. Session isolation doesn't extend the spec to cover
+multi-tab; it makes the single-tab spec TRUE, which is why the "spec
+extension" planned in the deferred register reduced to a deletion.
+
+Rejected alternative, for the record: live shared authority done
+properly (option (a)) would need `REMOTE_SET` in the event alphabet,
+echo-safe self-write detection (the retired `_lastWrittenSpeed` token),
+conflict resolution for concurrent tabs, and a defensible answer to
+"tab A's site war just surrendered — why did tab B's speed change?".
+All that buys a behavior users mostly experience as the bug in #1559.
+
 ## Production policy
 
 The migration-era `SpeedArbitration.POLICY` flag object was retired when
@@ -383,6 +421,7 @@ place behavior flips happen; every line cites its ledger entry. Status:
 | Quiet-war re-arm (cells 9b/14)                     | **shipped** | speed returns once after machine-vs-machine wars; spec updated first, TLC re-verified                                                                             |
 | Write-token echo filter (deferred #1)              | **shipped** | cooldown + backoff deleted; every genuinely external event now reaches the arbiter, so reactive-site exchanges are budget-accounted (suspected #1587 engine)      |
 | Effect primitives (deferred #4)                    | **shipped** | `setSpeed` + source taxonomy dissolved into `writeRate`/`syncIndicator`/`persistAuthority`; I2 now holds by construction                                          |
+| Multi-tab session isolation (#1559, deferred #2)   | **shipped** | remote `lastSpeed` no longer adopted mid-session; storage is last-writer-wins at LOAD only — makes the single-tab spec faithful                                   |
 
 Remaining debates are about which behavior we want per cell — never
 about implementation correctness.

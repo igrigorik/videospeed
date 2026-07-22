@@ -1,10 +1,11 @@
 /**
- * Tests for the settings race condition fix.
+ * Tests for cross-context settings behavior.
  *
  * Covers: granular writes (only changed keys hit storage), debounce
- * correctness, cross-context race windows, onChanged listener freshness,
- * self-echo detection (own writes don't revert state or cancel timers),
- * and external-write precedence (stale debounce timers are cancelled).
+ * correctness, cross-context race windows, onChanged listener freshness
+ * for non-authority keys, and lastSpeed session isolation (#1559): the
+ * listener NEVER adopts remote lastSpeed — session authority is
+ * tab-local, storage is last-writer-wins and consulted only at load().
  */
 
 import {
@@ -241,23 +242,44 @@ describe('SettingsRaceCondition', () => {
   });
 
   // ===========================================================================
-  // SECTION 3: onChanged listener keeps in-memory state fresh
+  // SECTION 3: onChanged listener — non-authority keys stay fresh,
+  // lastSpeed is session-isolated (#1559)
   // ===========================================================================
 
-  it('onChanged listener updates in-memory settings from external writes', async () => {
+  it('onChanged listener updates non-authority settings from external writes', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
+
+    // Options-page style change in another context
+    simulateExternalStorageWrite({ controllerOpacity: 0.8 });
+
+    // In-memory should be updated via onChanged
+    expect(config.settings.controllerOpacity).toBe(0.8);
+  });
+
+  it('onChanged listener never adopts remote lastSpeed (session isolation, #1559)', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
     expect(config.settings.lastSpeed).toBeNull();
 
-    // Simulate external write (e.g., from content script in another tab)
+    // Another tab's user picks a speed. This tab's session authority —
+    // the arbiter's `desired` — must not move: adopting it would mutate
+    // arbiter state through a channel outside the event alphabet and is
+    // exactly the cross-tab bleed of #1559.
     simulateExternalStorageWrite({ lastSpeed: 3.0 });
+    expect(config.settings.lastSpeed).toBeNull();
 
-    // In-memory should be updated via onChanged
-    expect(config.settings.lastSpeed).toBe(3.0);
+    // The value still reaches storage: a NEW session (load) picks it up —
+    // last-writer-wins at LOAD is the multi-tab contract.
+    config.settings.rememberSpeed = true;
+    const fresh = new window.VSC.VideoSpeedConfig();
+    getMockStorage().rememberSpeed = true;
+    await fresh.load();
+    expect(fresh.settings.lastSpeed).toBe(3.0);
   });
 
-  it('onChanged listener updates multiple keys at once', async () => {
+  it('onChanged listener updates multiple keys at once, still excluding lastSpeed', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
@@ -267,7 +289,7 @@ describe('SettingsRaceCondition', () => {
       controllerOpacity: 0.8,
     });
 
-    expect(config.settings.lastSpeed).toBe(2.5);
+    expect(config.settings.lastSpeed).toBeNull(); // isolated
     expect(config.settings.startHidden).toBe(true);
     expect(config.settings.controllerOpacity).toBe(0.8);
   });
@@ -286,21 +308,13 @@ describe('SettingsRaceCondition', () => {
   it('onChanged listener ignores undefined newValue', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
-    config.settings.lastSpeed = 2.0;
+    const before = config.settings.controllerOpacity;
 
-    // Simulate a change with undefined newValue (happens when key is removed)
-    const changes = { lastSpeed: { oldValue: 2.0, newValue: undefined } };
-    // Manually fire onChanged
-    simulateExternalStorageWrite({}); // noop, just to test the mechanism
-    // Now manually test the guard
-    for (const [key, change] of Object.entries(changes)) {
-      if (key in config.settings && change.newValue !== undefined) {
-        config.settings[key] = change.newValue;
-      }
-    }
+    // A removed key arrives as a change with undefined newValue — the real
+    // listener must not write undefined into settings.
+    simulateExternalStorageWrite({ controllerOpacity: undefined });
 
-    // Should NOT have been set to undefined
-    expect(config.settings.lastSpeed).toBe(2.0);
+    expect(config.settings.controllerOpacity).toBe(before);
   });
 
   // ===========================================================================
@@ -469,12 +483,14 @@ describe('SettingsRaceCondition', () => {
   });
 
   // ===========================================================================
-  // SECTION 7: Self-echo detection & external write cancellation
+  // SECTION 7: lastSpeed session isolation under debounce traffic
   // ===========================================================================
 
-  it('self-echo from debounce does NOT revert in-memory state', async () => {
-    // Reproduces: timer fires (writes 2.5), user changes to 2.8, echo of 2.5
-    // arrives — must NOT revert in-memory from 2.8 back to 2.5.
+  it('own write echo does NOT revert in-memory state', async () => {
+    // Timer fires (writes 2.5), user changes to 2.8, the onChanged echo of
+    // 2.5 arrives — must NOT revert in-memory from 2.8 back to 2.5. Under
+    // session isolation this holds structurally: the listener never
+    // touches lastSpeed, so no self-echo token is needed to protect it.
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
@@ -499,7 +515,7 @@ describe('SettingsRaceCondition', () => {
     expect(config.saveTimer).toBeDefined();
   });
 
-  it('self-echo does NOT cancel a subsequent debounce timer', async () => {
+  it('own write echo does NOT cancel a subsequent debounce timer', async () => {
     const storage = getMockStorage();
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
@@ -523,30 +539,29 @@ describe('SettingsRaceCondition', () => {
     expect(storage.lastSpeed).toBe(3.0);
   });
 
-  it('external lastSpeed write cancels pending debounce timer', async () => {
+  it('remote lastSpeed write neither cancels a pending save nor mutates the session', async () => {
+    // Last-writer-wins: this tab's user made a choice; a concurrent write
+    // from another tab must not suppress it (the old behavior cancelled
+    // our timer and adopted the remote value — shared-authority
+    // semantics, retired with #1559 session isolation).
     const storage = getMockStorage();
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
-    // Start debounce for 2.0
+    // Start debounce for 2.0 (this tab's user choice)
     await config.save({ lastSpeed: 2.0 });
     expect(config.saveTimer).toBeDefined();
 
-    // External context writes lastSpeed = 3.0
+    // Another tab writes lastSpeed = 3.0
     simulateExternalStorageWrite({ lastSpeed: 3.0 });
 
-    // Timer should be cancelled — external write takes precedence
-    expect(config.saveTimer).toBe(null);
-    expect(config.pendingSave).toBe(null);
+    // Our pending save survives, our session authority is untouched
+    expect(config.saveTimer).toBeDefined();
+    expect(config.settings.lastSpeed).toBe(2.0);
 
-    // In-memory should reflect the external value
-    expect(config.settings.lastSpeed).toBe(3.0);
-
-    // Wait past the original debounce window — nothing should fire
+    // Our debounce fires: we wrote last, so storage ends at OUR value
     await vi.advanceTimersByTimeAsync(1200);
-
-    // Storage should still be 3.0 (our stale 2.0 was never written)
-    expect(storage.lastSpeed).toBe(3.0);
+    expect(storage.lastSpeed).toBe(2.0);
   });
 
   it('external non-speed write does NOT cancel speed debounce', async () => {
@@ -572,20 +587,20 @@ describe('SettingsRaceCondition', () => {
     expect(storage.lastSpeed).toBe(2.0);
   });
 
-  it('_lastWrittenSpeed is consumed after echo, so later external writes are not mistaken for self-echo', async () => {
+  it('session isolation holds regardless of prior echo traffic', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
-    // Full debounce cycle: write + echo consumed (mock fires onChanged after 5ms)
+    // Full debounce cycle including our own echo arriving
     await config.save({ lastSpeed: 2.0 });
     await vi.advanceTimersByTimeAsync(1300);
+    expect(config.settings.lastSpeed).toBe(2.0);
 
-    // After the echo is consumed, _lastWrittenSpeed should be cleared
-    expect(config._lastWrittenSpeed).toBe(null);
-
-    // A subsequent external write must NOT be mistaken for a self-echo
+    // A later remote write is ignored — not because of echo bookkeeping
+    // (there is none anymore) but because lastSpeed is never adopted.
     simulateExternalStorageWrite({ lastSpeed: 5.0 });
-    expect(config.settings.lastSpeed).toBe(5.0);
+    expect(config.settings.lastSpeed).toBe(2.0);
+    expect(getMockStorage().lastSpeed).toBe(5.0); // storage: last writer wins
   });
 
   // ===========================================================================
@@ -743,7 +758,7 @@ describe('SettingsRaceCondition', () => {
     expect(result).toBe(true);
   });
 
-  it('debounce timer storage failure cleans up _lastWrittenSpeed', async () => {
+  it('debounce timer storage failure keeps in-memory state and timer bookkeeping clean', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
@@ -759,8 +774,10 @@ describe('SettingsRaceCondition', () => {
     // Wait for debounce to fire (and fail)
     await vi.advanceTimersByTimeAsync(1200);
 
-    // _lastWrittenSpeed should be cleaned up, not left stale
-    expect(config._lastWrittenSpeed).toBe(null);
+    // Session state survives the persistence failure; no timer left behind
+    expect(config.settings.lastSpeed).toBe(2.0);
+    expect(config.saveTimer).toBe(null);
+    expect(config.pendingSave).toBe(null);
 
     window.VSC.StorageManager.set = originalSet;
   });

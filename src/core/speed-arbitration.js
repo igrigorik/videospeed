@@ -10,11 +10,14 @@
  *
  * - Arbiter state is DERIVED from config.settings on every decision rather
  *   than owned: settings.lastSpeed IS the session authority (null = no
- *   opinion), kept storage-listener-synced across tabs. This survived the
- *   F2 flip because surrender collapsed into "clear session authority and
- *   stand down to NO_OPINION" (see cell 9) — there is no separate
- *   surrendered mode to remember, so derivation stays total. Fight
- *   bookkeeping (count + window timer) is the only adapter-owned state.
+ *   opinion), tab-local for the whole session — storage is a
+ *   last-writer-wins register consulted only at load(), and the storage
+ *   listener never adopts remote lastSpeed (#1559 session isolation).
+ *   This survived the F2 flip because surrender collapsed into "clear
+ *   session authority and stand down to NO_OPINION" (see cell 9) — there
+ *   is no separate surrendered mode to remember, so derivation stays
+ *   total. Fight bookkeeping (count + window timer) is the only
+ *   adapter-owned state.
  *
  * - Effects execute through named primitives, one per effect in the
  *   contract's vocabulary: WRITE -> ActionHandler.writeRate, SYNC_UI ->
@@ -258,8 +261,8 @@ class SpeedArbitration {
     }
 
     // Cell 9 — budget exhausted: stand down. CLEAR_AUTHORITY nulls the
-    // session authority projection so derivation and cross-tab semantics
-    // all see "no opinion" uniformly.
+    // session authority projection so every consumer of derivation sees
+    // "no opinion" uniformly.
     if (effects.some((e) => e.type === A.EFFECTS.CLEAR_AUTHORITY)) {
       window.VSC.logger.info(
         `Fight detection: surrendering after ${prevFight} resets. Standing down at site speed ${rawRate}`
