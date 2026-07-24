@@ -33,8 +33,9 @@ single, formally specified arbitration engine.
 - **VSC no longer overrides the native speed control at page load** when
   it has no speed of its own to assert (#1537)
 - **Per-tab speeds** (#1559): changing speed in one tab no longer changes
-  it in your other open tabs. New tabs pick up whatever speed you set
-  last.
+  it in your other open tabs. With "Remember playback speed" enabled, new
+  tabs pick up whatever speed you set last; without it, new tabs start
+  from your site rules or the default.
 - **Per-site speed rules behave like a real default**: you can override
   them with any control, and your override sticks until reload
 
@@ -78,15 +79,15 @@ the detailed reports this rework is built on.
 
 Comment "fixed in 0.11.0" with the relevant mechanism, then close.
 
-| #     | Title                                     | Fixed by                                             |
-| ----- | ----------------------------------------- | ---------------------------------------------------- |
-| #1554 | YT click+hold 2x broken                   | YouTube site signature (pointer-hold + spacebar arm) |
-| #1568 | Hold-for-2x breaks after controller use   | same fix; effectively duplicate of #1554             |
-| #1562 | YT speed resets on arrow-key seek         | TARGET_RULES (only speed keys arm intent)            |
-| #1546 | Arrow-key seek resets speed (generic)     | same class as #1562                                  |
-| #1581 | Facebook: slider click resets to 1x       | tiered evidence + value asymmetry (generic fix)      |
-| #1521 | Native-control speed lost on unpause/seek | adoption (cells 2/7) + lifecycle re-assert           |
-| #1559 | Cross-tab speed bleed                     | session isolation                                    |
+| #     | Title                                     | Fixed by                                                                               |
+| ----- | ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| #1554 | YT click+hold 2x broken                   | temporary 2x override (pointer/spacebar hold signature); restores VSC speed on release |
+| #1568 | Hold-for-2x breaks after controller use   | same fix; effectively duplicate of #1554                                               |
+| #1562 | YT speed resets on arrow-key seek         | TARGET_RULES (only speed keys arm intent)                                              |
+| #1546 | Arrow-key seek resets speed (generic)     | same class as #1562                                                                    |
+| #1581 | Facebook: slider click resets to 1x       | tiered evidence + value asymmetry (generic fix)                                        |
+| #1521 | Native-control speed lost on unpause/seek | adoption (cells 2/7) + lifecycle re-assert                                             |
+| #1559 | Cross-tab speed bleed                     | session isolation                                                                      |
 
 ### Cluster B — community PRs subsumed by the rework → credit + close
 
