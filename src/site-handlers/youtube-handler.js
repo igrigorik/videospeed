@@ -81,6 +81,23 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
   // <vsc-controller> host has the ytp-autohide class.
 
   /**
+   * Press-and-hold 2x boost (#1554/#1568): the pointer variant fires a
+   * ratechange while the pointer is still down, before any click event
+   * exists (PR #1555). The SPACEBAR variant of the same boost armed via
+   * legacy any-key-arming — narrowed away by TARGET_RULES — so Space must
+   * arm here explicitly (held Space auto-repeats keydown, keeping the
+   * gesture window fresh through the hold and across the release reset).
+   * Scoped to this handler's matches() hosts: www.youtube.com and the
+   * privacy-enhanced embed host, which serve the identical player.
+   * (#1581 needs no entry: click-seek resets go to 1.0, and a 1.0 adoption
+   * requires STRONG evidence under the classifier's tiered rules.)
+   * @returns {Object} Classifier rule activations for YouTube
+   */
+  getClassifierRules() {
+    return YouTubeHandler.CLASSIFIER_RULES;
+  }
+
+  /**
    * Associate a gesture in YouTube player chrome with exactly one controlled
    * video. Player controls are overlays/siblings rather than video children,
    * so EventManager's direct composed-path resolution cannot see them.
@@ -179,6 +196,8 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     return videos;
   }
 }
+
+YouTubeHandler.CLASSIFIER_RULES = Object.freeze({ pointerHoldArms: true, spacebarArms: true });
 
 // Create singleton instance
 window.VSC.YouTubeHandler = YouTubeHandler;

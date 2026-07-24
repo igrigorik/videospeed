@@ -126,6 +126,8 @@ Strong native speed-key or menu evidence outranks the hold signature before a ph
 
 Attribution does not prove a same-player click selected a speed. The classifier still treats a single click to exactly `1.0x` as autonomous, while a click sequence, recognized speed key, or documented site signature supplies stronger evidence.
 
+Per-site signature activation is declared by site handlers (`BaseSiteHandler.getClassifierRules()`), never by hostname tables in core: the classifier owns what each rule flag means, the handler declares which flags its `matches()` hosts activate, and every activation must cite its motivating issue. Adding a site signature therefore touches one handler file, alongside that site's positioning and gesture-resolution logic.
+
 ## Formal model and TLC
 
 [`specs/SpeedArbiter.tla`](../specs/SpeedArbiter.tla) models two videos (`A`, `B`), two symbolic speeds, a one-fight local budget, independent session authority and persisted storage, both `rememberSpeed` settings, local phase/budget/pending state, temporary native overrides, native adoption, local surrender/re-arm, lifecycle locality, and release. This includes the site-rule shape where in-memory authority differs from stored speed. The wrapper fixes TLC's fingerprint polynomial, so the bounded model's reported state count is reproducible for a given TLC version and configuration.

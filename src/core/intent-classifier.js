@@ -27,17 +27,18 @@
  * nothing is persisted or leaves the page context, and every value is
  * semantically dead after a few seconds or when its pointer ends.
  *
- * Per-site signature overrides (SITE_RULE_OVERRIDES): the generic temporal
- * heuristic is the scalable default; overrides exist only for documented
- * exceptions — currently additions only (YouTube's press-and-hold 2x boost,
- * #1554/#1568: the only web player with this interaction in the evidence
- * base, so pointer/space hold is scoped there rather than trusted globally;
- * held-pointer rate changes have innocent causes elsewhere, e.g.
- * scrub-preview). The once-planned click-arming suppressions became
- * unnecessary when the tiered rules fixed #1581 generically. Every entry
- * must cite its issue. This table IS the scaling strategy: generic signal +
- * evidence-driven exception list, mirroring how site handlers already work
- * for positioning.
+ * Per-site signature activation: the generic temporal heuristic is the
+ * scalable default; site handlers declare documented exceptions through
+ * BaseSiteHandler.getClassifierRules() (currently additions only —
+ * YouTube's press-and-hold 2x boost, #1554/#1568: the only web player with
+ * this interaction in the evidence base, so pointer/space hold is scoped
+ * there rather than trusted globally; held-pointer rate changes have
+ * innocent causes elsewhere, e.g. scrub-preview). The once-planned
+ * click-arming suppressions became unnecessary when the tiered rules fixed
+ * #1581 generically. Every activation must cite its issue. This split IS
+ * the scaling strategy: this module owns what each flag MEANS; handlers own
+ * WHICH host activates it, exactly as they already do for positioning —
+ * hostname knowledge lives in one registry (matches()).
  */
 
 window.VSC = window.VSC || {};
@@ -54,44 +55,11 @@ const CLASSIFIER_VERDICTS = Object.freeze({
 
 const TARGET_RULES = Object.freeze({
   // Only native speed shortcuts arm strong key intent (PR #1563); clicks
-  // always feed the sequence detector; site signatures add per-host trust.
-  pointerHoldArms: false, // YouTube-only addition via SITE_RULE_OVERRIDES (#1554)
+  // always feed the sequence detector. Site handlers declare per-site
+  // activations through getClassifierRules() (e.g. YouTube's hold-for-2x,
+  // #1554); this module owns what each flag means, never which host gets it.
+  pointerHoldArms: false,
 });
-
-/**
- * Evidence-driven per-site exceptions to the generic rules. Keys are
- * hostname suffixes. The documented YouTube hold/Space signature is scoped
- * to www.youtube.com because its resolver knows that player chrome.
- */
-const SITE_RULE_OVERRIDES = Object.freeze({
-  // Press-and-hold 2x boost (#1554/#1568): the pointer variant fires a
-  // ratechange while the pointer is still down, before any click event
-  // exists (PR #1555). The SPACEBAR variant of the same boost armed via
-  // legacy any-key-arming — narrowed away by TARGET_RULES — so Space must
-  // arm here explicitly (held Space auto-repeats keydown, keeping the
-  // gesture window fresh through the hold and across the release reset).
-  'www.youtube.com': Object.freeze({ pointerHoldArms: true, spacebarArms: true }),
-  // (#1581 needs no entry: click-seek resets go to 1.0, and a 1.0 adoption
-  // requires STRONG evidence under the tiered rules — fixed generically.)
-});
-
-/**
- * Compose the effective rule set for a host: base rules plus any per-site
- * override whose key suffix-matches the hostname.
- *
- * @param {Object} base - TARGET_RULES (or a test-supplied rule set)
- * @param {string} hostname - e.g. window.location.hostname
- * @returns {Object} effective rules
- */
-function rulesForHost(base, hostname) {
-  const host = (hostname || '').toLowerCase();
-  for (const [suffix, override] of Object.entries(SITE_RULE_OVERRIDES)) {
-    if (host === suffix || host.endsWith(`.${suffix}`)) {
-      return Object.freeze({ ...base, ...override });
-    }
-  }
-  return base;
-}
 
 const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange reads as intent
 // Two clicks this close together read as UI traversal (menu -> item), the
@@ -669,5 +637,3 @@ window.VSC.IntentClassifier.LONG_PRESS_CLICK_MS = LONG_PRESS_CLICK_MS;
 window.VSC.IntentClassifier.LONG_PRESS_CLICK_GRACE_MS = LONG_PRESS_CLICK_GRACE_MS;
 window.VSC.IntentClassifier.UNRESOLVED_BIND_MAX_AGE_MS = UNRESOLVED_BIND_MAX_AGE_MS;
 window.VSC.IntentClassifier.isNativeSpeedShortcutKey = isNativeSpeedShortcutKey;
-window.VSC.IntentClassifier.SITE_RULE_OVERRIDES = SITE_RULE_OVERRIDES;
-window.VSC.IntentClassifier.rulesForHost = rulesForHost;

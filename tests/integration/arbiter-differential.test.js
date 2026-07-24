@@ -87,10 +87,7 @@ async function createLegacyWorld(init) {
   // Test seam: production composed classifier rules for jsdom's hostname
   // (localhost); re-compose for the scenario's simulated host so per-site
   // signatures (e.g. YouTube hold-for-2x) are exercised.
-  eventManager.arbitration.classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-    window.VSC.IntentClassifier.TARGET_RULES,
-    init.hostname || 'localhost'
-  );
+  eventManager.arbitration.classifier.rules = rulesForScenarioHost(init.hostname);
 
   const video = createMockVideo({
     playbackRate: initialRegister(init),
@@ -191,8 +188,21 @@ async function destroyLegacyWorld(world) {
 /* Arbiter world: pure core + classifier + effect application          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Compose classifier rules the way production does: handler declares
+ * activations for its matches() hosts; everything else is generic.
+ * @param {string} [hostname]
+ * @returns {Object}
+ */
+function rulesForScenarioHost(hostname) {
+  const handlerRules = window.VSC.YouTubeHandler.matches(hostname || 'localhost')
+    ? new window.VSC.YouTubeHandler().getClassifierRules()
+    : null;
+  return { ...IC.TARGET_RULES, ...(handlerRules || {}) };
+}
+
 function createArbiterWorld(init) {
-  const rules = IC.rulesForHost(IC.TARGET_RULES, init.hostname || 'localhost');
+  const rules = rulesForScenarioHost(init.hostname);
   return {
     state: A.loadState(init),
     register: initialRegister(init),

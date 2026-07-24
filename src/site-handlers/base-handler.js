@@ -32,6 +32,21 @@ class BaseSiteHandler {
   }
 
   /**
+   * Declare site-specific intent-classifier rule activations.
+   *
+   * The classifier owns what each flag MEANS (signature rates, binding,
+   * terminal handling); handlers only declare WHICH flags their site
+   * activates, keeping hostname knowledge in one registry (matches()).
+   * Return a frozen partial override of IntentClassifier.TARGET_RULES, or
+   * null for the generic rules. Every activation must cite the issue that
+   * motivated it (see CONTRIBUTING's classifier-heuristic rule).
+   * @returns {Object|null} Partial rule flags, or null for generic rules
+   */
+  getClassifierRules() {
+    return null;
+  }
+
+  /**
    * Handle site-specific speed change.
    * Called whenever the extension sets playback speed (user action, fight-back, etc.).
    * Override to sync with a site's custom player API.

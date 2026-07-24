@@ -19,10 +19,15 @@ class SpeedArbitration {
     this.config = config;
     this.eventManager = eventManager;
     this.classifier = new window.VSC.IntentClassifier({
-      rules: window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        typeof window !== 'undefined' && window.location ? window.location.hostname : ''
-      ),
+      // Site handlers declare evidence-rule activations (getClassifierRules);
+      // the classifier owns what each flag means. Late-bound through the
+      // namespace like resolveGestureMedia: handler detection is lazy and
+      // static (matches() on location.hostname), so construction order is
+      // irrelevant and non-handler contexts fall back to generic rules.
+      rules: Object.freeze({
+        ...window.VSC.IntentClassifier.TARGET_RULES,
+        ...(window.VSC.siteHandlerManager?.getClassifierRules?.() || {}),
+      }),
       minRate: window.VSC.Constants.SPEED_LIMITS.MIN,
     });
 

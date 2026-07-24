@@ -591,6 +591,31 @@ describe('EventManager', () => {
     expect(fightCount(eventManager.arbitration, mockVideo)).toBe(1);
   });
 
+  it('composes classifier rules from the detected site handler at construction', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    // Production wiring: SpeedArbitration asks siteHandlerManager for the
+    // current handler's declared rules. Force the YouTube handler (jsdom
+    // runs on localhost where matches() is false), then verify the merge.
+    const manager = window.VSC.siteHandlerManager;
+    const previousHandler = manager.currentHandler;
+    manager.currentHandler = new window.VSC.YouTubeHandler();
+    try {
+      const eventManager = new window.VSC.EventManager(config, null);
+      expect(eventManager.arbitration.classifier.rules.pointerHoldArms).toBe(true);
+      expect(eventManager.arbitration.classifier.rules.spacebarArms).toBe(true);
+      eventManager.cleanup();
+    } finally {
+      manager.currentHandler = previousHandler;
+    }
+
+    // Without a declaring handler, construction falls back to generic rules.
+    const genericManager = new window.VSC.EventManager(config, null);
+    expect(genericManager.arbitration.classifier.rules.pointerHoldArms).toBe(false);
+    genericManager.cleanup();
+  });
+
   it('resolves a direct composed-path gesture before consulting a site handler', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
@@ -666,10 +691,10 @@ describe('EventManager', () => {
       const eventManager = new window.VSC.EventManager(config, null);
       const classifier = eventManager.arbitration.classifier;
       const video = createMockVideo({ playbackRate: 1.5 });
-      classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        'www.youtube.com'
-      );
+      classifier.rules = {
+        ...window.VSC.IntentClassifier.TARGET_RULES,
+        ...new window.VSC.YouTubeHandler().getClassifierRules(),
+      };
       vi.spyOn(eventManager, 'resolveGestureMedia').mockReturnValue(video);
       eventManager.setupUserGestureListener(document);
 
@@ -711,10 +736,10 @@ describe('EventManager', () => {
     const eventManager = new window.VSC.EventManager(config, null);
     const classifier = eventManager.arbitration.classifier;
     const video = createMockVideo({ playbackRate: 1.5 });
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
     vi.spyOn(eventManager, 'resolveGestureMedia').mockReturnValue(video);
     eventManager.setupUserGestureListener(document);
 
@@ -740,10 +765,10 @@ describe('EventManager', () => {
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     eventManager.actionHandler = actionHandler;
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     const video = createMockVideo({ playbackRate: 1.2, readyState: 4 });
     video.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.20' } };
@@ -796,10 +821,10 @@ describe('EventManager', () => {
 
     const eventManager = new window.VSC.EventManager(config, null);
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
     eventManager.setupUserGestureListener(document);
 
     const video = createMockVideo({ playbackRate: 1.5 });
@@ -838,10 +863,10 @@ describe('EventManager', () => {
 
       const eventManager = new window.VSC.EventManager(config, null);
       const classifier = eventManager.arbitration.classifier;
-      classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        'www.youtube.com'
-      );
+      classifier.rules = {
+        ...window.VSC.IntentClassifier.TARGET_RULES,
+        ...new window.VSC.YouTubeHandler().getClassifierRules(),
+      };
       eventManager.setupUserGestureListener(document);
 
       const video = createMockVideo({ playbackRate: 1.5 });
@@ -873,10 +898,10 @@ describe('EventManager', () => {
 
     const eventManager = new window.VSC.EventManager(config, null);
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
     eventManager.setupUserGestureListener(document);
 
     const video = createMockVideo({ playbackRate: 1.5 });
@@ -908,10 +933,10 @@ describe('EventManager', () => {
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     eventManager.actionHandler = actionHandler;
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     const video = createMockVideo({ playbackRate: 1.5, readyState: 4 });
     video.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.50' } };
@@ -954,10 +979,10 @@ describe('EventManager', () => {
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     eventManager.actionHandler = actionHandler;
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     const mockVideo = createMockVideo({ playbackRate: 1.5 });
     mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.50' } };
@@ -1033,10 +1058,10 @@ describe('EventManager', () => {
       const actionHandler = new window.VSC.ActionHandler(config, eventManager);
       eventManager.actionHandler = actionHandler;
       const classifier = eventManager.arbitration.classifier;
-      classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        'www.youtube.com'
-      );
+      classifier.rules = {
+        ...window.VSC.IntentClassifier.TARGET_RULES,
+        ...new window.VSC.YouTubeHandler().getClassifierRules(),
+      };
 
       const video = createMockVideo({ playbackRate: 1.5, readyState: 4 });
       video.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.50' } };

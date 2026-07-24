@@ -122,6 +122,14 @@ class SiteHandlerManager {
   }
 
   /**
+   * Get site-declared intent-classifier rule activations
+   * @returns {Object|null} Partial rule flags, or null for generic rules
+   */
+  getClassifierRules() {
+    return this.getCurrentHandler().getClassifierRules();
+  }
+
+  /**
    * Get video container selectors for current site
    * @returns {Array<string>} CSS selectors
    */

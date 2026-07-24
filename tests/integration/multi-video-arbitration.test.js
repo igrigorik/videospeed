@@ -152,10 +152,10 @@ describe('multi-video speed arbitration', () => {
     const videoA = controlledVideo(1.5);
     const videoB = controlledVideo(1.5);
     config.settings.lastSpeed = 1.5;
-    eventManager.arbitration.classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    eventManager.arbitration.classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     // Give B independent live conflict state that A's temporary hold must not
     // reset, mutate, or consume.
@@ -197,10 +197,10 @@ describe('multi-video speed arbitration', () => {
     const videoA = controlledVideo(1.5);
     const videoB = controlledVideo(1.5);
     config.settings.lastSpeed = 1.5;
-    eventManager.arbitration.classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    eventManager.arbitration.classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     const classifier = eventManager.arbitration.classifier;
     classifier.observePointerDown({ pointerId: 7, timeStamp: 100 }, videoA);
@@ -230,10 +230,10 @@ describe('multi-video speed arbitration', () => {
     const videoB = controlledVideo(1.5);
     config.settings.lastSpeed = 1.5;
     const classifier = eventManager.arbitration.classifier;
-    classifier.rules = window.VSC.IntentClassifier.rulesForHost(
-      window.VSC.IntentClassifier.TARGET_RULES,
-      'www.youtube.com'
-    );
+    classifier.rules = {
+      ...window.VSC.IntentClassifier.TARGET_RULES,
+      ...new window.VSC.YouTubeHandler().getClassifierRules(),
+    };
 
     classifier.observePointerDown({ pointerId: 7, timeStamp: 100 }, videoA);
     siteReset(eventManager, videoA, 620, 2.0);

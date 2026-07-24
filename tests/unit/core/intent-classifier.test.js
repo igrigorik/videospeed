@@ -18,19 +18,17 @@ function pointerHoldClassifier() {
 }
 
 describe('IntentClassifier click attribution', () => {
-  it('enables the YouTube hold signature only where player-chrome resolution exists', () => {
-    expect(
-      window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        'www.youtube.com'
-      ).pointerHoldArms
-    ).toBe(true);
-    expect(
-      window.VSC.IntentClassifier.rulesForHost(
-        window.VSC.IntentClassifier.TARGET_RULES,
-        'music.youtube.com'
-      ).pointerHoldArms
-    ).toBe(false);
+  it('activates the hold signature only through a site handler declaration', () => {
+    // Generic default: no site trust without a handler declaration.
+    expect(window.VSC.IntentClassifier.TARGET_RULES.pointerHoldArms).toBe(false);
+    expect(new window.VSC.BaseSiteHandler().getClassifierRules()).toBe(null);
+
+    // YouTube declares the hold flags for its matches() hosts; hostname
+    // gating itself is owned by the handler registry (see
+    // youtube-handler.test.js for www/nocookie/music coverage).
+    const declared = new window.VSC.YouTubeHandler().getClassifierRules();
+    expect(declared).toEqual({ pointerHoldArms: true, spacebarArms: true });
+    expect(Object.isFrozen(declared)).toBe(true);
   });
 
   it('keeps a resolved click sequence scoped to its media element', () => {
