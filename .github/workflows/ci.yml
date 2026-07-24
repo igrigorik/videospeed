@@ -20,6 +20,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          check-latest: false
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/videospeed/tlc
+          key: ${{ runner.os }}-tlc-${{ hashFiles('scripts/tlc.mjs') }}
 
       - run: npm ci
         env:
@@ -28,6 +37,7 @@ jobs:
       - run: npm run lint
       - run: npm run build:release
       - run: npm test
+      - run: npm run test:tlc
       - run: node scripts/package-release.js
 
       - uses: actions/upload-artifact@v7

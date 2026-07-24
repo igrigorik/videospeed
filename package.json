@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit/",
     "test:integration": "vitest run tests/integration/",
+    "test:tlc": "node scripts/tlc.mjs",
     "test:e2e": "npm run build && node tests/e2e/run-e2e.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
