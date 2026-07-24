@@ -9,11 +9,9 @@
  *    the pipeline to the verified model: any adapter-wiring drift or
  *    policy/model mismatch fails here with a step-by-step trace.
  *
- * 2. BUG LEDGER — one deterministic regression test per known bug,
- *    pinning the live pipeline and the pure model to the fixed behavior.
- *    The pre-migration reproductions (the 'legacy' model runs) were
- *    retired with the compat machinery; check out git tag
- *    arbitration-executable-history to run them.
+ * 2. BUG LEDGER — deterministic regressions pin the live pipeline and the
+ *    pure model to the fixed behavior. Historical compatibility models were
+ *    deliberately retired rather than kept as unverified test machinery.
  *
  * Pacing model (mirrors production timing constants):
  *   quick =   50ms — inside the 300ms gesture window
@@ -121,7 +119,16 @@ async function legacyStep(world, op) {
     case 'pointerDown':
       // Exactly what EventManager's pointerdown listener does now (a
       // held pointer is intent only under YouTube's site signature).
-      world.eventManager.arbitration.classifier.observePointerDown({ timeStamp: world.now });
+      world.eventManager.arbitration.classifier.observePointerDown({
+        timeStamp: world.now,
+        pointerId: op.pointerId ?? 1,
+      });
+      break;
+    case 'pointerEnd':
+      world.eventManager.arbitration.classifier.observePointerEnd({
+        timeStamp: world.now,
+        pointerId: op.pointerId ?? 1,
+      });
       break;
     case 'gestureKey': {
       const ev = createMockKeyboardEvent('keydown', op.keyCode, {
@@ -193,6 +200,7 @@ function createArbiterWorld(init) {
     stored: init.rememberedSpeed ?? 1.0,
     rememberEnabled: !!init.rememberEnabled,
     classifier: new IC({ rules }),
+    media: {},
     now: 100000,
     sinceFight: 0, // mirrors the legacy fightTimer's re-arm-on-fight behavior
   };
@@ -211,9 +219,6 @@ function arbApply(world, effects) {
         break;
       case A.EFFECTS.SYNC_UI:
         break;
-      case A.EFFECTS.CLEAR_AUTHORITY:
-      case A.EFFECTS.RESTORE_AUTHORITY:
-        break; // model mem derives from state; nothing to apply
       default:
         throw new Error(`unknown effect ${e.type}`);
     }
@@ -252,7 +257,10 @@ function arbStep(world, op) {
       world.classifier.observeClick({ timeStamp: world.now });
       break;
     case 'pointerDown':
-      world.classifier.observePointerDown({ timeStamp: world.now });
+      world.classifier.observePointerDown({ timeStamp: world.now, pointerId: op.pointerId ?? 1 });
+      break;
+    case 'pointerEnd':
+      world.classifier.observePointerEnd({ timeStamp: world.now, pointerId: op.pointerId ?? 1 });
       break;
     case 'gestureKey':
       world.classifier.observeUnhandledKey({
@@ -266,6 +274,7 @@ function arbStep(world, op) {
     case 'siteRate': {
       world.register = round2(op.rate); // the site wrote the register
       let verdict = world.classifier.classify({
+        media: world.media,
         rate: op.rate,
         timeStamp: world.now,
         readyState: 4,
@@ -274,22 +283,36 @@ function arbStep(world, op) {
       if (verdict === IC.VERDICTS.SELF) {
         break;
       }
-      // Tolerance parity (cell 10): a same-value change is no divergence
-      // and must not consume the gesture — mirror the adapter's demotion.
-      if (
-        verdict === IC.VERDICTS.USER_INTENT &&
-        world.state.mode === A.MODES.HOLDING &&
-        Math.abs(round2(op.rate) - world.state.desired) <= 0.01
-      ) {
-        verdict = IC.VERDICTS.AUTONOMOUS;
+
+      let r;
+      if (world.state.temporaryOverride && verdict !== IC.VERDICTS.TEMPORARY_OVERRIDE) {
+        r = A.step(world.state, {
+          type: A.EVENTS.TEMPORARY_OVERRIDE_END,
+          speed: op.rate,
+        });
+      } else if (verdict === IC.VERDICTS.TEMPORARY_OVERRIDE) {
+        r = A.step(world.state, {
+          type: A.EVENTS.TEMPORARY_OVERRIDE_START,
+          speed: op.rate,
+        });
+      } else {
+        // Tolerance parity (cell 10): a same-value change is no divergence
+        // and must not consume the gesture — mirror the adapter's demotion.
+        if (
+          verdict === IC.VERDICTS.USER_INTENT &&
+          world.state.mode === A.MODES.HOLDING &&
+          Math.abs(round2(op.rate) - world.state.desired) <= 0.01
+        ) {
+          verdict = IC.VERDICTS.AUTONOMOUS;
+        }
+        r = A.step(world.state, {
+          type: A.EVENTS.EXT_RATE,
+          speed: op.rate,
+          rateClass: verdict,
+          quiet: world.classifier.isQuietContext(world.now),
+        });
       }
       const prevFight = world.state.fightCount;
-      const r = A.step(world.state, {
-        type: A.EVENTS.EXT_RATE,
-        speed: op.rate,
-        rateClass: verdict,
-        quiet: world.classifier.isQuietContext(world.now),
-      });
       world.state = r.state;
       if (world.state.fightCount > prevFight) {
         world.sinceFight = 0;
@@ -317,7 +340,9 @@ function arbStep(world, op) {
 function arbObservables(world) {
   return {
     rate: round2(world.register),
-    mem: world.state.mode === A.MODES.HOLDING ? world.state.desired : null,
+    // A local surrender preserves document-wide desired authority for other
+    // media elements, so every phase except NO_OPINION carries the same mem.
+    mem: world.state.desired,
   };
 }
 
@@ -576,34 +601,41 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     expect(runArbiter(init, ops)).toMatchObject({ rate: 1.8, mem: 1.8 });
   });
 
-  it('#1554/#1568 (classifier): FIXED on YouTube — click-and-hold 2x boost accepted as intent', async () => {
-    // pointerHoldArms is a per-site signature (SITE_RULE_OVERRIDES), not a
-    // global rule: YouTube is the only web player in the evidence base with
-    // a press-and-hold boost, and held-pointer rate changes have innocent
-    // causes elsewhere (scrub-preview).
+  it('#1554/#1568: YouTube click-and-hold permits 2x without claiming shared authority', async () => {
+    // Pointer holds are scoped to YouTube because held pointers elsewhere can
+    // be scrub previews. The boost is temporary, so desired/storage remain 1x.
     const init = { rememberEnabled: true, rememberedSpeed: 1.0, hostname: 'www.youtube.com' };
     const ops = [
       { op: 'pointerDown' }, // user holds the mouse button on YouTube
       { op: 'siteRate', rate: 2.0, pace: 'quick' }, // site applies the 2x boost
     ];
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fixed (YT signature)
-    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 1.0 });
   });
 
-  it('#1554 spacebar variant: FIXED on YouTube — space-hold boost accepted', async () => {
-    // Worked in legacy via any-key arming; TARGET_RULES narrowed that away,
-    // which silently regressed the spacebar half of #1554 until this
-    // site-signature restored it. Held Space auto-repeats keydown, so the
-    // window stays fresh through the hold and across the release reset.
+  it('#1554 spacebar variant: YouTube Space-hold boost is temporary', async () => {
     const init = { rememberEnabled: true, rememberedSpeed: 1.0, hostname: 'www.youtube.com' };
     const ops = [
       { op: 'gestureKey', key: ' ', code: 'Space', keyCode: 32 },
       { op: 'siteRate', rate: 2.0, pace: 'quick' },
     ];
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
-    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 1.0 });
+  });
+
+  it('#1554/#1568: YouTube hold release restores the pre-boost shared speed', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 1.5, hostname: 'www.youtube.com' };
+    const ops = [
+      { op: 'pointerDown', pointerId: 7 },
+      { op: 'siteRate', rate: 2.0, pace: 'slow' }, // real YT threshold is ~500ms
+      { op: 'pointerEnd', pointerId: 7, pace: 'quick' },
+      { op: 'siteRate', rate: 1.0, pace: 'quick' }, // native release reset
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5, stored: 1.5 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.5, mem: 1.5, stored: 1.5 });
   });
 
   it('space on a generic site does NOT bless a rate change', async () => {
@@ -622,6 +654,18 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     // held pointer (e.g. scrub-preview) is autonomous and gets fought.
     const init = { rememberEnabled: true, rememberedSpeed: 1.0 };
     const ops = [{ op: 'pointerDown' }, { op: 'siteRate', rate: 2.0, pace: 'quick' }];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought back
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
+  });
+
+  it('completed YouTube pointer hold does not bless a later autonomous rate change', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 1.0, hostname: 'www.youtube.com' };
+    const ops = [
+      { op: 'pointerDown', pointerId: 9 },
+      { op: 'pointerEnd', pointerId: 9, pace: 'quick' },
+      { op: 'siteRate', rate: 2.0, pace: 'slow' },
+    ];
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // fought back
     expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
@@ -652,13 +696,13 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     const restartOps = [...surrenderOps, { op: 'siteRate', rate: 1.0 }]; // one more after surrender
 
     // Production: this war is input-quiet (no gestures in the scenario), so
-    // the stand-down is REARMABLE — but the extra reset is only OBSERVED
-    // (no fight): the war did not restart. Session authority is cleared;
-    // the stored speed survives for the next page load.
+    // the local stand-down is REARMABLE. The extra reset is only OBSERVED
+    // (no fight): the war did not restart, while shared authority remains
+    // available to other media elements and for this player's one re-arm.
     const pipeline = await runLegacyModules(init, restartOps);
-    expect(pipeline).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.5, stored: 1.5 });
     const target = runArbiter(init, restartOps);
-    expect(target).toMatchObject({ rate: 1.0, mem: null, mode: A.MODES.REARMABLE, stored: 1.5 });
+    expect(target).toMatchObject({ rate: 1.0, mem: 1.5, mode: A.MODES.REARMABLE, stored: 1.5 });
   });
 
   it('quiet-war re-arm (cells 9b/14): speed returns on next play, once per session', async () => {
@@ -671,14 +715,15 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     expect(pipeline).toMatchObject({ rate: 1.5, mem: 1.5, stored: 1.5 });
     expect(runArbiter(init, rearmOps)).toMatchObject({ rate: 1.5, mem: 1.5 });
 
-    // A second quiet war exhausts the budget: terminal, play stays silent.
+    // A second quiet war exhausts this media's re-arm budget: lifecycle stays
+    // silent locally, but shared authority remains intact for other media.
     const secondWar = [...rearmOps, ...war, { op: 'play' }];
     const pipeline2 = await runLegacyModules(init, secondWar);
-    expect(pipeline2).toMatchObject({ rate: 1.0, mem: null, stored: 1.5 });
+    expect(pipeline2).toMatchObject({ rate: 1.0, mem: 1.5, stored: 1.5 });
     expect(runArbiter(init, secondWar)).toMatchObject({
       rate: 1.0,
-      mem: null,
-      mode: A.MODES.NO_OPINION,
+      mem: 1.5,
+      mode: A.MODES.SUPPRESSED,
     });
   });
 
@@ -693,11 +738,11 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
       { op: 'play' }, // must NOT restore
     ];
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 1.0, mem: null });
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.5 });
     expect(runArbiter(init, ops)).toMatchObject({
       rate: 1.0,
-      mem: null,
-      mode: A.MODES.NO_OPINION,
+      mem: 1.5,
+      mode: A.MODES.SUPPRESSED,
     });
   });
 

@@ -106,8 +106,12 @@ governed by the arbitration contract in `docs/speed-arbitration.md`
 (machine-checked twin: `specs/SpeedArbiter.tla`). PRs touching speed
 behavior must identify which transition-table cell(s) they change and
 why. Classifier heuristics (gesture evidence) must cite the issue that
-motivated them. `npm test` runs the conformance, model-checking, and
-differential suites that enforce this.
+motivated them. `npm test` runs the JavaScript conformance and differential
+suites. Run `npm run test:tlc` separately for the pinned two-media TLA+
+model; it requires Java 11 or newer and downloads a checksum-verified TLC
+artifact outside the repository. CI runs both commands. Changes to shared/local
+arbitration or controller lifecycle should also run `npm run build && node
+tests/e2e/run-e2e.js arbitration` for the two-media browser fixture.
 
 ## Optional
 
@@ -123,6 +127,7 @@ You can run the same checks manually:
 npx lint-staged
 npm run lint
 npm test
+npm run test:tlc
 ```
 
 ### Pull Upstream Changes

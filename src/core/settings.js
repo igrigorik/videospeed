@@ -203,19 +203,6 @@ if (!window.VSC.VideoSpeedConfig) {
      * @returns {Promise<boolean>} true if persisted (or debounced), false on storage failure
      */
     /**
-     * Null the SESSION speed authority (in-memory lastSpeed) without
-     * touching storage. Executes the arbiter's CLEAR_AUTHORITY effect
-     * (cell 9, surrender): VSC stands down for this session; the
-     * remembered speed in storage still seeds authority on the next page
-     * load. A pending debounced save is deliberately left alone — it
-     * carries an earlier user choice that should still reach storage.
-     */
-    clearSessionAuthority() {
-      this.settings.lastSpeed = null;
-      window.VSC.logger.info('Session speed authority cleared (surrender)');
-    }
-
-    /**
      * Commit a speed as the SESSION authority (in-memory lastSpeed) and
      * persist it when the user asked us to remember speed. Executes the
      * arbiter's PERSIST effect (cells 2/5/7/12). Persistence purity (I2)
@@ -228,19 +215,6 @@ if (!window.VSC.VideoSpeedConfig) {
       if (this.settings.rememberSpeed) {
         this.save({ lastSpeed: speed });
       }
-    }
-
-    /**
-     * Restore the SESSION speed authority (in-memory lastSpeed) to a
-     * previously user-held value, without touching storage. Executes the
-     * arbiter's RESTORE_AUTHORITY effect (cell 14, quiet-war re-arm); the
-     * value's provenance is the pre-war user choice, so persistence purity
-     * (storage moves only on user events) is preserved.
-     * @param {number} speed
-     */
-    restoreSessionAuthority(speed) {
-      this.settings.lastSpeed = speed;
-      window.VSC.logger.info(`Session speed authority restored to ${speed} (quiet-war re-arm)`);
     }
 
     async save(newSettings = {}) {

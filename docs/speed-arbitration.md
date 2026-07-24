@@ -1,440 +1,164 @@
-# Speed Arbitration: the contract
+# Speed arbitration contract
 
-This document is the authoritative specification for how VSC decides what
-`video.playbackRate` should be. Every PR that changes speed behavior must
-identify which cell(s) of the transition table it changes and why. The
-machine-checked version of this contract lives in `specs/SpeedArbiter.tla`;
-the two must be kept in sync (they are two notations for the same object).
+This document defines how VSC currently arbitrates `HTMLMediaElement.playbackRate` when the user, a site player, and VSC can all write it. It is the implementation and verification contract for speed behavior; changes must name the affected transition(s), tests, and formal-model impact.
 
-## Why this document exists
+The machine-checked abstraction is [`specs/SpeedArbiter.tla`](../specs/SpeedArbiter.tla). It deliberately models two controlled media elements, because a one-register model cannot establish that a hostile player A leaves player B usable.
 
-`video.playbackRate` is a single shared register with four writers:
+## Scope and non-goals
 
-1. the user, through VSC (keyboard shortcuts, controller UI, popup)
-2. the user, through the site's native controls (YouTube's speed menu,
-   `<`/`>` keys, click-hold 2x, Chrome's built-in `<video>` context menu)
-3. the site's scripts, autonomously (player init, ad transitions, stream
-   switches, seek-resets, Bitmovin's reset-on-resume)
-4. VSC itself, reactively (fight-back, lifecycle restore on `play`/`seeked`)
+A `SpeedArbitration` instance is scoped to one injected document/frame, not an entire browser tab across frames.
 
-The DOM provides **no provenance**: a `ratechange` event does not say who
-wrote the register or why. Everything VSC does is therefore an _arbitration_
-problem — maintain a desired state (or an explicit lack of one), observe
-divergence, and decide per divergence: **accept**, **enforce**, or **ignore**.
+`config.settings.lastSpeed` remains one document/session-wide desired speed. This preserves the extension's existing shared-speed and persistence behavior; VSC does not add a persistent per-video speed preference or storage schema.
 
-Historically that decision logic was distributed across `event-manager.js`
-(gesture window, fight-back, cooldown), `video-controller.js` (lifecycle
-restore), `settings.js` (`lastSpeed = null` semantics), and site handlers.
-Nearly every speed bug in the tracker is the same failure mode: two modules
-disagreeing about the invariant. This document exists to make that class of
-bug structurally impossible: one table, one owner per decision.
+Conflict handling is per media element. A site can fight, locally surrender, or use its one quiet-war re-arm on A without consuming B's budget, cancelling B's timer, or clearing the shared desired speed.
 
-## Architecture: classifier vs. arbiter
+The contract does not prove that a site gesture really meant “set speed.” The classifier is intentionally heuristic. The arbiter instead guarantees bounded, recoverable behavior for every classifier verdict.
 
-The system splits into two components with different epistemic status:
+## State ownership
 
-**Intent classification — heuristic, empirical, unverifiable.** Given an
-external ratechange, was it (a) user intent expressed through native site
-controls, (b) an autonomous site action, or (c) initialization noise?
-This is inference from side channels: gesture timestamps, key identity,
-pointer state, `readyState`, per-site knowledge. It cannot be proven
-correct — sites change. All such heuristics live in the classifier and
-ONLY in the classifier, each annotated with the issue that motivated it.
-Site handlers may extend the classifier (e.g. YouTube's handler knows its
-own seek-reset signature).
+| State                                                                            | Owner                              | Scope                                                    | Purpose                                                                             |
+| -------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `lastSpeed`                                                                      | `VideoSpeedConfig`                 | document/session                                         | Shared desired authority; `null` means VSC has no opinion                           |
+| `authorityEpoch`                                                                 | `SpeedArbitration`                 | document/session                                         | Invalidates stale local conflict records after a fresh user choice                  |
+| `mode`, `fightCount`, `warQuiet`, `rearmBudget`, temporary override, fight timer | `SpeedArbitration` conflict record | one `HTMLMediaElement`                                   | Local fight/surrender/re-arm state plus native temporary hold overlay               |
+| terminal release fallback timer                                                  | `SpeedArbitration`                 | one `HTMLMediaElement`                                   | Recover from a retired physical hold that never emits a normal release `ratechange` |
+| write-token queue                                                                | `SpeedArbitration.pendingWrites`   | one `HTMLMediaElement`                                   | Filters only that media's expected native echoes                                    |
+| click/pointer/key evidence                                                       | `IntentClassifier`                 | unresolved document fallback plus resolved media ledgers | Classifies external rate changes; never persists                                    |
 
-**Arbitration — pure, small, verified.** _Given_ a classification, what do
-we do? A total function over a small state space:
+The adapter stores conflict records and echo queues in `WeakMap`s. Timers can retain a closure independently of a `WeakMap`, so `VideoController.remove()` must call `SpeedArbitration.release(video)` to clear the timer, record, echo queue, and media gesture ledger.
 
-```
-step(state, event) -> (state', effects[])
-```
+## Authority generations
 
-No DOM access, no timers (timer expirations arrive as events), no storage
-calls (persistence is an emitted effect). This is the part the transition
-table below specifies and the TLA+ model checks.
+A VSC speed action and an adopted native user choice both claim shared authority:
 
-The safety story for the split: the arbiter is correct by construction;
-the classifier is correct by evidence; and the arbiter guarantees that
-classifier mistakes are **recoverable** — a misclassification can never
-permanently lock the user out (one user action through VSC always
-re-establishes authority) and can never cause writes in `NO_OPINION` mode.
+1. update `lastSpeed` and persist it only when `rememberSpeed` is enabled;
+2. advance `authorityEpoch` and cancel all prior-epoch fight timers;
+3. reset the acting media into local `HOLDING` state;
+4. lazily replace every other media's stale local record with fresh `HOLDING` state when it is next observed or receives lifecycle handling.
 
-## Arbiter state
+A same-value VSC action still starts a new generation. This is intentional: pressing a speed control again is an explicit request to retry media that had locally surrendered.
 
-| Field         | Domain                                   | Meaning                                                                                                                              |
-| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `mode`        | `NO_OPINION` \| `HOLDING` \| `REARMABLE` | Authority claim. REARMABLE = stood down after a fully input-quiet war, pre-war speed pending one lifecycle restoration (cells 9b/14) |
-| `desired`     | speed \| none                            | The authoritative target (or pre-war speed in REARMABLE). Non-none iff mode ≠ NO_OPINION                                             |
-| `fightCount`  | 0..MAX_FIGHT                             | Consecutive autonomous resets we have fought this window                                                                             |
-| `warQuiet`    | boolean                                  | Every fight of the current war was input-quiet (no reset could be a misclassified user action)                                       |
-| `rearmBudget` | 0..1                                     | Quiet-war re-arms remaining this session                                                                                             |
+A bulk VSC command must claim one generation, not one generation per loop iteration. `ActionHandler.createAuthorityBatch()` carries that one-command context through keyboard/controller actions, and bridge popup commands use the same context. The current implementation retains historical shared-speed behavior if a relative batch derives distinct target values: the final target is the shared authority. Persistent per-video speed preferences are outside this contract.
 
-Correspondence to the code: `desired` is `settings.lastSpeed` (`null` =
-none; a site rule seeds it at load per the F5 fix), except in REARMABLE
-where the pending speed is adapter-owned (`rearmPendingSpeed`) and
-`lastSpeed` is null. `mode` is derived per decision by the arbitration
-adapter — the historical bugs came from lifecycle and ratechange paths
-deriving it differently; now one function does.
+## Local phases
 
-State the arbiter does _not_ own: the evidence ledger
-(`lastUserInteractionAt`, click-held flag, key identity) belongs to the
-classifier; persisted storage belongs to the effects layer.
+| Phase        | Meaning                                                                     | Lifecycle behavior                                              |
+| ------------ | --------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `NO_OPINION` | No shared desired speed exists                                              | Silent; never writes a baseline                                 |
+| `HOLDING`    | This media enforces shared `lastSpeed`                                      | Reasserts the desired speed                                     |
+| `REARMABLE`  | A fully quiet local war exhausted the budget and has one retry left         | Reasserts once, then becomes `HOLDING`                          |
+| `SUPPRESSED` | An activity-context war, or an exhausted re-arm, made this media stand down | Silent until a fresh authority generation or user/native choice |
 
-## Event alphabet
+`NO_OPINION` is global authority absence. `REARMABLE` and `SUPPRESSED` are local phases and therefore never clear `lastSpeed`. A temporary native override is an orthogonal local overlay, not a fifth phase: ending it preserves the underlying phase rather than silently re-arming or unsuppressing a player.
 
-| Event                 | Source                                      | Notes                                                    |
-| --------------------- | ------------------------------------------- | -------------------------------------------------------- |
-| `USER_VSC_SET(v)`     | VSC UI / shortcuts / popup                  | The only unambiguous input in the system                 |
-| `EXT_RATE(v, class)`  | ratechange listener, after classification   | `class ∈ {USER_INTENT, AUTONOMOUS, INIT_NOISE}`          |
-| `LIFECYCLE`           | `play`, `seeked`, deferred `loadedmetadata` | Player lifecycle moments where sites commonly reset rate |
-| `FIGHT_WINDOW_EXPIRE` | timer                                       | Quiet period elapsed; forgive past fights                |
-| `LOAD(init)`          | settings load                               | Establishes initial mode (see below)                     |
+## Events and effects
 
-Self-originated ratechange echoes (our own `playbackRate` writes) are
-filtered before classification by the write-token registry: every WRITE
-records the value it expects to see echo back
-(`SpeedArbitration.noteWrite`), and `handleRateChange` consumes a
-matching token (`consumeEcho`) and drops the event. Matching is
-value-tolerant (players may quantize the written value) and FIFO with
-coalescing (rapid successive writes can fire a single echo for the final
-value); tokens expire by queue cap and TTL. Because a token identifies
-exactly one expected echo, nothing genuinely external is ever masked — a
-reactive site that rewrites the rate in response to our writes produces
-ordinary budget-accounted `EXT_RATE` events (surrender within MAX_FIGHT
-rounds) instead of the invisible write war the legacy 200ms blanket
-cooldown permitted. This filtering is adapter duty; the arbiter never
-sees echoes.
+| Event                         | Source                                                                           | Notes                                                                                             |
+| ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `USER_SET(v)`                 | VSC controller, keyboard, wheel, popup                                           | Unambiguous user intent; claims a new authority generation                                        |
+| `TEMPORARY_OVERRIDE_START(v)` | Recognized site-native temporary hold                                            | Local overlay only; never claims shared authority or persists `v`                                 |
+| `TEMPORARY_OVERRIDE_END(v)`   | First normal rate after that local native hold, or its guarded terminal fallback | Clears the overlay and restores current desired speed only when the underlying phase is `HOLDING` |
+| `EXT_RATE(v, class)`          | Native `ratechange` after classifier verdict                                     | `class ∈ {USER_INTENT, AUTONOMOUS, INIT_NOISE}`                                                   |
+| `LIFECYCLE`                   | `play`, loaded `seeked`, deferred `loadedmetadata`                               | Site reset boundaries                                                                             |
+| `FIGHT_WINDOW_EXPIRE`         | Per-media timer                                                                  | Forgives that media's local fights                                                                |
+| `RELEASE`                     | Controller teardown                                                              | Clears all local runtime state for that media                                                     |
 
-## Effects vocabulary
+| Effect       | Meaning                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| `WRITE(v)`   | Set only the affected media's `playbackRate`; register its echo token first                        |
+| `PERSIST(v)` | Claim shared in-memory authority and schedule a storage write only when `rememberSpeed` is enabled |
+| `SYNC_UI(v)` | Update only the affected controller's speed badge                                                  |
 
-| Effect                 | Meaning                                                                                                              |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `WRITE(v)`             | Set `video.playbackRate = v` (via site handler); registers an in-flight echo token first (see Event alphabet)        |
-| `PERSIST(v)`           | Update in-memory `lastSpeed` AND schedule debounced storage write (subject to `rememberSpeed`)                       |
-| `SYNC_UI(v)`           | Update the speed indicator only                                                                                      |
-| `CLEAR_AUTHORITY`      | Null the SESSION authority (in-memory `lastSpeed`) without touching storage. Cell 9 only                             |
-| `RESTORE_AUTHORITY(v)` | Restore SESSION authority to the pre-war user speed (in-memory only, storage untouched — I2 preserved). Cell 14 only |
-| —                      | No effect                                                                                                            |
+Echo queues are per media and tagged with the authority generation that wrote them. `consumeEcho()` discards an older-generation token before matching, so a real site reset that reuses an old rate after a fresh user choice reaches arbitration instead of being swallowed as an echo.
 
-`PERSIST` is atomic by contract: in-memory and storage move together or
-not at all. (They historically diverged — finding F1, fixed in the
-`setSpeed` init-persist change; today `PERSIST` is the single primitive
-`config.persistAuthority`, so the pairing is structural.)
+There is intentionally no document-wide surrender effect. Local surrender is not an authority mutation.
 
-## Initial mode (LOAD)
+## Transition table
 
-Priority at page load:
+The pure [`SpeedArbiter`](../src/core/arbiter.js) is a local state machine. The adapter supplies the current shared desired speed and maps effects onto DOM/storage primitives.
 
-1. Per-site rule configured → `HOLDING(ruleSpeed)` — the rule is initial
-   authority; thereafter the normal machine applies (see F5 — this is a
-   deliberate change from current behavior).
-2. `rememberSpeed = on` and stored `lastSpeed` present → `HOLDING(stored)`
-3. Otherwise → `NO_OPINION`
+| Local phase                          | Event                                                                                | Effects                                                       | Next local phase                  | Contract                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- |
+| `NO_OPINION`                         | `LIFECYCLE`                                                                          | none                                                          | `NO_OPINION`                      | No opinion means no write, including no forced `1.0x`                         |
+| any                                  | `USER_SET(v)`                                                                        | `WRITE(v)`, `PERSIST(v)`, `SYNC_UI(v)`                        | `HOLDING(v)`                      | Fresh shared authority generation; resets local conflict state                |
+| `HOLDING`, `REARMABLE`, `SUPPRESSED` | `TEMPORARY_OVERRIDE_START(2.0)`                                                      | `SYNC_UI(2.0)`                                                | same phase + local overlay        | Recognized YouTube hold; preserve desired, storage, epoch, and fight state    |
+| phase + overlay                      | `TEMPORARY_OVERRIDE_END(v)`                                                          | `WRITE(d)`, `SYNC_UI(d)` if `HOLDING`; otherwise `SYNC_UI(v)` | same underlying phase, no overlay | Release restores the current shared target only for a locally enforcing media |
+| any + overlay                        | `LIFECYCLE`                                                                          | none                                                          | unchanged                         | Lifecycle healing cannot cancel a visible native hold                         |
+| any                                  | `EXT_RATE(v, USER_INTENT)`                                                           | `PERSIST(v)`, `SYNC_UI(v)`                                    | `HOLDING(v)`                      | Adopt a durable native user choice as fresh shared authority                  |
+| `HOLDING(d)`                         | `LIFECYCLE`                                                                          | `WRITE(d)` when needed                                        | `HOLDING(d)`                      | Reassert without persistence                                                  |
+| `HOLDING(d)`                         | `EXT_RATE(d, AUTONOMOUS)`                                                            | `SYNC_UI(d)`                                                  | `HOLDING(d)`                      | Site confirmed the desired rate; refresh the affected badge                   |
+| `HOLDING(d)`                         | `EXT_RATE(v ≠ d, AUTONOMOUS)`, local count below budget                              | `WRITE(d)`                                                    | `HOLDING(d)`                      | Fight only this media and increment only its count                            |
+| `HOLDING(d)`                         | autonomous divergence at budget, whole local war input-quiet, local re-arm available | `SYNC_UI(v)`                                                  | `REARMABLE(d)`                    | Stand down locally and spend one local re-arm                                 |
+| `HOLDING(d)`                         | autonomous divergence at budget after input activity or spent re-arm                 | `SYNC_UI(v)`                                                  | `SUPPRESSED(d)`                   | Stand down locally; retain shared authority for other media                   |
+| `REARMABLE(d)`                       | `LIFECYCLE`                                                                          | `WRITE(d)`                                                    | `HOLDING(d)`                      | One local retry only                                                          |
+| `SUPPRESSED(d)`                      | `LIFECYCLE` or autonomous rate                                                       | none / `SYNC_UI(v)`                                           | `SUPPRESSED(d)`                   | Do not restart a local write war automatically                                |
+| any                                  | `EXT_RATE(_, INIT_NOISE)`                                                            | none                                                          | unchanged                         | Ignore initialization/min-rate noise; a later lifecycle event may heal it     |
+| any                                  | `FIGHT_WINDOW_EXPIRE`                                                                | none                                                          | same phase with local count zero  | Forgive isolated local resets                                                 |
 
-LOAD is the ONLY moment storage feeds authority. Each tab runs its own
-independent instance of this machine; stored `lastSpeed` is a shared
-last-writer-wins register that seeds new sessions and is written by
-`PERSIST`, never a live channel between running tabs (see "Design note:
-multi-tab authority").
+The timer is cleared when a local war reaches `REARMABLE` or `SUPPRESSED`; otherwise an old timer could retain the media record and mutate a settled decision later.
 
-## The transition table (target contract)
+## Core invariants
 
-| #   | State        | Event                                                                                                    | Effects                        | Next state             | Rationale / provenance                                                                                                                                                                                                 |
-| --- | ------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | NO_OPINION   | LIFECYCLE                                                                                                | —                              | NO_OPINION             | **No opinion ⇒ no writes.** Was buggy (wrote 1.0 baseline): #1537, PR #1537                                                                                                                                            |
-| 2   | NO_OPINION   | EXT_RATE(v, USER_INTENT)                                                                                 | PERSIST(v)                     | HOLDING(v)             | User spoke through native controls; adopt. Today not adopted (gesture path gated on truthy `lastSpeed`) — design decision, resolves the #1532 sub-question                                                             |
-| 3   | NO_OPINION   | EXT_RATE(v, AUTONOMOUS)                                                                                  | SYNC_UI(v)                     | NO_OPINION             | Site owns the rate; we display it                                                                                                                                                                                      |
-| 4   | NO_OPINION   | EXT_RATE(v, INIT_NOISE)                                                                                  | —                              | NO_OPINION             | readyState<1 noise, min-rate glitches                                                                                                                                                                                  |
-| 5   | NO_OPINION   | USER_VSC_SET(v)                                                                                          | WRITE(v), PERSIST(v)           | HOLDING(v)             | User claims authority                                                                                                                                                                                                  |
-| 6   | HOLDING(d)   | LIFECYCLE                                                                                                | WRITE(d)                       | HOLDING(d)             | Re-assert; **no PERSIST** (#1494)                                                                                                                                                                                      |
-| 7   | HOLDING(d)   | EXT_RATE(v, USER_INTENT)                                                                                 | PERSIST(v)                     | HOLDING(v)             | Accept native-control change as the new authority. Fails today via _misclassification_, not bad arbitration: #1554/#1555 (click-hold), #1562/#1546/#1563 (arrow-key false positive), #1581 (click-seek false positive) |
-| 8   | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount < MAX                                                              | WRITE(d), fightCount++         | HOLDING(d)             | Fight back (bounded)                                                                                                                                                                                                   |
-| 9   | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX, war had ANY activity-context fight (or re-arm budget spent) | CLEAR_AUTHORITY, SYNC_UI(v)    | NO_OPINION             | Terminal surrender: an activity-context war might have been fought against a misclassified user — attrition safety (the user wins after the budget) must hold                                                          |
-| 9b  | HOLDING(d)   | EXT_RATE(v≠d, AUTONOMOUS), fightCount = MAX, war fully input-QUIET, rearmBudget > 0                      | CLEAR_AUTHORITY, SYNC_UI(v)    | REARMABLE(d), budget−1 | A quiet reset cannot be a misclassified user action (all intent evidence is input), so this war was machine-vs-machine — the user's speed deserves one second chance                                                   |
-| 14  | REARMABLE(d) | LIFECYCLE                                                                                                | RESTORE_AUTHORITY(d), WRITE(d) | HOLDING(d)             | The quiet-war re-arm: restore the pre-war speed at the next lifecycle moment, once per session. In REARMABLE, autonomous changes are observed (as cell 3), user intent adopts (as cell 2), USER_SET claims (as cell 5) |
-| 10  | HOLDING(d)   | EXT_RATE(d, AUTONOMOUS)                                                                                  | —                              | HOLDING(d)             | Site confirmed our value                                                                                                                                                                                               |
-| 11  | HOLDING(d)   | EXT_RATE(v, INIT_NOISE)                                                                                  | —                              | HOLDING(d)             | Ignore                                                                                                                                                                                                                 |
-| 12  | HOLDING(d)   | USER_VSC_SET(v)                                                                                          | WRITE(v), PERSIST(v)           | HOLDING(v)             |                                                                                                                                                                                                                        |
-| 13  | HOLDING(d)   | FIGHT_WINDOW_EXPIRE                                                                                      | fightCount := 0                | HOLDING(d)             | Forgive isolated resets                                                                                                                                                                                                |
+1. **No-opinion safety:** no lifecycle path writes when shared authority is absent.
+2. **Persistence purity:** only `USER_SET` and accepted durable native `USER_INTENT` update `lastSpeed`/storage; lifecycle, fight-back, surrender, re-arm, and temporary native holds do not.
+3. **Per-media non-interference and bounded fighting:** one autonomous event causes at most one write and can mutate only its own conflict record; each media spends only its own `MAX_FIGHT` budget.
+4. **Local surrender:** a `REARMABLE` or `SUPPRESSED` record preserves shared authority and leaves every other record usable.
+5. **Fresh-choice recovery:** one VSC/native choice invalidates stale local suppression and lets the next lifecycle event retry that media.
+6. **Teardown safety:** no timer, echo, deferred metadata callback, or classifier evidence may survive a controller's removal.
+7. **Temporary-override locality:** a temporary native hold can mutate only its media register and overlay; it cannot change `lastSpeed`, storage, the authority epoch, fight state, or another media's UI/register.
+8. **Gesture isolation:** confidently attributed A evidence must never bless B. Unresolved evidence may use the documented fallback, but it is never combined into a synthetic A/B sequence.
 
-Every cell is total: any (state, event) pair not listed above is a spec
-bug, not an implementation choice.
+## Gesture attribution and classifier boundary
 
-Historical note: earlier drafts had a `SURRENDERED` mode (cells 14–16 of
-the original numbering), eliminated when cell-2 adoption made it
-behaviorally identical to `NO_OPINION`. `REARMABLE` is not its return:
-it is behaviorally distinct (lifecycle restores once), reachable only
-from a fully input-quiet war, and justified by a signal — quiet context
-— that certifies the war was machine-vs-machine. The elimination lesson
-stands: modes exist only when they change behavior.
+`IntentClassifier` receives a `media` context for a ratechange. It stores resolved click sequences in a `WeakMap` keyed by media and retains a separate document-level fallback ledger only for unresolved gestures.
 
-## Invariants
+`EventManager.resolveGestureMedia(event)` first examines `event.composedPath()` for exactly one controlled media element. It does not use `target === video` or `video.contains(target)`: custom-player controls, menus, overlays, and native controls routinely live outside the media subtree.
 
-Checked by TLC over `specs/SpeedArbiter.tla`; conformance tests replay
-TLC traces against the JS `step()` implementation (planned).
+If the path is unresolved, `SiteHandlerManager.resolveGestureMedia()` may delegate to the current site handler. A handler must return a controlled media element only when ownership is unambiguous; otherwise it returns `null`. The YouTube resolver recognizes its player chrome and embedded sibling controls while rejecting ambiguous or unrelated global controls.
 
-- **I1 — No-opinion invariance.** In `NO_OPINION`, the arbiter never
-  emits `WRITE`. (#1537 was a violation of exactly this.)
-- **I2 — Persistence purity.** `PERSIST` is emitted only on
-  `USER_VSC_SET` or `EXT_RATE(_, USER_INTENT)`. Lifecycle restores and
-  fight-backs never persist. (#1494; F1 is today's violation.)
-- **I3 — Bounded fighting.** Per autonomous site write, the arbiter
-  emits at most one `WRITE`; per fight window, at most `MAX_FIGHT`.
-  No livelock against a site that fights back.
-- **I4 — Convergence.** If the site stops writing and no observation is
-  pending, `HOLDING(d)` implies `playbackRate = d`.
-- **I5 — Mode–desired coupling.** `desired ≠ none ⇔ mode = HOLDING`.
-- **I6 — Recoverability.** From any state, a single `USER_VSC_SET(v)`
-  yields `HOLDING(v)` with rate `v` — no classifier mistake can lock the
-  user out.
+Known A click evidence and unresolved fallback click evidence are intentionally separate ledgers. Combining them could manufacture a strong two-click sequence that never occurred on either scope.
 
-## Findings surfaced by writing this spec
+Pointer holds remain conservative. The documented `www.youtube.com` press-and-hold 2x boost is a temporary override, not durable `USER_INTENT`: while held it updates only that media's badge; on release it restores the current shared target only if that media remains `HOLDING`. YouTube restores its own app-level rate on release (`1.0` unless changed through its menu), so treating that write as durable intent would structurally reset users; the release instead completes the overlay and re-asserts the current shared target.
 
-Deviations of current `master` from the target contract, beyond the
-already-tracked issues:
+Hold-evidence lifecycle is deliberately narrow. `pointerup` and `pointercancel` are the only pointer terminals; only the final active pointer/Space source for a media can schedule release, so one terminal cannot cancel another active hold, and the overlay then waits for the normal release `ratechange` with a short per-media fallback if none arrives. `lostpointercapture` is ignored entirely: capture events are synthesized bookkeeping whose `buttons` value differs across browser builds, and real terminals always reach the document-capture listeners. Window focus-safety handlers are bound in the bubble phase because non-bubbling element `blur` events still capture through `window`; a press that merely refocuses page UI must not wipe the very evidence it just armed, while a genuine window blur, page hide, hidden-document transition, or Space `keyup` still retires holds through the guarded fallback. An unresolved press may claim a 2x change only while causally plausible (5s); the newest press binds, so a stale pointer whose terminal was lost outside the window can neither bless later rate changes nor disable recognition.
 
-- **F1 — init-persist asymmetry (latent bug, unreported).**
-  `action-handler.js setSpeed()` step 1 excludes sources `external` AND
-  `init` from updating in-memory `lastSpeed`, but step 6 excludes only
-  `external` from the storage write. A lifecycle restore
-  (`source:'init'`) with `rememberSpeed=on` therefore persists the
-  restored value to storage while in-memory state says "no opinion."
-  Concrete damage: with a per-site rule (`siteDefaultSpeed=1.25`) and a
-  remembered global speed of 1.8, every `play` event on the ruled site
-  silently overwrites the stored 1.8 with 1.25 — and the storage-change
-  listener propagates that to every other open tab (a second vector for
-  #1559 beyond user actions). Violates I2.
-  **Full extent (found by the differential harness):** `config.save()`
-  merges into in-memory settings immediately (`settings.js:220`), so
-  step 6 ALSO sets in-memory `lastSpeed` — defeating step 1's `init`
-  guard entirely whenever `rememberSpeed` is on. The forced baseline
-  silently _becomes fightable authority_ with zero user action: under a
-  site rule, F5's "no fight-back" holds only until the first `play`,
-  after which the system has self-mutated into holding the rule speed.
-- **F2 — surrender is shallow.** On surrender the code accepts the
-  site's rate with `source:'external'`, which does NOT update
-  `lastSpeed`. Authority is silently retained, so after the next quiet
-  window the fight restarts: fight ×5 → surrender → quiet → fight ×5 →
-  … forever, for as long as the site keeps enforcing its own rate. On
-  sites that periodically re-assert rate (live players), this is a
-  permanent periodic write/event storm. Plausibly the mechanism behind
-  the periodic CPU spikes in #1587 and the YouTube UI degradation in
-  #1556 — unconfirmed, but the spec predicts exactly a periodic
-  signature. Target: rule 9 (drop authority on surrender).
-- **F3 — no adoption without prior authority.** The gesture-acceptance
-  branch in `handleRateChange` is gated on truthy `lastSpeed`, so in
-  `NO_OPINION` a genuine native-menu change is never adopted (synced to
-  UI only, never persisted). Target: rule 2. (This was the legitimate
-  half of PR #1532.)
-- **F4 — gesture ledger is per-document, not per-video.** A click
-  anywhere blesses a ratechange on _any_ video in the document within
-  the window. On multi-video pages an autonomous reset on video B can
-  be accepted because the user clicked near video A. Classifier-side
-  fix: scope evidence to the event's target video where possible.
-- **F5 — site rules create a fourth, incoherent authority state.**
-  Under a site rule, `lastSpeed` is `null` but `getTargetSpeed()`
-  returns the rule speed: lifecycle events DO enforce the rule, while
-  ratechange fight-back and gesture acceptance are DISABLED (both gate
-  on truthy `lastSpeed`). Net behavior: the site can change speed
-  freely, but any pause/seek snaps back to the rule — and native user
-  changes are accepted then reverted on the next play. This is a
-  coherent-looking mechanism for several "speed resets on pause/resume"
-  reports (#1573, #1551 are candidates). Target: a rule is _initial_
-  authority (`HOLDING(ruleSpeed)` at LOAD), after which the uniform
-  machine applies.
+Strong native speed-key or menu evidence outranks the hold signature before a physical terminal, so an explicit durable native choice can supersede it; once a terminal is pending, its release rate wins even if the release click completes an otherwise strong click sequence. The release click of a completed long press (≥400ms) is never click-intent evidence: repeated hold attempts would otherwise manufacture a strong click sequence that adopts and persists the structural `1.0` release write. Weak click evidence remains below the hold signature to prevent a release reset from persisting `1.0x`. Adopting a durable choice clears temporary evidence only for that same resolved media, never an active hold on another media.
 
-## Classifier heuristics (current + pending)
+Attribution does not prove a same-player click selected a speed. The classifier still treats a single click to exactly `1.0x` as autonomous, while a click sequence, recognized speed key, or documented site signature supplies stronger evidence.
 
-Every heuristic must cite its motivating evidence. Current inventory:
+## Formal model and TLC
 
-| Signal                                               | Classification effect                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Provenance            |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| Unhandled keydown                                    | only native speed shortcuts (`<`/`>`, Shift+Comma/Period) arm strong key intent; arrow keys and other keys never bless a ratechange                                                                                                                                                                                                                                                                                                                                      | #1562/#1546, PR #1563 |
-| Click (capture, outside vsc-controller)              | feeds the sequence detector. Tiered evidence: a click **sequence** (two clicks ≤5s apart, last within the window — the shape of every real speed menu) = STRONG, adopts any value; a **single** click = WEAK, adopts non-1.0 only. A lone-click transition to exactly 1.0 (the signature of every documented false positive: seek side-effect resets) is treated autonomous and fought — fixes #1581 generically. DOM-heuristic narrowing (PR #1532) rejected as fragile | #1521, #1581          |
-| Pointer held down                                    | **YouTube-only site signature** (`SITE_RULE_OVERRIDES`): press-and-hold 2x is the only documented web-player interaction of this kind; held-pointer rate changes have innocent causes elsewhere (scrub-preview)                                                                                                                                                                                                                                                          | #1554, PR #1555       |
-| Spacebar (YouTube only)                              | arms intent — the keyboard variant of the hold boost; auto-repeat keeps the window fresh through the hold and release                                                                                                                                                                                                                                                                                                                                                    | #1554                 |
-| Any input (pointermove/wheel/touch/key), passive     | presence-only evidence, never intent. Feeds `isQuietContext` (≥5s without input): quiet resets cannot be misclassified user actions, which gates the cell 9b/14 quiet-war re-arm; also logged as decision context (`input Nms ago`)                                                                                                                                                                                                                                      | this doc              |
-| Write-token registry (+ legacy `detail.origin` belt) | self-echo → filtered before arbiter                                                                                                                                                                                                                                                                                                                                                                                                                                      | existing              |
-| `readyState < 1`                                     | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
-| `rate ≤ SPEED_LIMITS.MIN`                            | INIT_NOISE                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
-| Default (no evidence)                                | AUTONOMOUS                                                                                                                                                                                                                                                                                                                                                                                                                                                               | existing              |
+[`specs/SpeedArbiter.tla`](../specs/SpeedArbiter.tla) models two videos (`A`, `B`), two symbolic speeds, a one-fight local budget, independent session authority and persisted storage, both `rememberSpeed` settings, local phase/budget/pending state, temporary native overrides, native adoption, local surrender/re-arm, lifecycle locality, and release. This includes the site-rule shape where in-memory authority differs from stored speed. The wrapper fixes TLC's fingerprint polynomial, so the bounded model's reported state count is reproducible for a given TLC version and configuration.
 
-Privacy: the evidence ledger is deliberately coarse — five in-memory
-timestamps and one boolean (last generic input, last two clicks, last
-speed-intent key, pointer-held). No positions, key identities, element
-info, or event payloads are retained; nothing is persisted or leaves the
-page context, and every value is semantically dead after ~5 seconds.
+The TLA+ model is intentionally an abstraction, not an executable browser simulator. It eagerly resets conflict records on an authority claim instead of retaining stale epoch-tagged `WeakMap` entries; this is observationally equivalent to lazy reset. Temporary overrides are deliberately separate from those conflict records, so an authority choice on B cannot erase A's active native hold before release restores the latest shared target. The model represents the known 2x boost and its release directly, while JS tests cover gesture attribution, pointer capture ordering, terminal-release fallback, Space key lifecycle, strong native-intent precedence, epoch-tagged echo-token queues, browser event coalescing, and deferred metadata DOM listener wiring. Init-noise convergence is likewise outside the model's safety assertions because the production adapter deliberately waits for lifecycle handling.
 
-## Migration status (complete) and deferred work
+Run TLC with the reproducible wrapper:
 
-The original migration plan is done: spec agreed, pure arbiter landed
-with conformance + differential suites, event-manager/video-controller
-are adapters, community PRs #1563/#1555 are subsumed as classifier
-rules, and every policy flag is in target position.
-
-Deliberately deferred, in priority order:
-
-1. **Cooldown → write-token echo filter** — DONE (2026-07). The
-   cooldown branch, its parallel restore logic, and the exponential
-   backoff plumbing are deleted; echo filtering is the write-token
-   registry described under "Event alphabet". Fight pacing is now
-   deliberately budget-only — no temporal spacing between fight-backs —
-   because the bound that matters for attrition safety is the count,
-   not the rate; and every exchange with a reactive site is now visible
-   to the fight budget instead of being invisibly absorbed by the
-   cooldown window (the suspected #1587 write-war engine).
-2. **Multi-tab authority (#1559)** — DONE (2026-07): session isolation.
-   The storage listener no longer adopts remote `lastSpeed`; each tab is
-   an independent machine instance and storage is a last-writer-wins
-   register read only at LOAD (see the design note below). The
-   `_lastWrittenSpeed` self-echo token died with the channel it guarded.
-3. **Per-video gesture scoping (F4)** — DECLINED (2026-07): document-wide
-   evidence is the accepted design position; the tiered value asymmetry
-   already shrank the cross-video blast radius. Revisit only on field
-   evidence from multi-video feed sites.
-4. **`setSpeed` decomposition** — DONE (2026-07). `setSpeed` and its
-   source taxonomy ('internal'/'external'/'init') no longer exist; the
-   effects vocabulary maps 1:1 to named primitives: WRITE →
-   `ActionHandler.writeRate` (takes the echo token), SYNC_UI →
-   `ActionHandler.syncIndicator`, PERSIST → `config.persistAuthority`,
-   CLEAR_AUTHORITY / RESTORE_AUTHORITY →
-   `config.clearSessionAuthority` / `restoreSessionAuthority`.
-   `adjustSpeed` IS the USER_SET event (every remaining caller is a
-   user acting through VSC) and executes that row's effects; lifecycle
-   and observe paths compose the bare primitives — so persistence
-   purity (I2) holds by construction instead of by source-string
-   checks. The synthetic origin-tagged `ratechange` dispatch was
-   retired with the taxonomy (the token filters the native echo); the
-   `detail.origin` check survives only as a belt for stale page-world
-   scripts during extension updates.
-5. **Legacy compat branches** — DONE (2026-07): deleted once their
-   migration and ledger-history purposes were served; the executable
-   history is one checkout away at tag `arbitration-executable-history`.
-
-## Verification status
-
-Three independent layers, all runnable locally:
-
-1. **TLC over `specs/SpeedArbiter.tla`** — target contract exhaustively
-   checked (2,820 states); two single-defect configs reproduce #1537 and
-   F1 as property violations with minimal traces. Design-time oracle.
-2. **Mini model checker in `tests/unit/core/arbiter.test.js`** —
-   exhaustive BFS over the reachable (state × register) graph asserting
-   invariants I1–I6 on every edge; runs in vitest, no Java needed.
-3. **Differential harness + bug ledger in
-   `tests/integration/arbiter-differential.test.js`** — the same
-   scenario streams drive the real production pipeline and the pure
-   arbiter model under the same policy; observables must match at
-   every step (hand scenarios + a 20-seed deterministic random sweep).
-   Echo absorption is itself proven differentially: the `echo` op
-   replays our own write's ratechange in the pipeline world ONLY — the
-   pure model has no echo concept — so equivalence holds iff the token
-   filter absorbs every echo completely.
-   The bug ledger pins every known bug in three configurations: the
-   historical legacy model (reproduces the original bug, forever, as
-   executable history), the live pipeline (fixed or open per policy),
-   and the full target contract. Fight-budget note: legacy
-   increments-then-checks, so `MAX_FIGHT_COUNT = 5` yields 4
-   fight-backs; the arbiter's default budget preserves that observable
-   behavior.
-
-## Design note: surrender semantics (F2)
-
-For future reference — what changed and what was deliberately given up.
-Legacy "surrender" was a 3-second ceasefire with TWO automatic
-re-engagement channels: (a) the next site enforcement write after the
-quiet window started a fresh fight burst — unbounded periodic war
-against enforcing sites (the #1587/#1556 signature); (b) the next
-`play`/`seeked` re-asserted the retained authority — so unpausing
-brought the user's speed back (and re-provoked the site).
-
-Real surrender (cell 9) removes both automatic channels: session
-authority is cleared, lifecycle goes silent, further site writes are
-observed only. Re-engagement requires a user action (VSC key or native
-control via adoption) or a page reload (stored speed re-seeds). The
-user-visible trade: after an enforcement battle, unpausing no longer
-restores your speed — one keypress does. Channel (b) was occasionally
-pleasant ("my speed came back after the ad break"), but the forgiveness
-window (cell 13) already protects isolated resets; only 5 rapid resets
-inside rolling 3s windows — the signature of programmatic enforcement —
-reach surrender at all.
-
-The back-pocket amendment shipped in its safe form (cells 9b/14): when
-the ENTIRE war was input-quiet — meaning no reset could have been a
-misclassified user action, since all intent evidence is input — the
-stand-down is REARMABLE and the next lifecycle event restores the
-pre-war speed, once per session. Activity-context wars stay terminal.
-Rejected alternative, for the record: refreshing the fight budget on
-quiet resets would resurrect the infinite periodic war — passive
-VIEWING is input-quiet, so quiet must never justify more fighting, only
-looser assumptions about misclassification.
-
-## Design note: multi-tab authority (#1559)
-
-Chosen model — **session isolation with last-writer-wins storage**: each
-tab runs an independent instance of the machine; stored `lastSpeed` is a
-shared register that (a) seeds authority at LOAD and (b) is written by
-`PERSIST` on user events. Tabs never exchange authority mid-session.
-The user-visible behavior: the speed you set in one tab stays put in
-other already-open tabs; whichever tab you adjusted last is what a NEW
-tab (or reload) picks up — which is native `chrome.storage` semantics,
-not machinery we maintain.
-
-What this replaced: the storage listener used to apply remote
-`lastSpeed` writes into the running session, making session authority a
-shared mutable cell across all tabs. That was the #1559 bleed — a speed
-change (or a per-site rule seeding, via F1) in one tab silently mutated
-every other tab's FIGHTABLE authority — and it was also a soundness
-hole: `desired` could change with no event in the verified alphabet, a
-channel neither the table, TLC, the mini-checker, nor the differential
-harness modeled. Session isolation doesn't extend the spec to cover
-multi-tab; it makes the single-tab spec TRUE, which is why the "spec
-extension" planned in the deferred register reduced to a deletion.
-
-Rejected alternative, for the record: live shared authority done
-properly (option (a)) would need `REMOTE_SET` in the event alphabet,
-echo-safe self-write detection (the retired `_lastWrittenSpeed` token),
-conflict resolution for concurrent tabs, and a defensible answer to
-"tab A's site war just surrendered — why did tab B's speed change?".
-All that buys a behavior users mostly experience as the bug in #1559.
-
-## Production policy
-
-The migration-era `SpeedArbitration.POLICY` flag object was retired when
-every flag reached target position — behavior is now the contract
-itself. The table below records what shipped and when; flip rationale
-lives in the git log, and the pre-migration machinery (compat flags,
-legacy rule set, executable bug reproductions) is preserved at git tag
-`arbitration-executable-history`.
-place behavior flips happen; every line cites its ledger entry. Status:
-
-| Fix                                                | Status      | Notes                                                                                                                                                             |
-| -------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cell 1 (#1537)                                     | **shipped** | lifecycle no longer writes without authority                                                                                                                      |
-| Classifier TARGET_RULES (#1562/#1546, #1554/#1568) | **shipped** | arrow keys don't bless resets; click-hold is intent                                                                                                               |
-| F1 (persistence purity)                            | **shipped** | via the `setSpeed` init-persist fix                                                                                                                               |
-| F5 (rule = initial authority)                      | **shipped** | coupled to cell 1 — see POLICY note; user overrides now stick until reload                                                                                        |
-| F3 (adopt without prior authority)                 | **shipped** | native speed choices become session authority                                                                                                                     |
-| F2 (real surrender)                                | **shipped** | stand down to NO_OPINION; session authority cleared, stored speed survives next load. No owned state needed — the SURRENDERED-mode collapse kept derivation total |
-| #1581 (click narrowing)                            | **shipped** | fixed generically by tiered evidence + value asymmetry                                                                                                            |
-| Quiet-war re-arm (cells 9b/14)                     | **shipped** | speed returns once after machine-vs-machine wars; spec updated first, TLC re-verified                                                                             |
-| Write-token echo filter (deferred #1)              | **shipped** | cooldown + backoff deleted; every genuinely external event now reaches the arbiter, so reactive-site exchanges are budget-accounted (suspected #1587 engine)      |
-| Effect primitives (deferred #4)                    | **shipped** | `setSpeed` + source taxonomy dissolved into `writeRate`/`syncIndicator`/`persistAuthority`; I2 now holds by construction                                          |
-| Multi-tab session isolation (#1559, deferred #2)   | **shipped** | remote `lastSpeed` no longer adopted mid-session; storage is last-writer-wins at LOAD only — makes the single-tab spec faithful                                   |
-
-Remaining debates are about which behavior we want per cell — never
-about implementation correctness.
-
-## Model checking
-
-```
-cd specs
-java -jar tla2tools.jar -config SpeedArbiter.cfg SpeedArbiter.tla          # target contract: all green
-java -jar tla2tools.jar -config SpeedArbiterBuggy1537.cfg SpeedArbiter.tla # reproduces #1537 (I1 violation)
-java -jar tla2tools.jar -config SpeedArbiterBuggyPersist.cfg SpeedArbiter.tla # reproduces F1 (I2 violation)
+```sh
+npm run test:tlc
 ```
 
-The two "buggy" configurations enable single-defect flags that model
-today's behavior for cells 1 and 6 respectively; TLC produces minimal
-counterexample traces, which double as regression documentation.
+The wrapper requires Java 11 or newer, obtains only official TLA+ release `tla2tools.jar` version `1.7.4`, verifies SHA-256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`, and caches it outside the repository at `~/.cache/videospeed/tlc`. Set `TLC_JAR=/path/to/tla2tools.jar` to use a local copy only when it has the same pinned checksum. Successful runs remove their TLC metadata; a failed run retains its metadata under `~/.cache/videospeed/tlc/runs/` and prints the exact path for diagnosis.
+
+CI installs Temurin Java 17, caches the verified JAR, and runs `npm run test:tlc` explicitly after the JavaScript suite. `npm test` does not invoke TLC.
+
+## Verification map
+
+| Layer                    | What it checks                                                                                                                   | Command                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure core tests          | Local phase/effect transitions and bounded mini-model invariants                                                                 | `npx vitest run tests/unit/core/arbiter.test.js`                                                                                                              |
+| Differential replay      | Production pipeline versus pure local arbiter for single-media traces                                                            | `npx vitest run tests/integration/arbiter-differential.test.js`                                                                                               |
+| Multi-video integration  | Independent budgets, local surrender/re-arm, temporary-override locality, authority epoch, bulk batching, release                | `npx vitest run tests/integration/multi-video-arbitration.test.js`                                                                                            |
+| Gesture/refinement tests | Scoped click ledgers, YouTube temporary hold/release, terminal fallback, pointer capture ordering, direct/site resolver behavior | `npx vitest run tests/unit/core/intent-classifier.test.js tests/unit/utils/event-manager.test.js tests/unit/site-handlers/youtube-gesture-resolution.test.js` |
+| TLA+ model               | Shared authority plus two local conflict registers, temporary-override locality, and autonomous non-interference                 | `npm run test:tlc`                                                                                                                                            |
+| Browser arbitration E2E  | Two real media elements, local surrender/re-arm, and deferred removal lifecycle                                                  | `npm run build && node tests/e2e/run-e2e.js arbitration`                                                                                                      |
+| Full repository check    | Lint, unit/integration tests, and release build                                                                                  | `npm run lint && npm test && npm run build:release`                                                                                                           |
+
+## Change checklist
+
+1. State whether the change belongs to shared authority, a per-media conflict record, the classifier, or a site resolver.
+2. Keep MAIN-world code free of `chrome.*` and keep bridge code free of page DOM access.
+3. Add or update a pure transition test before adding DOM-specific branching.
+4. Add a multi-video regression whenever a change can affect ownership, local timers, local suppression, or bulk actions.
+5. Update the TLA+ model only for pure shared/local arbitration semantics; test DOM attribution separately.
+6. Run lint, the affected Vitest suites, `npm run test:tlc`, and the full verification set before merging.

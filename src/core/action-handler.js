@@ -12,6 +12,17 @@ class ActionHandler {
   }
 
   /**
+   * Create the short-lived context shared by every controlled media target of
+   * one user command. A bulk keyboard/popup action starts one authority epoch,
+   * not one epoch per target, while each target still receives its local
+   * USER_SET transition.
+   * @returns {{hasClaimedAuthority: boolean}}
+   */
+  createAuthorityBatch() {
+    return { hasClaimedAuthority: false };
+  }
+
+  /**
    * Execute an action on media elements
    * @param {string} action - Action to perform
    * @param {*} value - Action value
@@ -29,6 +40,7 @@ class ActionHandler {
       targetController = e.target.getRootNode().host;
     }
 
+    const authorityBatch = this.createAuthorityBatch();
     mediaTags.forEach((v) => {
       const controller = v.vsc?.div;
 
@@ -43,7 +55,7 @@ class ActionHandler {
       }
 
       if (!v.classList.contains('vsc-cancelled')) {
-        this.executeAction(action, value, v, e);
+        this.executeAction(action, value, v, e, { authorityBatch });
       }
     });
   }
@@ -54,9 +66,10 @@ class ActionHandler {
    * @param {*} value - Action value
    * @param {HTMLMediaElement} video - Video element
    * @param {Event} e - Event object (optional)
+   * @param {{authorityBatch?: {hasClaimedAuthority: boolean}}} [options]
    * @private
    */
-  executeAction(action, value, video, e) {
+  executeAction(action, value, video, e, options = {}) {
     switch (action) {
       case 'rewind':
         window.VSC.logger.debug('Rewind');
@@ -70,19 +83,19 @@ class ActionHandler {
 
       case 'faster': {
         window.VSC.logger.debug('Increase speed');
-        this.adjustSpeed(video, value, { relative: true });
+        this.adjustSpeed(video, value, { relative: true, authorityBatch: options.authorityBatch });
         break;
       }
 
       case 'slower': {
         window.VSC.logger.debug('Decrease speed');
-        this.adjustSpeed(video, -value, { relative: true });
+        this.adjustSpeed(video, -value, { relative: true, authorityBatch: options.authorityBatch });
         break;
       }
 
       case 'reset':
         window.VSC.logger.debug('Reset speed');
-        this.resetSpeed(video, value, this.config.getKeyBinding('fast'));
+        this.resetSpeed(video, value, this.config.getKeyBinding('fast'), options);
         break;
 
       case 'display': {
@@ -125,7 +138,7 @@ class ActionHandler {
 
       case 'fast':
         window.VSC.logger.debug('Preferred speed');
-        this.resetSpeed(video, value, this.config.getKeyBinding('reset'));
+        this.resetSpeed(video, value, this.config.getKeyBinding('reset'), options);
         break;
 
       case 'pause':
@@ -154,18 +167,18 @@ class ActionHandler {
 
       case 'SET_SPEED':
         window.VSC.logger.info('Setting speed to:', value);
-        this.adjustSpeed(video, value);
+        this.adjustSpeed(video, value, { authorityBatch: options.authorityBatch });
         break;
 
       case 'ADJUST_SPEED':
         window.VSC.logger.info('Adjusting speed by:', value);
-        this.adjustSpeed(video, value, { relative: true });
+        this.adjustSpeed(video, value, { relative: true, authorityBatch: options.authorityBatch });
         break;
 
       case 'RESET_SPEED': {
         window.VSC.logger.info('Resetting speed');
         const preferredSpeed = this.config.getKeyBinding('fast') || 1.0;
-        this.adjustSpeed(video, preferredSpeed);
+        this.adjustSpeed(video, preferredSpeed, { authorityBatch: options.authorityBatch });
         break;
       }
 
@@ -210,8 +223,9 @@ class ActionHandler {
    * @param {HTMLMediaElement} video - Video element
    * @param {number} target - Target speed for this action
    * @param {number} [crossTarget] - Target speed of the paired action (for cross-toggle)
+   * @param {{authorityBatch?: {hasClaimedAuthority: boolean}}} [options]
    */
-  resetSpeed(video, target, crossTarget) {
+  resetSpeed(video, target, crossTarget, options = {}) {
     if (!video.vsc) {
       window.VSC.logger.warn('resetSpeed called on video without controller');
       return;
@@ -225,18 +239,23 @@ class ActionHandler {
         window.VSC.logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
         const rememberedSpeed = video.vsc.speedBeforeReset;
         video.vsc.speedBeforeReset = null;
-        this.adjustSpeed(video, rememberedSpeed);
+        this.adjustSpeed(video, rememberedSpeed, options);
       } else if (crossTarget && crossTarget !== target) {
         // Cross-toggle: jump to the paired action's target
         window.VSC.logger.info(`Cross-toggle from ${target} to ${crossTarget}`);
         video.vsc.speedBeforeReset = currentSpeed;
-        this.adjustSpeed(video, crossTarget);
+        this.adjustSpeed(video, crossTarget, options);
+      } else {
+        // Even an already-normal reset is an explicit VSC choice. Route it
+        // through USER_SET so a same-value action starts a fresh authority
+        // epoch and retries any locally suppressed media on the next lifecycle.
+        this.adjustSpeed(video, target, options);
       }
     } else {
       // Remember current speed and jump to target
       window.VSC.logger.info(`Remembering speed ${currentSpeed} and resetting to ${target}`);
       video.vsc.speedBeforeReset = currentSpeed;
-      this.adjustSpeed(video, target);
+      this.adjustSpeed(video, target, options);
     }
   }
 
@@ -385,6 +404,7 @@ class ActionHandler {
    * @param {number} value - Speed value (absolute) or delta (relative)
    * @param {Object} options - Configuration options
    * @param {boolean} options.relative - If true, value is a delta; if false, absolute speed
+   * @param {{hasClaimedAuthority: boolean}} [options.authorityBatch] - Shared batch context for a bulk user command
    */
   adjustSpeed(video, value, options = {}) {
     return window.VSC.logger.withContext(video, () => {
@@ -408,7 +428,7 @@ class ActionHandler {
    * @private
    */
   _adjustSpeedInternal(video, value, options) {
-    const { relative = false } = options;
+    const { relative = false, authorityBatch } = options;
 
     // Calculate target speed
     let targetSpeed;
@@ -445,9 +465,17 @@ class ActionHandler {
     // register write, so any handler observing the resulting ratechange
     // reads fresh state.
     if (this.eventManager?.arbitration) {
-      this.eventManager.arbitration.noteUserSet();
+      this.eventManager.arbitration.noteUserSet(video, targetSpeed, {
+        startsAuthorityEpoch: !authorityBatch || !authorityBatch.hasClaimedAuthority,
+      });
+      if (authorityBatch) {
+        authorityBatch.hasClaimedAuthority = true;
+      }
+    } else {
+      // Standalone construction has no document coordinator; preserve the
+      // existing persistence behavior for unit-level/controller-only use.
+      this.config.persistAuthority(targetSpeed);
     }
-    this.config.persistAuthority(targetSpeed);
     this.writeRate(video, targetSpeed);
     this.syncIndicator(video, targetSpeed);
   }

@@ -3,6 +3,7 @@
  * Using global variables to match browser extension architecture
  */
 
+import { vi } from 'vitest';
 import {
   installChromeMock,
   cleanupChromeMock,
@@ -99,6 +100,30 @@ describe('VideoController', () => {
     expect(mockVideo.playbackRate).toBe(2.0);
   });
 
+  it('does not restore a deferred lifecycle speed after controller removal', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.lastSpeed = 1.75;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const mockVideo = createMockVideo({ playbackRate: 1.0, readyState: 0 });
+    mockDOM.container.appendChild(mockVideo);
+    const writeRate = vi.spyOn(actionHandler, 'writeRate');
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    const conflict = eventManager.arbitration.conflictFor(mockVideo);
+    expect(controller.handleLoadedMetadata).toBeTypeOf('function');
+
+    controller.remove();
+    mockVideo.dispatchEvent({ type: 'loadedmetadata' });
+
+    expect(writeRate).not.toHaveBeenCalled();
+    expect(controller.handleLoadedMetadata).toBeNull();
+    expect(eventManager.arbitration.conflicts.get(mockVideo)).toBeUndefined();
+    expect(eventManager.arbitration.timedConflicts.has(conflict)).toBe(false);
+  });
+
   it('VideoController should create controller UI', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
@@ -169,6 +194,30 @@ describe('VideoController', () => {
     // Verify cleanup
     expect(mockVideo.vsc).toBe(undefined);
     expect(window.VSC.stateManager.controllers.size).toBe(0);
+  });
+
+  it('clears a pending controller flash timer during removal', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const mockVideo = createMockVideo();
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    vi.useFakeTimers();
+    try {
+      actionHandler.flashController(controller.div, 100);
+      expect(controller.div.flashTimer).toBeDefined();
+
+      controller.remove();
+      expect(controller.div.flashTimer).toBeUndefined();
+
+      await vi.advanceTimersByTimeAsync(100);
+      expect(controller.div.classList.contains('vsc-show')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('VideoController should register with state manager', async () => {

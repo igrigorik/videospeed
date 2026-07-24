@@ -49,17 +49,21 @@ class EventManager {
 
     docs.forEach((doc) => {
       const keydownHandler = (event) => this.handleKeydown(event);
+      const keyupHandler = (event) => this.handleKeyup(event);
       doc.addEventListener('keydown', keydownHandler, true);
+      doc.addEventListener('keyup', keyupHandler, true);
 
-      // Store reference for cleanup
+      // Store references for cleanup. Keyup only retires the short-lived
+      // YouTube Space-hold signature; it never handles VSC shortcuts.
       if (!this.listeners.has(doc)) {
         this.listeners.set(doc, []);
       }
-      this.listeners.get(doc).push({
-        type: 'keydown',
-        handler: keydownHandler,
-        useCapture: true,
-      });
+      this.listeners
+        .get(doc)
+        .push(
+          { type: 'keydown', handler: keydownHandler, useCapture: true },
+          { type: 'keyup', handler: keyupHandler, useCapture: true }
+        );
     });
   }
 
@@ -129,6 +133,19 @@ class EventManager {
     }
 
     return false;
+  }
+
+  /**
+   * Retire a native Space hold after its physical key release. The classifier
+   * owns host detection and media attribution; arbitration owns restoration.
+   * @param {KeyboardEvent} event
+   * @private
+   */
+  handleKeyup(event) {
+    const media = this.arbitration.classifier.observeKeyEnd(event);
+    if (media) {
+      this.arbitration.noteTemporaryOverrideEnd(media);
+    }
   }
 
   /**
@@ -214,8 +231,9 @@ class EventManager {
   /**
    * Feed user interactions that originate outside the VSC controller to the
    * classifier's evidence ledger. Clicks on native speed UI land here;
-   * unhandled keys land in handleKeydown; pointerdown covers click-and-hold
-   * interactions (evidence only under TARGET_RULES, per PR #1555).
+   * unhandled keys land in handleKeydown; pointer lifecycle events cover
+   * click-and-hold interactions (evidence only under TARGET_RULES, per
+   * PR #1555).
    * The classifier — not this module — decides what counts as intent.
    * @param {Document} document
    * @private
@@ -226,13 +244,38 @@ class EventManager {
       if (event.target?.closest?.('vsc-controller')) {
         return;
       }
-      this.arbitration.classifier.observeClick(event);
+      this.arbitration.classifier.observeClick(event, this.resolveGestureMedia(event));
     };
     const pointerDownHandler = (event) => {
       if (event.target?.closest?.('vsc-controller')) {
         return;
       }
-      this.arbitration.classifier.observePointerDown(event);
+      this.arbitration.classifier.observePointerDown(event, this.resolveGestureMedia(event));
+    };
+    // Do not filter terminal events by target: a pointer that began outside
+    // VSC can end on a captured/retargeted VSC node, and its hold must still
+    // be retired by pointer ID. The active local override remains until its
+    // following normal ratechange, which makes browser listener ordering safe.
+    // `lostpointercapture` is deliberately NOT a terminal signal: capture
+    // events are synthesized bookkeeping whose `buttons` value varies across
+    // browser builds, and YouTube can shed capture mid-hold. Real releases
+    // always reach these document-capture pointerup/pointercancel listeners.
+    const pointerEndHandler = (event) => {
+      for (const video of this.arbitration.classifier.observePointerEnd(event)) {
+        this.arbitration.noteTemporaryOverrideEnd(video);
+      }
+    };
+    // Browser focus/page lifecycle can swallow a physical terminal event.
+    // Do not let old hold evidence become indefinite across that boundary.
+    const clearTemporaryHolds = () => {
+      for (const video of this.arbitration.classifier.clearTemporaryHolds()) {
+        this.arbitration.noteTemporaryOverrideEnd(video);
+      }
+    };
+    const visibilityHandler = (event) => {
+      if (document.hidden) {
+        clearTemporaryHolds(event);
+      }
     };
     // Presence-only evidence for the quiet/activity axis: a single
     // timestamp assignment per event, passive so scrolling never blocks.
@@ -243,6 +286,9 @@ class EventManager {
     };
     document.addEventListener('click', clickHandler, true);
     document.addEventListener('pointerdown', pointerDownHandler, true);
+    document.addEventListener('pointerup', pointerEndHandler, true);
+    document.addEventListener('pointercancel', pointerEndHandler, true);
+    document.addEventListener('visibilitychange', visibilityHandler, true);
     document.addEventListener('pointermove', inputHandler, { capture: true, passive: true });
     document.addEventListener('wheel', inputHandler, { capture: true, passive: true });
     document.addEventListener('touchstart', inputHandler, { capture: true, passive: true });
@@ -255,10 +301,63 @@ class EventManager {
       .push(
         { type: 'click', handler: clickHandler, useCapture: true },
         { type: 'pointerdown', handler: pointerDownHandler, useCapture: true },
+        { type: 'pointerup', handler: pointerEndHandler, useCapture: true },
+        { type: 'pointercancel', handler: pointerEndHandler, useCapture: true },
+        { type: 'visibilitychange', handler: visibilityHandler, useCapture: true },
         { type: 'pointermove', handler: inputHandler, useCapture: true },
         { type: 'wheel', handler: inputHandler, useCapture: true },
         { type: 'touchstart', handler: inputHandler, useCapture: true }
       );
+
+    const view = document.defaultView;
+    if (view) {
+      if (!this.listeners.has(view)) {
+        this.listeners.set(view, []);
+      }
+      // Bubble phase is load-bearing: `blur` does not bubble but DOES capture
+      // through window for every element-level focus change. A capture
+      // listener here fires when a press moves page focus, wiping hold
+      // evidence milliseconds after the pointerdown that armed it. Without
+      // capture, only a genuine window blur (app/tab switch) reaches this.
+      view.addEventListener('blur', clearTemporaryHolds);
+      view.addEventListener('pagehide', clearTemporaryHolds);
+      this.listeners
+        .get(view)
+        .push(
+          { type: 'blur', handler: clearTemporaryHolds, useCapture: false },
+          { type: 'pagehide', handler: clearTemporaryHolds, useCapture: false }
+        );
+    }
+  }
+
+  /**
+   * Associate a page gesture with a controlled media element only when the
+   * DOM path or current site handler identifies one unambiguous owner.
+   * Unresolved gestures deliberately retain the classifier's legacy
+   * document-level fallback scope.
+   * @param {Event} event
+   * @returns {HTMLMediaElement|null}
+   */
+  resolveGestureMedia(event) {
+    const mediaElements = window.VSC.stateManager
+      ? window.VSC.stateManager.getControlledElements()
+      : [];
+    if (mediaElements.length === 0) {
+      return null;
+    }
+
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+    const controlled = new Set(mediaElements);
+    const directMatches = new Set(path.filter((node) => controlled.has(node)));
+    if (directMatches.size === 1) {
+      return directMatches.values().next().value;
+    }
+    if (directMatches.size > 1 || mediaElements.length === 1) {
+      return null;
+    }
+
+    const resolved = window.VSC.siteHandlerManager?.resolveGestureMedia?.(event, mediaElements);
+    return controlled.has(resolved) ? resolved : null;
   }
 
   /**
@@ -341,6 +440,7 @@ class EventManager {
     // executes the effects (including fight-back mechanics). No decision
     // logic lives in this module anymore.
     const verdict = this.arbitration.classifier.classify({
+      media: video,
       rate: video.playbackRate,
       timeStamp: event.timeStamp,
       readyState: video.readyState,

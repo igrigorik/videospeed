@@ -21,7 +21,9 @@ single, formally specified arbitration engine.
 ### Fixes you'll notice
 
 - **YouTube's hold-for-2x works again** — both click-and-hold and holding
-  spacebar (#1554, #1568)
+  spacebar temporarily use 2x, then restore your prior VSC speed on release
+  without turning YouTube's release reset into a durable `1x` choice (#1554,
+  #1568)
 - **Arrow-key seeking no longer resets your speed** on YouTube and
   elsewhere (#1562, #1546)
 - **Clicking the progress bar no longer resets speed to 1x** on Facebook

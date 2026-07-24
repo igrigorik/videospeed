@@ -153,6 +153,28 @@ describe('Inject', () => {
     expect(video.vsc).toBeUndefined();
   });
 
+  it('removes a deferred listener when media disappears before loadeddata', () => {
+    extension = window.VSC_controller;
+    const video = createMockVideo({ readyState: 1 });
+    const parent = document.createElement('div');
+
+    Object.defineProperty(video, 'isConnected', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+
+    extension.onVideoFound(video, parent);
+    expect(extension.deferredMediaListeners.has(video)).toBe(true);
+
+    extension.onVideoRemoved(video);
+    expect(extension.deferredMediaListeners.has(video)).toBe(false);
+
+    video.readyState = 4;
+    video.dispatchEvent(new Event('loadeddata'));
+    expect(video.vsc).toBeUndefined();
+  });
+
   it('onVideoFound attaches immediately when readyState >= 2', () => {
     extension = window.VSC_controller;
     expect(extension).toBeDefined();

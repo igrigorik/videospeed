@@ -58,7 +58,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
   // --- Truth table row 2: rememberSpeed=OFF, site rule speed=2.0 → 2.0 ---
@@ -71,7 +71,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
   });
 
   // --- Truth table row 3: rememberSpeed=ON, no site rule, lastSpeed=1.5 → 1.5 ---
@@ -83,7 +83,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.5);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.5);
   });
 
   // --- Truth table row 4: rememberSpeed=ON, no site rule, lastSpeed=1.0 → 1.0 ---
@@ -95,7 +95,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
   // --- Per-site rule always wins on fresh load, even with rememberSpeed=ON ---
@@ -107,7 +107,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
   });
 
   // --- User acts mid-session on site with rule → user speed wins ---
@@ -119,11 +119,11 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
 
     // Simulate user changing speed (setSpeed writes real number)
     config.settings.lastSpeed = 1.4;
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.4);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.4);
   });
 
   // --- User resets to 1.0 on site with rule=2.0 → 1.0 sticks (#1506) ---
@@ -135,7 +135,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.arbitration.lifecycleTarget()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
   // --- Edge: no rule, no user choice → NO opinion, NO write (cell 1) ---
@@ -149,6 +149,6 @@ describe('SpeedResolution', () => {
     const ctrl = makeController(config);
     // Release N (cell 1 fixed): no authority means the arbiter emits no
     // write — the native rate is left alone (#1537).
-    expect(ctrl.arbitration.lifecycleTarget()).toBeNull();
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBeNull();
   });
 });

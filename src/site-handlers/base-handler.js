@@ -85,6 +85,20 @@ class BaseSiteHandler {
   }
 
   /**
+   * Resolve a page gesture to exactly one controlled media element.
+   *
+   * Return null unless a site-specific player relationship is unambiguous.
+   * EventManager retains unresolved gestures as document-level fallback
+   * evidence, while a resolved gesture must never bless another player.
+   * @param {Event} _event
+   * @param {HTMLMediaElement[]} _mediaElements
+   * @returns {HTMLMediaElement|null}
+   */
+  resolveGestureMedia(_event, _mediaElements) {
+    return null;
+  }
+
+  /**
    * Get site-specific CSS selectors for video containers
    * @returns {Array<string>} CSS selectors
    */

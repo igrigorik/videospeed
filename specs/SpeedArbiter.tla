@@ -1,309 +1,423 @@
 ---------------------------- MODULE SpeedArbiter ----------------------------
 (***************************************************************************)
-(* Formal model of VSC's speed arbitration contract.                       *)
+(* Formal model of VSC's shared-authority, per-media arbitration contract. *)
 (*                                                                         *)
-(* This is the machine-checked twin of docs/speed-arbitration.md. The      *)
-(* human-readable transition table and this module describe the same       *)
-(* object; rule numbers in comments refer to the table.                    *)
+(* The cfg bounds this model to two controlled media elements. desired,     *)
+(* stored, and rememberEnabled are document/session-wide; each media has its *)
+(* own rate register, phase, fight budget, re-arm budget, temporary native *)
+(* override, and pending observation.                                      *)
 (*                                                                         *)
-(* Modeling decisions:                                                     *)
-(*   - Speeds are abstracted to a small symbolic set. "one" is the 1.0     *)
-(*     baseline; other members stand for arbitrary distinct user speeds.   *)
-(*   - Real time is abstracted away: timers appear as nondeterministic     *)
-(*     expiry events, gesture windows as the classifier's verdict.         *)
-(*   - The classifier is an untrusted oracle: every external ratechange    *)
-(*     is classified nondeterministically (USER_INTENT / AUTONOMOUS /      *)
-(*     INIT_NOISE), so TLC explores every possible classification,        *)
-(*     including wrong ones. Properties must hold regardless.              *)
-(*   - The site is an adversary: it may write the register at any moment   *)
-(*     until it "goes quiet" (needed only for convergence properties).     *)
-(*   - At most one unprocessed observation is pending; a newer site write  *)
-(*     coalesces with it (the arbiter reads the current rate at observe    *)
-(*     time, as the implementation does).                                  *)
-(*   - Self-originated ratechange echoes are filtered before the arbiter   *)
-(*     by the write-token registry (each WRITE registers the value it      *)
-(*     expects to echo; the adapter consumes matching tokens); VSC's own   *)
-(*     writes therefore create no pending observation here. v2 could      *)
-(*     model the token queue explicitly alongside the init window.        *)
-(*   - One machine instance per tab (session isolation, #1559): stored     *)
-(*     lastSpeed is a last-writer-wins register read only at LOAD and      *)
-(*     written by PERSIST. Mid-session cross-tab writes never reach the    *)
-(*     machine, so this single-instance model is faithful — desired can    *)
-(*     only change through events in the alphabet above.                   *)
-(*   - KNOWN v1 GAP (found by the JS mini-checker): table cell 11 lets an  *)
-(*     INIT_NOISE-classified write leave the register diverged from a held *)
-(*     authority until the next lifecycle event heals it. This model       *)
-(*     scopes init churn out entirely (see the LOAD postcondition), so     *)
-(*     HoldingDivergenceImpliesPending / QuiescentConvergence hold only in *)
-(*     the post-init world. v2 must add an InitNoise observation and       *)
-(*     restate convergence as conditional on a subsequent Lifecycle.       *)
+(* authorityEpoch is represented by an eager abstraction: a VSC/native     *)
+(* authority claim resets every local conflict record to HOLDING. The real  *)
+(* adapter does this lazily with epoch-tagged WeakMap records, but clearing *)
+(* stale records eagerly is observationally equivalent and finite. It also  *)
+(* makes the key guarantee explicit: a local surrender on A cannot survive *)
+(* a new shared authority claim on B. A temporary native override is an     *)
+(* orthogonal local overlay and deliberately survives B's authority claim. *)
 (*                                                                         *)
-(* Historical note: Buggy* single-defect variants reproduced the           *)
-(* pre-migration bugs (#1537, F1) during the strangler-fig rewrite; they   *)
-(* were removed with the legacy-compat machinery. See git tag              *)
-(* arbitration-executable-history.                                         *)
+(* Classifier verdicts are untrusted inputs. The model explores            *)
+(* USER_INTENT, AUTONOMOUS, and INIT_NOISE. A recognized temporary native  *)
+(* override is modeled as its own start/end pair; gesture ownership, pointer *)
+(* lifecycle, and echo queues remain adapter refinements tested in JS.      *)
 (***************************************************************************)
-EXTENDS Naturals
+EXTENDS Naturals, FiniteSets
 
 CONSTANTS
-  Speeds,   \* e.g. {"one", "v", "w"}; must contain "one"
-  MaxFight  \* fight-back budget per window (impl: 4 effective)
+  Speeds,      \* e.g. {"one", "fast"}; must contain "one"
+  Videos,      \* e.g. {"A", "B"}
+  MaxFight     \* local fight budget per window (implementation default: 4)
 
 None == "NONE"
+ModeValues == {"NoOpinion", "Holding", "Rearmable", "Suppressed"}
+RateClasses == {"UserIntent", "Autonomous", "InitNoise"}
 
 ASSUME /\ "one" \in Speeds
+       /\ "fast" \in Speeds
        /\ None \notin Speeds
+       /\ Cardinality(Videos) >= 2
        /\ MaxFight \in Nat /\ MaxFight > 0
 
 VARIABLES
-  rate,         \* the shared register: video.playbackRate
-  mode,         \* "NoOpinion" | "Holding" | "Rearmable" (cells 9/9b/14)
-  desired,      \* authoritative target; None iff NoOpinion (impl: lastSpeed;
-                \* in Rearmable it is the pre-war speed pending restoration)
-  stored,       \* persisted lastSpeed (chrome.storage), for purity checking
-  fightCount,   \* consecutive autonomous resets fought this window
-  pending,      \* BOOLEAN: an external ratechange awaits arbitration
-  pendingQuiet, \* BOOLEAN: the pending change arrived in INPUT-quiet context
-                \* (no user input for QUIET_CONTEXT_MS — cannot be a
-                \* misclassified user action). NOT the same as `quiet` below.
-  warQuiet,     \* BOOLEAN: every fight of the current war was input-quiet
-  rearmBudget,  \* 0..1: quiet-war re-arms remaining this session
-  quiet,        \* BOOLEAN: site has permanently stopped writing (monotone)
-  lastWriter    \* ghost: who last changed rate ("init"|"user"|"site"|"vsc")
+  rate,                 \* [Videos -> Speeds], each video.playbackRate
+  desired,              \* shared in-memory session authority, or None
+  stored,               \* persisted lastSpeed, or None
+  rememberEnabled,      \* whether user authority claims write persistent storage
+  attached,             \* [Videos -> BOOLEAN], controller lifetime
+  mode,                 \* [Videos -> ModeValues], local conflict phase
+  fightCount,           \* [Videos -> 0..MaxFight]
+  pending,              \* [Videos -> BOOLEAN], unprocessed ratechange
+  pendingClass,         \* [Videos -> RateClasses], untrusted classifier input
+  pendingQuiet,         \* [Videos -> BOOLEAN], quietness of the observation
+  warQuiet,             \* [Videos -> BOOLEAN], every fight in this local war quiet
+  rearmBudget,          \* [Videos -> 0..1], local quiet-war re-arms remaining
+  temporary,            \* [Videos -> BOOLEAN], local native hold overlay
+  authorityClaim        \* ghost: this transition began a fresh shared epoch
 
 vars ==
-  <<rate, mode, desired, stored, fightCount, pending, pendingQuiet, warQuiet,
-    rearmBudget, quiet, lastWriter>>
+  <<rate, desired, stored, rememberEnabled, attached, mode, fightCount, pending,
+    pendingClass, pendingQuiet, warQuiet, rearmBudget, temporary, authorityClaim>>
+
+Replace(f, i, value) == [j \in Videos |-> IF j = i THEN value ELSE f[j]]
+
+CanRearm(i) == warQuiet[i] /\ pendingQuiet[i] /\ rearmBudget[i] > 0
 
 TypeOK ==
-  /\ rate \in Speeds
-  /\ mode \in {"NoOpinion", "Holding", "Rearmable"}
+  /\ rate \in [Videos -> Speeds]
   /\ desired \in Speeds \cup {None}
   /\ stored \in Speeds \cup {None}
-  /\ fightCount \in 0..MaxFight
-  /\ pending \in BOOLEAN
-  /\ pendingQuiet \in BOOLEAN
-  /\ warQuiet \in BOOLEAN
-  /\ rearmBudget \in 0..1
-  /\ quiet \in BOOLEAN
-  /\ lastWriter \in {"init", "user", "site", "vsc"}
+  /\ rememberEnabled \in BOOLEAN
+  /\ attached \in [Videos -> BOOLEAN]
+  /\ mode \in [Videos -> ModeValues]
+  /\ fightCount \in [Videos -> 0..MaxFight]
+  /\ pending \in [Videos -> BOOLEAN]
+  /\ pendingClass \in [Videos -> RateClasses]
+  /\ pendingQuiet \in [Videos -> BOOLEAN]
+  /\ warQuiet \in [Videos -> BOOLEAN]
+  /\ rearmBudget \in [Videos -> 0..1]
+  /\ temporary \in [Videos -> BOOLEAN]
+  /\ authorityClaim \in BOOLEAN
 
 (***************************************************************************)
-(* LOAD: initial states cover every configuration —                       *)
-(*   NoOpinion:  rememberSpeed off (or nothing stored), no site rule       *)
-(*   Holding(d): remembered speed, or a per-site rule as initial authority *)
-(*               (the F5 unification; stored may differ from desired,      *)
-(*               which is exactly the site-rule + rememberSpeed case)      *)
-(*                                                                         *)
-(* LOAD postcondition (found by TLC, v1 scoping decision): in Holding the  *)
-(* register already reflects desired — i.e. initializeSpeed() and its      *)
-(* deferred loadedmetadata application are part of LOAD, an adapter        *)
-(* obligation that completes before arbitration begins. The load-to-       *)
-(* first-write race window (player init fights, readyState<1) is out of    *)
-(* scope for this spec version and must be revisited when modeling the     *)
-(* adapter layer.                                                          *)
+(* LOAD: no session authority, or one shared remembered/site-rule value.   *)
+(* stored is intentionally independent: a site rule may seed desired while  *)
+(* remembered storage retains a different speed.                            *)
 (***************************************************************************)
 Init ==
-  /\ \/ (mode = "NoOpinion" /\ desired = None /\ rate \in Speeds)
-     \/ (mode = "Holding" /\ desired \in Speeds /\ rate = desired)
+  /\ desired \in Speeds \cup {None}
   /\ stored \in Speeds \cup {None}
-  /\ fightCount = 0
-  /\ pending = FALSE
-  /\ pendingQuiet = FALSE
-  /\ warQuiet = TRUE
-  /\ rearmBudget = 1
-  /\ quiet = FALSE
-  /\ lastWriter = "init"
+  /\ rememberEnabled \in BOOLEAN
+  /\ rate \in [Videos -> Speeds]
+  /\ IF desired # None THEN \A i \in Videos : rate[i] = desired ELSE TRUE
+  /\ attached = [i \in Videos |-> TRUE]
+  /\ mode = [i \in Videos |-> IF desired = None THEN "NoOpinion" ELSE "Holding"]
+  /\ fightCount = [i \in Videos |-> 0]
+  /\ pending = [i \in Videos |-> FALSE]
+  /\ pendingClass = [i \in Videos |-> "Autonomous"]
+  /\ pendingQuiet = [i \in Videos |-> FALSE]
+  /\ warQuiet = [i \in Videos |-> TRUE]
+  /\ rearmBudget = [i \in Videos |-> 1]
+  /\ temporary = [i \in Videos |-> FALSE]
+  /\ authorityClaim = FALSE
 
-(* Rules 5, 12, 16: the user acts through VSC. The only unambiguous input.
-   Clears any pending observation: our write supersedes it and its native
-   echo is absorbed by the write-token filter. *)
-UserSet(v) ==
-  /\ rate' = v
-  /\ mode' = "Holding"
+(* A VSC action starts one fresh shared authority generation. In production
+   batch actions call this epoch transition once, then apply local USER_SET
+   to their remaining targets; that adapter batching is covered by JS tests. *)
+UserSet(i, v) ==
+  /\ attached[i]
+  /\ rate' = Replace(rate, i, v)
   /\ desired' = v
-  /\ stored' = v
-  /\ fightCount' = 0
-  /\ pending' = FALSE
-  /\ pendingQuiet' = FALSE
-  /\ warQuiet' = TRUE
-  /\ lastWriter' = "user"
-  /\ UNCHANGED <<rearmBudget, quiet>>
+  /\ stored' = IF rememberEnabled THEN v ELSE stored
+  /\ mode' = [j \in Videos |-> IF attached[j] THEN "Holding" ELSE "NoOpinion"]
+  /\ fightCount' = [j \in Videos |-> 0]
+  /\ warQuiet' = [j \in Videos |-> TRUE]
+  /\ rearmBudget' = [j \in Videos |-> 1]
+  /\ temporary' = Replace(temporary, i, FALSE)
+  /\ authorityClaim' = TRUE
+  /\ UNCHANGED <<rememberEnabled, attached, pending, pendingClass, pendingQuiet>>
 
-(* The adversary: the site writes the register whenever it likes. *)
-SiteWrite(v) ==
-  /\ ~quiet
-  /\ rate' = v
-  /\ pending' = TRUE
-  /\ pendingQuiet' \in BOOLEAN  \* input context is the environment's choice
-  /\ lastWriter' = "site"
-  /\ UNCHANGED <<mode, desired, stored, fightCount, warQuiet, rearmBudget, quiet>>
+(* The page writes one media register. At most one observation per media is
+   represented; browser coalescing means a newer write replaces it before
+   the listener observes it, so this bounded model simply waits to observe. *)
+SiteWrite(i, v, c, q) ==
+  /\ attached[i]
+  /\ ~pending[i]
+  /\ rate' = Replace(rate, i, v)
+  /\ pending' = Replace(pending, i, TRUE)
+  /\ pendingClass' = Replace(pendingClass, i, c)
+  /\ pendingQuiet' = Replace(pendingQuiet, i, q)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<desired, stored, rememberEnabled, attached, mode, fightCount,
+               warQuiet, rearmBudget, temporary>>
 
-(* Rules 2, 7: classifier verdict USER_INTENT — adopt the current rate as
-   the new authority, persist it. Works from any mode: the user spoke. *)
-ObserveUserIntent ==
-  /\ pending
-  /\ pending' = FALSE
-  /\ pendingQuiet' = FALSE
-  /\ mode' = "Holding"
-  /\ desired' = rate
-  /\ stored' = rate
-  /\ fightCount' = 0
-  /\ warQuiet' = TRUE
-  /\ UNCHANGED <<rate, rearmBudget, quiet, lastWriter>>
+(* A native user choice claims the same shared authority as a VSC choice. *)
+ObserveUserIntent(i) ==
+  /\ attached[i]
+  /\ pending[i]
+  /\ pendingClass[i] = "UserIntent"
+  /\ desired' = rate[i]
+  /\ stored' = IF rememberEnabled THEN rate[i] ELSE stored
+  /\ mode' = [j \in Videos |-> IF attached[j] THEN "Holding" ELSE "NoOpinion"]
+  /\ fightCount' = [j \in Videos |-> 0]
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ warQuiet' = [j \in Videos |-> TRUE]
+  /\ rearmBudget' = [j \in Videos |-> 1]
+  /\ temporary' = Replace(temporary, i, FALSE)
+  /\ authorityClaim' = TRUE
+  /\ UNCHANGED <<rate, rememberEnabled, attached>>
 
-(* Rule 8: classifier verdict AUTONOMOUS while we hold a diverging
-   authority and have fight budget — enforce ours. *)
-ObserveAutonomousFight ==
-  /\ pending
-  /\ mode = "Holding"
-  /\ rate # desired
-  /\ fightCount < MaxFight
-  /\ rate' = desired
-  /\ fightCount' = fightCount + 1
-  /\ pending' = FALSE
-  /\ pendingQuiet' = FALSE
-  /\ warQuiet' = IF fightCount = 0 THEN pendingQuiet ELSE warQuiet /\ pendingQuiet
-  /\ lastWriter' = "vsc"
-  /\ UNCHANGED <<mode, desired, stored, rearmBudget, quiet>>
+(* AUTONOMOUS divergence within i's local budget: re-assert shared desired
+   only on i. No other media's counter, phase, or register changes. *)
+ObserveAutonomousFight(i) ==
+  /\ attached[i]
+  /\ pending[i]
+  /\ pendingClass[i] = "Autonomous"
+  /\ desired # None
+  /\ mode[i] = "Holding"
+  /\ rate[i] # desired
+  /\ fightCount[i] < MaxFight
+  /\ rate' = Replace(rate, i, desired)
+  /\ mode' = mode
+  /\ fightCount' = Replace(fightCount, i, fightCount[i] + 1)
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ warQuiet' = Replace(
+       warQuiet,
+       i,
+       IF fightCount[i] = 0 THEN pendingQuiet[i] ELSE warQuiet[i] /\ pendingQuiet[i]
+     )
+  /\ rearmBudget' = rearmBudget
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<desired, stored, rememberEnabled, attached, temporary>>
 
-(* Rules 9/9b: budget exhausted — stand down. If the ENTIRE war was
-   input-quiet (no reset could have been a misclassified user action,
-   because all intent evidence is input) and a re-arm remains, stand down
-   REARMABLE: the next lifecycle event restores the pre-war speed once
-   (rule 14). Otherwise surrender is terminal for the session — an
-   activity-context war might have been fought against a misclassified
-   user, and attrition safety (the user wins after the budget) must hold.
-   Storage is untouched in both variants. *)
-ObserveAutonomousSurrender ==
-  /\ pending
-  /\ mode = "Holding"
-  /\ rate # desired
-  /\ fightCount = MaxFight
-  /\ fightCount' = 0
-  /\ pending' = FALSE
-  /\ pendingQuiet' = FALSE
-  /\ warQuiet' = TRUE
-  /\ IF warQuiet /\ pendingQuiet /\ rearmBudget > 0
-       THEN /\ mode' = "Rearmable"
-            /\ desired' = desired      \* the pre-war speed, pending re-arm
-            /\ rearmBudget' = rearmBudget - 1
-       ELSE /\ mode' = "NoOpinion"
-            /\ desired' = None
-            /\ UNCHANGED rearmBudget
-  /\ UNCHANGED <<rate, stored, quiet, lastWriter>>
+(* Local surrender. desired deliberately remains untouched: A's hostile
+   player cannot clear document authority or suppress B. *)
+ObserveAutonomousSurrender(i) ==
+  /\ attached[i]
+  /\ pending[i]
+  /\ pendingClass[i] = "Autonomous"
+  /\ desired # None
+  /\ mode[i] = "Holding"
+  /\ rate[i] # desired
+  /\ fightCount[i] = MaxFight
+  /\ mode' = Replace(mode, i, IF CanRearm(i) THEN "Rearmable" ELSE "Suppressed")
+  /\ fightCount' = Replace(fightCount, i, 0)
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ warQuiet' = Replace(warQuiet, i, TRUE)
+  /\ rearmBudget' = Replace(
+       rearmBudget,
+       i,
+       IF CanRearm(i) THEN rearmBudget[i] - 1 ELSE rearmBudget[i]
+     )
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<rate, desired, stored, rememberEnabled, attached, temporary>>
 
-(* Rules 3, 4, 10, 11, 15: everything else — the site confirmed our value,
-   or we have no opinion / already surrendered (observe only), or the
-   classifier says INIT_NOISE (ignore). Consume the observation; at most
-   the UI indicator moves. *)
-ObserveNoop ==
-  /\ pending
-  /\ (mode # "Holding" \/ rate = desired)
-  /\ pending' = FALSE
-  /\ pendingQuiet' = FALSE
-  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, warQuiet, rearmBudget,
-                 quiet, lastWriter>>
+(* A recognized site-specific hold is a local overlay, not USER_INTENT: it
+   may display a different rate while held but never claims desired/stored. *)
+TemporaryOverrideStart(i) ==
+  /\ attached[i]
+  /\ desired # None
+  /\ ~temporary[i]
+  /\ rate' = Replace(rate, i, "fast")
+  /\ temporary' = Replace(temporary, i, TRUE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<desired, stored, rememberEnabled, attached, mode, fightCount,
+               pending, pendingClass, pendingQuiet, warQuiet, rearmBudget>>
 
-(* Rules 1, 6, 14: play / seeked / deferred loadedmetadata.
-   Holding: re-assert desired, never persist (#1494; F1 flag models the
-   current step-6 leak). NoOpinion: nothing (the flag models pre-#1537
-   forcing of the 1.0 baseline). Post-surrender states are NoOpinion. *)
-Lifecycle ==
-  \/ /\ mode = "Holding"
-     /\ rate' = desired
-     /\ stored' = stored
-     /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
-     /\ UNCHANGED <<mode, desired, fightCount, pending, pendingQuiet, warQuiet,
-                    rearmBudget, quiet>>
-  \/ /\ mode = "Rearmable"
-     \* Rule 14: the quiet-war re-arm — restore the pre-war speed once.
-     \* In-memory authority only; stored is untouched (purity preserved).
-     /\ mode' = "Holding"
-     /\ rate' = desired
-     /\ lastWriter' = IF rate # desired THEN "vsc" ELSE lastWriter
-     /\ UNCHANGED <<desired, stored, fightCount, pending, pendingQuiet, warQuiet,
-                    rearmBudget, quiet>>
+(* The native release returns control to the underlying local phase. HOLDING
+   restores the current shared desired speed; a suppressed/rearmable/no-opinion
+   record remains locally non-enforcing. *)
+TemporaryOverrideEnd(i) ==
+  /\ attached[i]
+  /\ temporary[i]
+  /\ rate' = Replace(
+       rate,
+       i,
+       IF desired # None /\ mode[i] = "Holding" THEN desired ELSE "one"
+     )
+  /\ temporary' = Replace(temporary, i, FALSE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<desired, stored, rememberEnabled, attached, mode, fightCount,
+               pending, pendingClass, pendingQuiet, warQuiet, rearmBudget>>
 
-(* Rule 13: FIGHT_WINDOW_MS elapsed without new fights — forgive. *)
-FightWindowExpire ==
-  /\ fightCount > 0
-  /\ fightCount' = 0
-  /\ warQuiet' = TRUE
-  /\ UNCHANGED <<rate, mode, desired, stored, pending, pendingQuiet, rearmBudget,
-                 quiet, lastWriter>>
+(* INIT_NOISE is intentionally ignored. It may leave a temporary divergence
+   for lifecycle to heal, so this finite safety model does not assert global
+   convergence after an init-noise verdict. *)
+ObserveInitNoise(i) ==
+  /\ attached[i]
+  /\ pending[i]
+  /\ pendingClass[i] = "InitNoise"
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<rate, desired, stored, rememberEnabled, attached, mode,
+               fightCount, warQuiet, rearmBudget, temporary>>
 
-(* The site permanently stops writing. Only needed so convergence
-   properties have something to converge under. *)
-SiteGoQuiet ==
-  /\ ~quiet
-  /\ quiet' = TRUE
-  /\ UNCHANGED <<rate, mode, desired, stored, fightCount, pending, pendingQuiet,
-                 warQuiet, rearmBudget, lastWriter>>
+(* Autonomous confirmation, no authority, and already-local-suppressed or
+   rearmable media are observation-only. *)
+ObserveNoop(i) ==
+  /\ attached[i]
+  /\ pending[i]
+  /\ pendingClass[i] = "Autonomous"
+  /\ (desired = None \/ mode[i] # "Holding" \/ rate[i] = desired)
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<rate, desired, stored, rememberEnabled, attached, mode,
+               fightCount, warQuiet, rearmBudget, temporary>>
+
+(* Any autonomous observation leaves shared authority untouched and can only
+   advance one media's local record. This named action is checked below as a
+   two-media non-interference property. *)
+AutonomousObservation(i) ==
+  \/ ObserveAutonomousFight(i)
+  \/ ObserveAutonomousSurrender(i)
+  \/ ObserveNoop(i)
+
+(* Lifecycle is local. A temporary native override owns its media register
+   until release; otherwise HOLDING reasserts i, REARMABLE reasserts it once,
+   while SUPPRESSED and NO_OPINION stay silent. *)
+Lifecycle(i) ==
+  /\ attached[i]
+  /\ IF temporary[i]
+       THEN /\ UNCHANGED <<rate, mode, fightCount, warQuiet, rearmBudget>>
+       ELSE IF desired # None /\ mode[i] = "Holding"
+            THEN /\ rate' = Replace(rate, i, desired)
+                 /\ mode' = mode
+                 /\ fightCount' = fightCount
+                 /\ warQuiet' = warQuiet
+                 /\ rearmBudget' = rearmBudget
+            ELSE IF desired # None /\ mode[i] = "Rearmable"
+                 THEN /\ rate' = Replace(rate, i, desired)
+                      /\ mode' = Replace(mode, i, "Holding")
+                      /\ fightCount' = fightCount
+                      /\ warQuiet' = warQuiet
+                      /\ rearmBudget' = rearmBudget
+                 ELSE /\ UNCHANGED <<rate, mode, fightCount, warQuiet, rearmBudget>>
+  /\ temporary' = temporary
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<desired, stored, rememberEnabled, attached, pending,
+               pendingClass, pendingQuiet>>
+
+FightWindowExpire(i) ==
+  /\ attached[i]
+  /\ fightCount[i] > 0
+  /\ fightCount' = Replace(fightCount, i, 0)
+  /\ warQuiet' = Replace(warQuiet, i, TRUE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<rate, desired, stored, rememberEnabled, attached, mode,
+               pending, pendingClass, pendingQuiet, rearmBudget, temporary>>
+
+(* Controller teardown releases all local state/timers. Shared desired and
+   every other media record survive. Reattachment is out of scope here: a
+   fresh controller is equivalent to a fresh bounded run. *)
+Release(i) ==
+  /\ attached[i]
+  /\ attached' = Replace(attached, i, FALSE)
+  /\ mode' = Replace(mode, i, "NoOpinion")
+  /\ fightCount' = Replace(fightCount, i, 0)
+  /\ pending' = Replace(pending, i, FALSE)
+  /\ pendingClass' = Replace(pendingClass, i, "Autonomous")
+  /\ pendingQuiet' = Replace(pendingQuiet, i, FALSE)
+  /\ warQuiet' = Replace(warQuiet, i, TRUE)
+  /\ rearmBudget' = Replace(rearmBudget, i, 1)
+  /\ temporary' = Replace(temporary, i, FALSE)
+  /\ authorityClaim' = FALSE
+  /\ UNCHANGED <<rate, desired, stored, rememberEnabled>>
 
 Next ==
-  \/ \E v \in Speeds : UserSet(v)
-  \/ \E v \in Speeds : SiteWrite(v)
-  \/ ObserveUserIntent
-  \/ ObserveAutonomousFight
-  \/ ObserveAutonomousSurrender
-  \/ ObserveNoop
-  \/ Lifecycle
-  \/ FightWindowExpire
-  \/ SiteGoQuiet
+  \/ \E i \in Videos, v \in Speeds : UserSet(i, v)
+  \/ \E i \in Videos, v \in Speeds, c \in RateClasses, q \in BOOLEAN :
+       SiteWrite(i, v, c, q)
+  \/ \E i \in Videos : ObserveUserIntent(i)
+  \/ \E i \in Videos : TemporaryOverrideStart(i)
+  \/ \E i \in Videos : TemporaryOverrideEnd(i)
+  \/ \E i \in Videos : ObserveAutonomousFight(i)
+  \/ \E i \in Videos : ObserveAutonomousSurrender(i)
+  \/ \E i \in Videos : ObserveInitNoise(i)
+  \/ \E i \in Videos : ObserveNoop(i)
+  \/ \E i \in Videos : Lifecycle(i)
+  \/ \E i \in Videos : FightWindowExpire(i)
+  \/ \E i \in Videos : Release(i)
+  \/ UNCHANGED vars
 
-(* Weak fairness on arbitration: pending observations are eventually
-   processed (the ratechange handler always runs). *)
 Spec == Init /\ [][Next]_vars
-             /\ WF_vars(ObserveUserIntent \/ ObserveAutonomousFight
-                        \/ ObserveAutonomousSurrender \/ ObserveNoop)
 
------------------------------------------------------------------------------
-(* INVARIANTS (I-numbers from docs/speed-arbitration.md) *)
+(***************************************************************************)
+(* Invariants and action properties.                                      *)
+(***************************************************************************)
 
-(* I5: authority (or a pending re-arm value) exists exactly outside
-   NoOpinion. *)
-ModeDesiredCoupling ==
-  (desired # None) <=> (mode \in {"Holding", "Rearmable"})
+SharedAuthorityCoupling ==
+  /\ desired = None => \A i \in Videos : attached[i] => mode[i] = "NoOpinion"
+  /\ desired # None => \A i \in Videos : attached[i] => mode[i] # "NoOpinion"
 
-(* Supporting lemma for I4: in Holding, divergence implies an unprocessed
-   observation — the arbiter never knowingly leaves the register wrong. *)
-HoldingDivergenceImpliesPending ==
-  (mode = "Holding" /\ rate # desired) => pending
+(* A current local REARMABLE or SUPPRESSED phase is never allowed to erase
+   the shared authority needed by another media element. *)
+LocalSurrenderRetainsAuthority ==
+  \A i \in Videos :
+    attached[i] /\ mode[i] \in {"Rearmable", "Suppressed"} => desired # None
 
-(* I4: once the site is quiet and observations are drained, a held
-   authority is reflected in the register. *)
-QuiescentConvergence ==
-  (quiet /\ ~pending /\ mode = "Holding") => rate = desired
+ReleasedMediaInert ==
+  \A i \in Videos :
+    ~attached[i] => /\ ~pending[i] /\ fightCount[i] = 0 /\ ~temporary[i]
 
------------------------------------------------------------------------------
-(* ACTION PROPERTIES *)
+(* A new user/native authority epoch resets every per-media conflict budget.
+   This is the eager equivalent of invalidating epoch-tagged records. The
+   temporary overlay is intentionally excluded: B claiming authority must not
+   erase A's active native hold before A receives its release event. *)
+AuthorityClaimResetsLocalConflicts ==
+  [] [(authorityClaim' =>
+        /\ desired' # None
+        /\ \A i \in Videos :
+             attached'[i] =>
+               /\ mode'[i] = "Holding" /\ fightCount'[i] = 0 /\ warQuiet'[i]
+               /\ rearmBudget'[i] = 1)]_vars
 
-(* I1: in NoOpinion, VSC never writes the register (historically violated
-   by the pre-#1537 lifecycle baseline write). *)
-NoOpinionNeverWrites ==
-  [][ (mode = "NoOpinion" /\ mode' = "NoOpinion" /\ rate' # rate)
-        => lastWriter' # "vsc" ]_vars
+RearmBudgetResetOnlyOnAuthorityClaim ==
+  [] [\A i \in Videos :
+        attached[i] /\ attached'[i] /\ rearmBudget'[i] > rearmBudget[i]
+          => authorityClaim']_vars
 
-(* Re-arms are bounded: the budget never increases within a session. *)
-RearmBudgetMonotone ==
-  [][rearmBudget' <= rearmBudget]_vars
-
-(* I2: persisted state moves only on a user action or a user-intent
-   adoption (both consume: UserSet sets lastWriter'="user"; adoption
-   consumes pending). This is invariant I2, historically violated by F1.
-   Note rule 14 (re-arm) restores in-memory authority WITHOUT touching
-   stored — this property is exactly why that distinction matters. *)
 PersistencePurity ==
-  [][ (stored' # stored)
-        => (lastWriter' = "user" \/ (pending /\ ~pending')) ]_vars
+  [] [((stored' # stored) => authorityClaim')]_vars
 
------------------------------------------------------------------------------
-(* LIVENESS *)
+(* Autonomous arbitration for A must not mutate B's register, conflict
+   record, pending observation, or shared authority/persistence state. *)
+AutonomousArbitrationIsLocal ==
+  [] [\A i \in Videos :
+        AutonomousObservation(i) =>
+          /\ desired' = desired
+          /\ stored' = stored
+          /\ \A j \in Videos :
+               j # i =>
+                 /\ rate'[j] = rate[j]
+                 /\ mode'[j] = mode[j]
+                 /\ fightCount'[j] = fightCount[j]
+                 /\ pending'[j] = pending[j]
+                 /\ pendingClass'[j] = pendingClass[j]
+                 /\ pendingQuiet'[j] = pendingQuiet[j]
+                 /\ warQuiet'[j] = warQuiet[j]
+                 /\ rearmBudget'[j] = rearmBudget[j]
+                 /\ temporary'[j] = temporary[j]]_vars
 
-(* Observations are drained: any pending observation is eventually
-   arbitrated (from WF), hence with a quiet site the system reaches and
-   stays in a drained state. *)
-ObservationsDrain == [](pending => <>(~pending))
+(* A temporary native override on A may touch only A's register/overlay. It
+   cannot claim shared authority, persist speed, or change B's local record. *)
+TemporaryOverrideIsLocal ==
+  [] [\A i \in Videos :
+        (TemporaryOverrideStart(i) \/ TemporaryOverrideEnd(i)) =>
+          /\ desired' = desired
+          /\ stored' = stored
+          /\ ~authorityClaim'
+          /\ \A j \in Videos :
+               j # i =>
+                 /\ rate'[j] = rate[j]
+                 /\ mode'[j] = mode[j]
+                 /\ fightCount'[j] = fightCount[j]
+                 /\ pending'[j] = pending[j]
+                 /\ pendingClass'[j] = pendingClass[j]
+                 /\ pendingQuiet'[j] = pendingQuiet[j]
+                 /\ warQuiet'[j] = warQuiet[j]
+                 /\ rearmBudget'[j] = rearmBudget[j]
+                 /\ temporary'[j] = temporary[j]]_vars
+
+(* A lifecycle event for i cannot write another media register. *)
+LifecycleIsLocal ==
+  [] [\A i \in Videos : Lifecycle(i) =>
+        \A j \in Videos : j # i => rate'[j] = rate[j]]_vars
+
+(* A suppressed local record stays silent on its own lifecycle events. *)
+SuppressedLifecycleIsSilent ==
+  [] [\A i \in Videos :
+        attached[i] /\ mode[i] = "Suppressed" /\ Lifecycle(i) => rate'[i] = rate[i]]_vars
+
+TemporaryLifecycleIsSilent ==
+  [] [\A i \in Videos :
+        attached[i] /\ temporary[i] /\ Lifecycle(i) => rate'[i] = rate[i]]_vars
 
 =============================================================================

@@ -1032,20 +1032,24 @@ describe('ActionHandler', () => {
     expect(video.playbackRate).toBe(1.5);
   });
 
-  it('resetSpeed without crossTarget preserves backward compatibility', async () => {
+  it('resetSpeed at its target still starts a fresh authority epoch', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
+    config.settings.lastSpeed = 2.0;
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
     video.vsc.speedBeforeReset = null;
 
-    // Called without crossTarget (e.g. from double-click reset) → should be a no-op at target
+    // Called without crossTarget (e.g. popup reset) still expresses a user
+    // choice, even though the register already contains 1.0x.
     actionHandler.resetSpeed(video, 1.0);
+
     expect(video.playbackRate).toBe(1.0);
     expect(video.vsc.speedBeforeReset).toBe(null);
+    expect(config.settings.lastSpeed).toBe(1.0);
+    expect(eventManager.arbitration.authorityEpoch).toBe(1);
   });
 
   it('lastSpeed should update during session even when rememberSpeed is false', async () => {
@@ -1079,7 +1083,7 @@ describe('ActionHandler', () => {
     expect(savedCalls.length).toBe(0);
 
     // Simulate play event (which asks the arbiter for the lifecycle target)
-    const targetSpeed = video.vsc.arbitration.lifecycleTarget();
+    const targetSpeed = video.vsc.arbitration.lifecycleTarget(video);
     expect(targetSpeed).toBe(1.4);
 
     // Restore original save method
