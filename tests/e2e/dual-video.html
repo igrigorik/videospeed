@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Dual Video Speed Arbitration Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      .video-container {
+        margin: 20px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      video {
+        display: block;
+        width: 640px;
+        height: 100px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Speed Arbitration Test - Dual Video</h1>
+    <p>Two videos for testing cross-element speed arbitration.</p>
+
+    <div class="video-container">
+      <h2>Video A (Primary)</h2>
+      <video id="videoA" controls loop muted>
+        <source src="fixtures/test.wav" type="audio/wav" />
+      </video>
+    </div>
+
+    <div class="video-container">
+      <h2>Video B (Secondary)</h2>
+      <video id="videoB" controls loop muted>
+        <source src="fixtures/test.wav" type="audio/wav" />
+      </video>
+    </div>
+
+    <div id="test-area"></div>
+  </body>
+</html>

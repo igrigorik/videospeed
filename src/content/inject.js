@@ -9,6 +9,11 @@ class VideoSpeedExtension {
     this.eventManager = null;
     this.mutationObserver = null;
     this.mediaObserver = null;
+    // Deferred loadeddata listeners need explicit teardown. A listener held by
+    // a still-connected unready media element can otherwise revive a
+    // controller after extension teardown has released its dependencies.
+    this.deferredMediaListeners = new Map();
+    this.acceptingMedia = true;
     this.initialized = false;
   }
 
@@ -169,6 +174,7 @@ class VideoSpeedExtension {
       this.eventManager.actionHandler = this.actionHandler;
 
       this.setupObservers();
+      this.acceptingMedia = true;
 
       this.initializeWhenReady(document, (doc) => {
         this.initializeDocument(doc);
@@ -279,6 +285,11 @@ class VideoSpeedExtension {
    */
   onVideoFound(video, parent) {
     try {
+      if (!this.acceptingMedia) {
+        this.logger.debug('Skipping media attachment after extension teardown');
+        return;
+      }
+
       if (this.mediaObserver && !this.mediaObserver.isValidMediaElement(video)) {
         this.logger.debug('Video element is not valid for controller attachment');
         return;
@@ -292,15 +303,23 @@ class VideoSpeedExtension {
       // Defer until readyState >= HAVE_CURRENT_DATA — inserting a controller
       // too early can trigger the site's internal MutationObservers.
       if (video.readyState < 2) {
+        if (this.deferredMediaListeners.has(video)) {
+          return;
+        }
         this.logger.debug(
           'Deferring controller until loadeddata (readyState=%d)',
           video.readyState
         );
-        video.addEventListener('loadeddata', () => this.onVideoFound(video, parent), {
-          once: true,
-        });
+        const listener = () => {
+          this.deferredMediaListeners.delete(video);
+          this.onVideoFound(video, parent);
+        };
+        this.deferredMediaListeners.set(video, listener);
+        video.addEventListener('loadeddata', listener, { once: true });
         return;
       }
+
+      this.clearDeferredMediaListener(video);
 
       // Check if controller should start hidden based on video visibility/size
       const shouldStartHidden = this.mediaObserver
@@ -324,6 +343,28 @@ class VideoSpeedExtension {
   }
 
   /**
+   * Remove one pending loadeddata listener without retaining its media key.
+   * @param {HTMLMediaElement} video
+   * @private
+   */
+  clearDeferredMediaListener(video) {
+    const listener = this.deferredMediaListeners.get(video);
+    if (!listener) {
+      return;
+    }
+    video.removeEventListener('loadeddata', listener);
+    this.deferredMediaListeners.delete(video);
+  }
+
+  /** Remove all pending media listeners during teardown. @private */
+  clearDeferredMediaListeners() {
+    for (const [video, listener] of this.deferredMediaListeners) {
+      video.removeEventListener('loadeddata', listener);
+    }
+    this.deferredMediaListeners.clear();
+  }
+
+  /**
    * Tear down the extension: remove all controllers, stop observers, clean up listeners.
    * Counterpart to initialize() — leaves the page as if VSC was never active.
    */
@@ -333,6 +374,9 @@ class VideoSpeedExtension {
     }
 
     this.logger.info('Tearing down Video Speed Controller');
+    this.acceptingMedia = false;
+
+    this.clearDeferredMediaListeners();
 
     // Remove all controllers from tracked media elements
     const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
@@ -380,6 +424,7 @@ class VideoSpeedExtension {
    */
   onVideoRemoved(video) {
     try {
+      this.clearDeferredMediaListener(video);
       if (video.vsc) {
         this.logger.debug('Removing controller from video element');
         video.vsc.remove();
@@ -407,10 +452,14 @@ class VideoSpeedExtension {
           if (message.payload && typeof message.payload.speed === 'number') {
             const { MIN, MAX } = window.VSC.Constants.SPEED_LIMITS;
             const targetSpeed = Math.min(Math.max(message.payload.speed, MIN), MAX);
+            const authorityBatch = extension.actionHandler.createAuthorityBatch();
             videos.forEach((video) => {
               if (video.vsc) {
-                extension.actionHandler.adjustSpeed(video, targetSpeed);
+                extension.actionHandler.adjustSpeed(video, targetSpeed, { authorityBatch });
               } else {
+                // Uncontrolled video (no vsc controller): outside the
+                // arbitration domain, direct write is the only channel.
+                // eslint-disable-next-line no-restricted-syntax
                 video.playbackRate = targetSpeed;
               }
             });
@@ -425,13 +474,18 @@ class VideoSpeedExtension {
         case window.VSC.Constants.MESSAGE_TYPES.ADJUST_SPEED:
           if (message.payload && typeof message.payload.delta === 'number') {
             const delta = message.payload.delta;
+            const authorityBatch = extension.actionHandler.createAuthorityBatch();
             videos.forEach((video) => {
               if (video.vsc) {
-                extension.actionHandler.adjustSpeed(video, delta, { relative: true });
+                extension.actionHandler.adjustSpeed(video, delta, {
+                  relative: true,
+                  authorityBatch,
+                });
               } else {
                 // Fallback for videos without controller
                 const { MIN: sMin, MAX: sMax } = window.VSC.Constants.SPEED_LIMITS;
                 const newSpeed = Math.min(Math.max(video.playbackRate + delta, sMin), sMax);
+                // eslint-disable-next-line no-restricted-syntax -- uncontrolled video, outside arbitration domain
                 video.playbackRate = newSpeed;
               }
             });
@@ -442,17 +496,20 @@ class VideoSpeedExtension {
           }
           break;
 
-        case window.VSC.Constants.MESSAGE_TYPES.RESET_SPEED:
+        case window.VSC.Constants.MESSAGE_TYPES.RESET_SPEED: {
+          const authorityBatch = extension.actionHandler.createAuthorityBatch();
           videos.forEach((video) => {
             if (video.vsc) {
-              extension.actionHandler.resetSpeed(video, 1.0);
+              extension.actionHandler.resetSpeed(video, 1.0, undefined, { authorityBatch });
             } else {
+              // eslint-disable-next-line no-restricted-syntax -- uncontrolled video, outside arbitration domain
               video.playbackRate = 1.0;
             }
           });
 
           window.VSC.logger?.debug(`Reset speed on ${videos.length} media elements`);
           break;
+        }
 
         case window.VSC.Constants.MESSAGE_TYPES.TOGGLE_DISPLAY:
           if (extension.actionHandler) {

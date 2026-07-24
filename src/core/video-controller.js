@@ -16,6 +16,13 @@ class VideoController {
     this.parent = target.parentElement || parent;
     this.config = config;
     this.actionHandler = actionHandler;
+    // Lifecycle decisions come from the document coordinator, which shares
+    // desired authority while keeping conflict state keyed by media element.
+    // Standalone construction only uses lifecycle reads, so a local fallback
+    // remains safe for controller-only tests.
+    this.arbitration =
+      (actionHandler && actionHandler.eventManager && actionHandler.eventManager.arbitration) ||
+      new window.VSC.SpeedArbitration(config, null);
     this.controlsManager = new window.VSC.ControlsManager(actionHandler, config);
     this.shouldStartHidden = shouldStartHidden;
 
@@ -54,64 +61,54 @@ class VideoController {
   /**
    * Initialize video speed based on settings.
    *
-   * Uses source:'init' so setSpeed skips the lastSpeed update — during init
-   * we don't want to arm fight-back with a stale/default value that could
-   * conflict with the player's own initialization sequence.
+   * Lifecycle writes execute WRITE + SYNC_UI only — never PERSIST (cell 6,
+   * persistence purity I2): re-asserting existing authority must not
+   * refresh it or leak an initialization value into storage.
    * @private
    */
   initializeSpeed() {
-    const targetSpeed = this.getTargetSpeed();
-
-    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
-
-    if (!this.actionHandler || targetSpeed === this.video.playbackRate) {
+    // Defer until metadata is loaded — setting playbackRate before the player
+    // has initialized can race with the site's own init sequence. Recompute
+    // the target at execution time because another player may claim a newer
+    // shared authority while this media is still loading.
+    if (this.video.readyState < 1) {
+      window.VSC.logger.debug('Deferring initializeSpeed until loadedmetadata');
+      this.handleLoadedMetadata = () => {
+        this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);
+        this.handleLoadedMetadata = null;
+        this.applyLifecycleSpeed('loadedmetadata');
+      };
+      this.video.addEventListener('loadedmetadata', this.handleLoadedMetadata);
       return;
     }
 
-    // Defer until metadata is loaded — setting playbackRate before the player
-    // has initialized can race with the site's own init sequence.
-    if (this.video.readyState < 1) {
-      window.VSC.logger.debug('Deferring initializeSpeed until loadedmetadata');
-      const handler = () => {
-        this.video.removeEventListener('loadedmetadata', handler);
-        if (targetSpeed !== this.video.playbackRate) {
-          this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'init' });
-        }
-      };
-      this.video.addEventListener('loadedmetadata', handler);
-    } else {
-      this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'init' });
-    }
+    this.applyLifecycleSpeed('initializeSpeed');
   }
 
   /**
-   * Get target speed for video initialization and event restoration.
-   *
-   * lastSpeed semantics: null = "no user choice this session", any number
-   * (including 1.0) = "user deliberately set this." setSpeed() writes a
-   * real number on every user action; load() initializes to null when a
-   * per-site rule exists or rememberSpeed is off.
-   *
-   * Fresh load priority:
-   *   1. siteDefaultSpeed (per-site rule) — always wins if configured
-   *   2. lastSpeed from storage (rememberSpeed=true, no per-site rule)
-   *   3. 1.0 fallback
-   * Mid-session: user's last setSpeed() call wins until next page load.
-   *
-   * @returns {number} Target speed
+   * Execute a lifecycle write only while this controller remains attached.
+   * @param {string} eventType
    * @private
    */
-  getTargetSpeed() {
-    const baseline = this.config.settings.siteDefaultSpeed ?? 1.0;
-    const last = this.config.settings.lastSpeed;
-
-    if (last !== null) {
-      window.VSC.logger.debug(`Using lastSpeed ${last} (baseline=${baseline})`);
-      return last;
+  applyLifecycleSpeed(eventType) {
+    if (this.video.vsc !== this || !this.actionHandler) {
+      return;
     }
 
-    window.VSC.logger.debug(`Using baseline ${baseline} (lastSpeed=${last})`);
-    return baseline;
+    const targetSpeed = this.arbitration.lifecycleTarget(this.video);
+    if (targetSpeed === null) {
+      window.VSC.logger.debug(
+        `${eventType}: no authoritative target, leaving playbackRate=${this.video.playbackRate}`
+      );
+      return;
+    }
+    if (targetSpeed === this.video.playbackRate) {
+      return;
+    }
+
+    window.VSC.logger.info(`${eventType}: restoring speed to ${targetSpeed}`);
+    this.actionHandler.writeRate(this.video, targetSpeed);
+    this.actionHandler.syncIndicator(this.video, targetSpeed);
   }
 
   /**
@@ -230,11 +227,7 @@ class VideoController {
    */
   setupEventHandlers() {
     const mediaEventAction = (event) => {
-      const targetSpeed = this.getTargetSpeed(event.target);
-
-      // Lifecycle restore, not a user choice — don't persist to lastSpeed.
-      window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
-      this.actionHandler.adjustSpeed(event.target, targetSpeed, { source: 'init' });
+      this.applyLifecycleSpeed(event.type);
     };
 
     // Bind event handlers
@@ -288,6 +281,13 @@ class VideoController {
   remove() {
     window.VSC.logger.debug('Removing VideoController');
 
+    // A detached controller must not be retained or mutated by a pending
+    // visibility flash callback after its media/controller lifecycle ends.
+    if (this.div?.flashTimer !== undefined) {
+      clearTimeout(this.div.flashTimer);
+      this.div.flashTimer = undefined;
+    }
+
     // Remove DOM element
     if (this.div && this.div.parentNode) {
       this.div.remove();
@@ -300,6 +300,10 @@ class VideoController {
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
     }
+    if (this.handleLoadedMetadata) {
+      this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);
+      this.handleLoadedMetadata = null;
+    }
 
     // Disconnect mutation observer
     if (this.targetObserver) {
@@ -310,6 +314,10 @@ class VideoController {
     if (window.VSC.stateManager) {
       window.VSC.stateManager.removeController(this.controllerId);
     }
+
+    // Release per-media conflict/timer/echo state before detaching the
+    // controller reference that EventManager uses to identify controlled media.
+    this.actionHandler?.eventManager?.arbitration?.release(this.video);
 
     // Remove reference from video element
     delete this.video.vsc;

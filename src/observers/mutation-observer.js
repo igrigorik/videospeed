@@ -198,9 +198,10 @@ class VideoMutationObserver {
       if (added) {
         this.onVideoFound(node, parent);
       } else {
-        if (node.vsc) {
-          this.onVideoRemoved(node);
-        }
+        // Removal also retires a deferred loadeddata listener for media that
+        // was discovered before it was ready, so this callback must run even
+        // before a VideoController has been attached.
+        this.onVideoRemoved(node);
       }
     } else {
       this.processNodeChildren(node, parent, added);

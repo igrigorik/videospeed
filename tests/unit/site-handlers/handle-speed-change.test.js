@@ -77,9 +77,9 @@ describe('handleSpeedChange', () => {
     spy.mockRestore();
   });
 
-  // --- ActionHandler.setSpeed routes through handler ---
+  // --- ActionHandler.writeRate routes through handler ---
 
-  it('ActionHandler.setSpeed uses handleSpeedChange instead of direct assignment', async () => {
+  it('ActionHandler.writeRate uses handleSpeedChange instead of direct assignment', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
@@ -90,7 +90,7 @@ describe('handleSpeedChange', () => {
     const manager = window.VSC.siteHandlerManager;
     const spy = vi.spyOn(manager, 'handleSpeedChange');
 
-    actionHandler.setSpeed(mockVideo, 2.0, 'internal');
+    actionHandler.writeRate(mockVideo, 2.0);
 
     expect(spy).toHaveBeenCalledWith(mockVideo, 2.0);
     expect(mockVideo.playbackRate).toBe(2.0);
@@ -146,7 +146,7 @@ describe('handleSpeedChange', () => {
     spy.mockRestore();
   });
 
-  it('cooldown restore routes through handleSpeedChange', async () => {
+  it('a consumed write echo triggers no handler write at all', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.lastSpeed = 2.0;
@@ -156,24 +156,24 @@ describe('handleSpeedChange', () => {
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = { speedIndicator: { textContent: '2.00' } };
+    Object.defineProperty(mockVideo, 'readyState', { value: 4, configurable: true });
 
     const manager = window.VSC.siteHandlerManager;
     const spy = vi.spyOn(manager, 'handleSpeedChange');
 
-    // Activate cooldown first
-    eventManager.refreshCoolDown();
+    // The ratechange is our own write echoing back — its token must fully
+    // absorb it: no fight-back, no observe, no register write.
+    eventManager.arbitration.noteWrite(mockVideo, 1.0);
 
-    const mockEvent = {
+    eventManager.handleRateChange({
       composedPath: () => [mockVideo],
       target: mockVideo,
       detail: null,
       stopImmediatePropagation: () => {},
-    };
+    });
 
-    eventManager.handleRateChange(mockEvent);
-
-    expect(spy).toHaveBeenCalledWith(mockVideo, 2.0);
-    expect(mockVideo.playbackRate).toBe(2.0);
+    expect(spy).not.toHaveBeenCalled();
+    expect(mockVideo.playbackRate).toBe(1.0);
     spy.mockRestore();
   });
 

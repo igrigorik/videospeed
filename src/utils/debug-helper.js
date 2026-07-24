@@ -229,6 +229,7 @@ class DebugHelper {
           window.VSC_controller.actionHandler.adjustSpeed(video, testSpeed);
         } else {
           console.log(`Applying speed ${testSpeed} to media #${index + 1} directly`);
+          // eslint-disable-next-line no-restricted-syntax -- diagnostic probe, intentionally raw
           video.playbackRate = testSpeed;
         }
       });
@@ -240,6 +241,7 @@ class DebugHelper {
           if (video.vsc) {
             window.VSC_controller.actionHandler.adjustSpeed(video, 1.0);
           } else {
+            // eslint-disable-next-line no-restricted-syntax -- diagnostic probe restore, intentionally raw
             video.playbackRate = 1.0;
           }
         });

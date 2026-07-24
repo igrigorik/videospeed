@@ -465,7 +465,7 @@ describe('ActionHandler', () => {
     expect(mockVideo.playbackRate).toBe(16); // Clamped to max
   });
 
-  it('adjustSpeed should not corrupt lastSpeed on external changes', async () => {
+  it('writeRate and syncIndicator never touch authority (lastSpeed)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
@@ -475,18 +475,19 @@ describe('ActionHandler', () => {
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
-    // Set user preference via internal change
-    actionHandler.adjustSpeed(mockVideo, 1.5, { source: 'internal' });
+    // User action: full USER_SET effect row — register AND authority move.
+    actionHandler.adjustSpeed(mockVideo, 1.5);
     expect(config.settings.lastSpeed).toBe(1.5);
 
-    // External change applies to playback but must NOT update lastSpeed
-    // (fight detection enforcement happens upstream in event-manager)
-    actionHandler.adjustSpeed(mockVideo, 2.0, { source: 'external' });
-    expect(mockVideo.playbackRate).toBe(2.0); // External change reaches video
-    expect(config.settings.lastSpeed).toBe(1.5); // But lastSpeed is preserved
+    // Lifecycle/observe execution uses the bare primitives — the register
+    // and UI move, authority must not (persistence purity I2).
+    actionHandler.writeRate(mockVideo, 2.0);
+    actionHandler.syncIndicator(mockVideo, 2.0);
+    expect(mockVideo.playbackRate).toBe(2.0);
+    expect(config.settings.lastSpeed).toBe(1.5);
 
-    // Internal change should update both
-    actionHandler.adjustSpeed(mockVideo, 2.5, { source: 'internal' });
+    // The next user action updates both again.
+    actionHandler.adjustSpeed(mockVideo, 2.5);
     expect(mockVideo.playbackRate).toBe(2.5);
     expect(config.settings.lastSpeed).toBe(2.5);
   });
@@ -554,7 +555,7 @@ describe('ActionHandler', () => {
     expect(validVideo.playbackRate).toBe(1.0); // Should not change
   });
 
-  it('setSpeed should save global speed to storage', async () => {
+  it('adjustSpeed should save global speed to storage', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true; // Enable persistence for this test
@@ -578,7 +579,7 @@ describe('ActionHandler', () => {
     };
 
     // Test that only lastSpeed is saved
-    actionHandler.setSpeed(mockVideo, 1.5, 'internal');
+    actionHandler.adjustSpeed(mockVideo, 1.5);
 
     expect(savedData.lastSpeed).toBe(1.5);
     expect(config.settings.lastSpeed).toBe(1.5); // Global speed updated
@@ -692,7 +693,7 @@ describe('ActionHandler', () => {
     expect(video.playbackRate).toBe(6.0);
   });
 
-  it('adjustSpeed should handle multiple source types comprehensively', async () => {
+  it('adjustSpeed is always a user action: authority follows the register', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
@@ -701,19 +702,14 @@ describe('ActionHandler', () => {
     const actionHandler = new window.VSC.ActionHandler(config, null);
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
-    // Test default source (should be 'internal')
+    // Every adjustSpeed call is USER_SET (cells 5/12): the register and
+    // the session authority move together, unconditionally.
     actionHandler.adjustSpeed(video, 1.5);
     expect(video.playbackRate).toBe(1.5);
     expect(config.settings.lastSpeed).toBe(1.5);
 
-    // Test explicit internal source
-    actionHandler.adjustSpeed(video, 1.8, { source: 'internal' });
+    actionHandler.adjustSpeed(video, 1.8);
     expect(video.playbackRate).toBe(1.8);
-    expect(config.settings.lastSpeed).toBe(1.8);
-
-    // Test external source — applies to video but doesn't touch lastSpeed
-    actionHandler.adjustSpeed(video, 2.5, { source: 'external' });
-    expect(video.playbackRate).toBe(2.5);
     expect(config.settings.lastSpeed).toBe(1.8);
   });
 
@@ -817,7 +813,7 @@ describe('ActionHandler', () => {
     expect(video.playbackRate).toBe(1.01); // Should round to 1.01
   });
 
-  it('adjustSpeed should preserve lastSpeed across external changes', async () => {
+  it('external observation (SYNC_UI) preserves lastSpeed', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
@@ -828,13 +824,15 @@ describe('ActionHandler', () => {
       currentSrc: 'https://example.com/video.mp4',
     });
 
-    // External change reaches the video (force enforcement is in event-manager)
-    actionHandler.adjustSpeed(video, 3.0, { source: 'external' });
-    expect(video.playbackRate).toBe(3.0);
+    // A site set the rate; the arbiter's observe branch (cells 3/10) only
+    // syncs the UI — authority is untouched.
+    video.playbackRate = 3.0;
+    actionHandler.syncIndicator(video, 3.0);
+    expect(video.vsc.speedIndicator.textContent).toBe('3.00');
     expect(config.settings.lastSpeed).toBe(1.5);
 
-    // Internal changes update both
-    actionHandler.adjustSpeed(video, 1.8, { source: 'internal' });
+    // A user action updates both.
+    actionHandler.adjustSpeed(video, 1.8);
     expect(video.playbackRate).toBe(1.8);
     expect(config.settings.lastSpeed).toBe(1.8);
   });
@@ -1034,20 +1032,24 @@ describe('ActionHandler', () => {
     expect(video.playbackRate).toBe(1.5);
   });
 
-  it('resetSpeed without crossTarget preserves backward compatibility', async () => {
+  it('resetSpeed at its target still starts a fresh authority epoch', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
+    config.settings.lastSpeed = 2.0;
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
     video.vsc.speedBeforeReset = null;
 
-    // Called without crossTarget (e.g. from double-click reset) → should be a no-op at target
+    // Called without crossTarget (e.g. popup reset) still expresses a user
+    // choice, even though the register already contains 1.0x.
     actionHandler.resetSpeed(video, 1.0);
+
     expect(video.playbackRate).toBe(1.0);
     expect(video.vsc.speedBeforeReset).toBe(null);
+    expect(config.settings.lastSpeed).toBe(1.0);
+    expect(eventManager.arbitration.authorityEpoch).toBe(1);
   });
 
   it('lastSpeed should update during session even when rememberSpeed is false', async () => {
@@ -1080,8 +1082,8 @@ describe('ActionHandler', () => {
     // No storage saves should occur
     expect(savedCalls.length).toBe(0);
 
-    // Simulate play event (which calls getTargetSpeed)
-    const targetSpeed = video.vsc.getTargetSpeed(video);
+    // Simulate play event (which asks the arbiter for the lifecycle target)
+    const targetSpeed = video.vsc.arbitration.lifecycleTarget(video);
     expect(targetSpeed).toBe(1.4);
 
     // Restore original save method

@@ -98,6 +98,21 @@ a POSIX shell. Windows users need:
 13. Open your branch up on the github website then click `New pull request` and
     write up a description of your changes.
 
+## Changing speed behavior
+
+Anything that affects how VSC decides `video.playbackRate` — fight-back,
+adoption of native speed changes, lifecycle restores, site rules — is
+governed by the arbitration contract in `docs/speed-arbitration.md`
+(machine-checked twin: `specs/SpeedArbiter.tla`). PRs touching speed
+behavior must identify which transition-table cell(s) they change and
+why. Classifier heuristics (gesture evidence) must cite the issue that
+motivated them. `npm test` runs the JavaScript conformance and differential
+suites. Run `npm run test:tlc` separately for the pinned two-media TLA+
+model; it requires Java 11 or newer and downloads a checksum-verified TLC
+artifact outside the repository. CI runs both commands. Changes to shared/local
+arbitration or controller lifecycle should also run `npm run build && node
+tests/e2e/run-e2e.js arbitration` for the two-media browser fixture.
+
 ## Optional
 
 ### Run Git Hooks Manually
@@ -112,6 +127,7 @@ You can run the same checks manually:
 npx lint-staged
 npm run lint
 npm test
+npm run test:tlc
 ```
 
 ### Pull Upstream Changes

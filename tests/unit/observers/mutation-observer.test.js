@@ -79,7 +79,7 @@ describe('MutationObserver', () => {
     expect(mockOnVideoFound[0].parent).toBe(document.body);
   });
 
-  it('VideoMutationObserver should handle removed video elements', () => {
+  it('VideoMutationObserver should report removed video elements before a controller exists', () => {
     const mockConfig = { settings: {} };
     const mockOnVideoFound = [];
     const mockOnVideoRemoved = [];
@@ -95,7 +95,6 @@ describe('MutationObserver', () => {
     const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
     const videoElement = document.createElement('video');
-    videoElement.vsc = { remove: () => {} };
 
     const mutation = {
       type: 'childList',

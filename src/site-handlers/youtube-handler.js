@@ -53,6 +53,55 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
   // <vsc-controller> host has the ytp-autohide class.
 
   /**
+   * Associate a gesture in YouTube player chrome with exactly one controlled
+   * video. Player controls are overlays/siblings rather than video children,
+   * so EventManager's direct composed-path resolution cannot see them.
+   *
+   * This deliberately recognizes the whole player chrome, including seek
+   * controls: it only prevents a click for player A from blessing player B;
+   * it does not claim to distinguish a seek from a native speed-menu action.
+   * @param {Event} event
+   * @param {HTMLMediaElement[]} mediaElements
+   * @returns {HTMLMediaElement|null}
+   */
+  resolveGestureMedia(event, mediaElements) {
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+    const matches = mediaElements.filter((video) => this.gestureBelongsToVideo(path, video));
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  /**
+   * @param {EventTarget[]} path
+   * @param {HTMLMediaElement} video
+   * @returns {boolean}
+   * @private
+   */
+  gestureBelongsToVideo(path, video) {
+    const player =
+      video.closest?.('.html5-video-player') ||
+      video.closest?.('#movie_player') ||
+      video.closest?.('.ytp-player-content');
+    if (!player) {
+      return false;
+    }
+
+    const includes = (container) =>
+      !!container &&
+      path.some((node) => node === container || (node?.nodeType && container.contains(node)));
+    if (includes(player)) {
+      return true;
+    }
+
+    // Embedded players place #player-controls alongside the player in the
+    // common parent stacking context. Scope it to that parent so a desktop
+    // page's unrelated global ID cannot claim this video.
+    const embeddedControls = Array.from(player.parentElement?.children || []).find(
+      (child) => child.id === 'player-controls'
+    );
+    return includes(embeddedControls);
+  }
+
+  /**
    * Check if video should be ignored on YouTube
    * @param {HTMLMediaElement} video - Video element
    * @returns {boolean} True if video should be ignored

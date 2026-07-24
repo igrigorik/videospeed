@@ -111,6 +111,17 @@ class SiteHandlerManager {
   }
 
   /**
+   * Resolve a page gesture to one controlled media element when the current
+   * site's player DOM supplies an unambiguous association.
+   * @param {Event} event
+   * @param {HTMLMediaElement[]} mediaElements
+   * @returns {HTMLMediaElement|null}
+   */
+  resolveGestureMedia(event, mediaElements) {
+    return this.getCurrentHandler().resolveGestureMedia(event, mediaElements);
+  }
+
+  /**
    * Get video container selectors for current site
    * @returns {Array<string>} CSS selectors
    */

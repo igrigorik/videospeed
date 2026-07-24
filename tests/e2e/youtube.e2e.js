@@ -191,6 +191,168 @@ export default async function runYouTubeE2ETests() {
       console.log(`   🔄 Final speed after multiple changes: ${finalSpeed}`);
     });
 
+    await runTest('YouTube temporary 2x hold restores the VSC speed on release', async () => {
+      const state = await page.evaluate(async () => {
+        const video = document.querySelector('video.html5-main-video');
+        const controller = window.VSC_controller;
+        if (!video?.vsc || !controller?.eventManager) {
+          throw new Error('VSC video/controller wiring is unavailable');
+        }
+
+        // Keep this browser regression deterministic: synthetic site writes
+        // exercise the real document ratechange listener without asking the
+        // live YouTube player to react to untrusted pointer events. Timing
+        // mirrors production: the boost fires 500ms into a real-length hold.
+        let rate = video.playbackRate;
+        Object.defineProperty(video, 'playbackRate', {
+          configurable: true,
+          get: () => rate,
+          set: (value) => {
+            rate = Number(value);
+          },
+        });
+
+        video.vsc.actionHandler.adjustSpeed(video, 1.5);
+        controller.eventManager.arbitration.classifier.reset();
+        const authorityEpochBeforeHold = controller.eventManager.arbitration.authorityEpoch;
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const pointer = (type, buttons) => {
+          video.dispatchEvent(
+            new PointerEvent(type, { bubbles: true, composed: true, pointerId: 77, buttons })
+          );
+        };
+        const siteRate = (value) => {
+          video.playbackRate = value;
+          video.dispatchEvent(new Event('ratechange', { bubbles: true }));
+        };
+        const click = () => {
+          video.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+        };
+        const snapshot = () => ({
+          rate: video.playbackRate,
+          desired: controller.config.settings.lastSpeed,
+          epoch: controller.eventManager.arbitration.authorityEpoch,
+          temporary: controller.eventManager.arbitration.conflicts.get(video)?.temporaryOverride,
+          fights: controller.eventManager.arbitration.conflicts.get(video)?.fightCount,
+        });
+        const holdAttempt = async (observe) => {
+          pointer('pointerdown', 1);
+          await wait(520);
+          // YouTube can shed pointer capture mid-hold, and Chrome builds
+          // disagree about `buttons` on capture events; worst case is 0.
+          pointer('lostpointercapture', 0);
+          siteRate(2.0);
+          const held = observe ? snapshot() : null;
+          await wait(120);
+          pointer('pointerup', 0);
+          click();
+          siteRate(1.0);
+          return held;
+        };
+
+        const held = await holdAttempt(true);
+        const released = snapshot();
+        // The reported field failure: a second quick attempt whose release
+        // click completes a click sequence and once adopted/persisted 1.0.
+        await wait(300);
+        await holdAttempt(false);
+        const releasedAgain = snapshot();
+        return { authorityEpochBeforeHold, held, released, releasedAgain };
+      });
+
+      assert.equal(state.held.rate, 2.0, 'The native 2x hold should remain visible');
+      assert.equal(state.held.desired, 1.5, 'The hold must not replace shared desired speed');
+      assert.equal(
+        state.held.epoch,
+        state.authorityEpochBeforeHold,
+        'The hold must not claim another authority generation'
+      );
+      assert.true(state.held.temporary, 'The local temporary overlay should be active while held');
+      assert.equal(state.held.fights, 0, 'The recognized hold must not spend fight budget');
+      assert.equal(
+        state.released.rate,
+        1.5,
+        'Release should restore VSC speed instead of native 1x'
+      );
+      assert.equal(state.released.desired, 1.5, 'Release must not persist native 1x');
+      assert.false(
+        state.released.temporary,
+        'The local temporary overlay should retire on release'
+      );
+      assert.equal(
+        state.releasedAgain.rate,
+        1.5,
+        'A repeated hold attempt must also restore VSC speed'
+      );
+      assert.equal(
+        state.releasedAgain.desired,
+        1.5,
+        'Repeated hold releases must never adopt or persist native 1x'
+      );
+      assert.equal(
+        state.releasedAgain.epoch,
+        state.authorityEpochBeforeHold,
+        'Repeated holds must not claim authority generations'
+      );
+    });
+
+    await runTest(
+      'YouTube temporary hold fallback restores VSC speed without a release ratechange',
+      async () => {
+        const held = await page.evaluate(() => {
+          const video = document.querySelector('video.html5-main-video');
+          const controller = window.VSC_controller;
+          video.vsc.actionHandler.adjustSpeed(video, 1.5);
+          controller.eventManager.arbitration.classifier.reset();
+
+          let rate = video.playbackRate;
+          Object.defineProperty(video, 'playbackRate', {
+            configurable: true,
+            get: () => rate,
+            set: (value) => {
+              rate = Number(value);
+            },
+          });
+          const pointer = (type, buttons) => {
+            video.dispatchEvent(
+              new PointerEvent(type, { bubbles: true, composed: true, pointerId: 78, buttons })
+            );
+          };
+
+          pointer('pointerdown', 1);
+          pointer('lostpointercapture', 0);
+          video.playbackRate = 2.0;
+          video.dispatchEvent(new Event('ratechange', { bubbles: true }));
+          pointer('pointerup', 0);
+          return {
+            desired: controller.config.settings.lastSpeed,
+            temporary: controller.eventManager.arbitration.conflicts.get(video)?.temporaryOverride,
+          };
+        });
+
+        assert.equal(held.desired, 1.5);
+        assert.true(held.temporary, 'The temporary overlay should wait for the guarded fallback');
+        await page.waitForFunction(
+          () => {
+            const video = document.querySelector('video.html5-main-video');
+            const arbitration = window.VSC_controller?.eventManager?.arbitration;
+            return (
+              video?.playbackRate === 1.5 &&
+              arbitration?.conflicts.get(video)?.temporaryOverride === false
+            );
+          },
+          { timeout: 2000 }
+        );
+
+        const released = await page.evaluate(() => ({
+          rate: document.querySelector('video.html5-main-video').playbackRate,
+          desired: window.VSC_controller.config.settings.lastSpeed,
+        }));
+        assert.equal(released.rate, 1.5);
+        assert.equal(released.desired, 1.5);
+      }
+    );
+
     // Take screenshots for verification
     await takeScreenshot(page, 'youtube-test-controller.png');
 

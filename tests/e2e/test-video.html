@@ -1,14 +1,21 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Video Speed Test</title>
-</head>
-<body>
-  <h1>Video Speed Controller Test</h1>
-  <video controls width="640" height="480" loop muted>
-    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
-    <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-</body>
+  <head>
+    <title>Video Speed Test</title>
+  </head>
+  <body>
+    <h1>Video Speed Controller Test</h1>
+    <video controls width="640" height="480" loop muted>
+      <!-- Local fixture first: keeps the suite hermetic (no network). An
+         audio-only WAV in a <video> element still reaches readyState 4 and
+         supports playbackRate, which is all these tests exercise. -->
+      <source src="fixtures/test.wav" type="audio/wav" />
+      <source
+        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+        type="video/mp4"
+      />
+      <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  </body>
 </html>

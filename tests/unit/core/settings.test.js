@@ -219,24 +219,26 @@ describe('Settings', () => {
     window.VSC.matchSiteRule = original;
   });
 
-  it('siteDefaultSpeed is not set when siteRule matches with speed=null', async () => {
+  it('siteDefaultSpeed is null when siteRule matches with speed=null', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     const original = window.VSC.matchSiteRule;
     window.VSC.matchSiteRule = () => ({ pattern: 'test.com', enabled: false, speed: null });
 
     await config.load();
-    expect(config.settings.siteDefaultSpeed).toBeUndefined();
+    // load() resets to an explicit null before matching (sticky-state fix)
+    expect(config.settings.siteDefaultSpeed).toBeNull();
 
     window.VSC.matchSiteRule = original;
   });
 
-  it('siteDefaultSpeed is not set when no rule matches', async () => {
+  it('siteDefaultSpeed is null when no rule matches', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     const original = window.VSC.matchSiteRule;
     window.VSC.matchSiteRule = () => null;
 
     await config.load();
-    expect(config.settings.siteDefaultSpeed).toBeUndefined();
+    // load() resets to an explicit null before matching (sticky-state fix)
+    expect(config.settings.siteDefaultSpeed).toBeNull();
 
     window.VSC.matchSiteRule = original;
   });
@@ -283,8 +285,8 @@ describe('Settings', () => {
 
     await config.load();
 
-    // lastSpeed null (site rule wins), siteDefaultSpeed should be 2.3
-    expect(config.settings.lastSpeed).toBeNull();
+    // Rule seeds lastSpeed as initial authority (F5 fix)
+    expect(config.settings.lastSpeed).toBe(2.3);
     expect(config.settings.siteDefaultSpeed).toBe(2.3);
 
     window.VSC.matchSiteRule = original;

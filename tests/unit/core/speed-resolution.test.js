@@ -1,7 +1,8 @@
 /**
- * Unit tests for the speed resolution state machine (getTargetSpeed).
+ * Unit tests for lifecycle speed resolution (arbiter LOAD priority as seen
+ * through a real VideoController + arbitration adapter).
  *
- * Covers all rows of the truth table from plan.md:
+ * Covers the LOAD-priority truth table (docs/speed-arbitration.md):
  *   baseline = siteDefaultSpeed ?? 1.0
  *   lastSpeed wins if user has changed it (in-memory, !== 1.0)
  *   rememberSpeed controls cross-session storage persistence only
@@ -57,19 +58,20 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
-  // --- Truth table row 2: rememberSpeed=OFF, site rule speed=2.0, lastSpeed=null → 2.0 ---
-  it('site rule speed=2.0, rememberSpeed OFF, lastSpeed default → site baseline 2.0', async () => {
+  // --- Truth table row 2: rememberSpeed=OFF, site rule speed=2.0 → 2.0 ---
+  it('site rule speed=2.0, rememberSpeed OFF → rule is initial authority 2.0', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    config.settings.lastSpeed = null;
+    // load() seeds lastSpeed from the rule (F5 fix)
+    config.settings.lastSpeed = 2.0;
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
   });
 
   // --- Truth table row 3: rememberSpeed=ON, no site rule, lastSpeed=1.5 → 1.5 ---
@@ -81,7 +83,7 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(1.5);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.5);
   });
 
   // --- Truth table row 4: rememberSpeed=ON, no site rule, lastSpeed=1.0 → 1.0 ---
@@ -93,19 +95,19 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
   // --- Per-site rule always wins on fresh load, even with rememberSpeed=ON ---
-  it('rememberSpeed ON, site=2.0, lastSpeed=null (fresh load) → 2.0 (site wins)', async () => {
+  it('rememberSpeed ON, site=2.0 (fresh load) → 2.0 (site rule wins over stored)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
-    config.settings.lastSpeed = null; // load() nulls lastSpeed when site rule exists
+    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
   });
 
   // --- User acts mid-session on site with rule → user speed wins ---
@@ -113,15 +115,15 @@ describe('SpeedResolution', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    config.settings.lastSpeed = null;
+    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(2.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
 
     // Simulate user changing speed (setSpeed writes real number)
     config.settings.lastSpeed = 1.4;
-    expect(ctrl.getTargetSpeed()).toBe(1.4);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.4);
   });
 
   // --- User resets to 1.0 on site with rule=2.0 → 1.0 sticks (#1506) ---
@@ -133,11 +135,11 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(1.0);
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
   });
 
-  // --- Edge: siteDefaultSpeed=null treated same as undefined ---
-  it('siteDefaultSpeed=null falls back to 1.0 baseline', async () => {
+  // --- Edge: no rule, no user choice → NO opinion, NO write (cell 1) ---
+  it('no rule, lastSpeed=null → lifecycle emits no write (null)', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
@@ -145,6 +147,8 @@ describe('SpeedResolution', () => {
     config.settings.siteDefaultSpeed = null;
 
     const ctrl = makeController(config);
-    expect(ctrl.getTargetSpeed()).toBe(1.0);
+    // Release N (cell 1 fixed): no authority means the arbiter emits no
+    // write — the native rate is left alone (#1537).
+    expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBeNull();
   });
 });

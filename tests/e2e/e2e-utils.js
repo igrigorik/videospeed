@@ -30,6 +30,9 @@ export async function launchChromeWithExtension() {
       headless: false, // Extensions require non-headless mode
       devtools: false,
       args: [
+        // Containerized/root CI environments (no user namespace) need the
+        // sandbox disabled; opt in explicitly, never by default.
+        ...(process.env.CHROME_NO_SANDBOX ? ['--no-sandbox'] : []),
         `--load-extension=${extensionPath}`,
         `--disable-extensions-except=${extensionPath}`,
         '--disable-dev-shm-usage',

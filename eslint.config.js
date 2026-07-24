@@ -36,6 +36,34 @@ export default [
     },
   },
   {
+    // Single-write discipline (docs/speed-arbitration.md): playbackRate and
+    // lastSpeed are the arbitrated register and its authority. Only the
+    // effect-execution layer may assign them — site handlers execute WRITE
+    // (per-site strategies) and settings.js owns lastSpeed (persistAuthority
+    // and friends). Anywhere else, route the change through the effect
+    // primitives (ActionHandler.writeRate / config.persistAuthority) or
+    // ActionHandler.adjustSpeed so the arbiter stays the single decision
+    // point. Exceptional sites need a visible inline disable with a
+    // justification.
+    files: ['src/**/*.js'],
+    ignores: ['src/site-handlers/**', 'src/core/settings.js'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "AssignmentExpression[left.property.name='playbackRate']",
+          message:
+            'Direct playbackRate writes bypass speed arbitration. Route through ActionHandler.adjustSpeed or a site handler WRITE strategy (docs/speed-arbitration.md).',
+        },
+        {
+          selector: "AssignmentExpression[left.property.name='lastSpeed']",
+          message:
+            'lastSpeed is arbitration authority. Only settings.js/action-handler.js may assign it (docs/speed-arbitration.md).',
+        },
+      ],
+    },
+  },
+  {
     files: ['tests/**/*.js'],
     languageOptions: {
       globals: {
