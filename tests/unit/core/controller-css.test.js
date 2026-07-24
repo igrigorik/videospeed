@@ -68,6 +68,46 @@ describe('ControllerCSS', () => {
     expect(css.includes('#player > vsc-controller')).toBe(true);
   });
 
+  // --- Domain preprocessing (preprocessDomainCSS) ---
+
+  describe('preprocessDomainCSS', () => {
+    const preprocess = (css) => window.VSC_controller.preprocessDomainCSS(css);
+    const wrap = (domain, selector) => `:root[style*='--vsc-domain: "${domain}"'] ${selector}`;
+
+    it('strips the leading marker and keeps bare follower selectors on the matching domain', () => {
+      // Contract: one marker on the FIRST selector scopes the whole rule.
+      // jsdom hostname is localhost.
+      const css = `${wrap('localhost', '.a > vsc-controller')},\n:has(> .b) > vsc-controller {\n  top: 10px;\n}`;
+      const out = preprocess(css);
+      expect(out.includes(':root[')).toBe(false);
+      expect(out.includes('.a > vsc-controller')).toBe(true);
+      expect(out.includes(':has(> .b) > vsc-controller')).toBe(true);
+      expect(out.includes('top: 10px')).toBe(true);
+    });
+
+    it('drops the entire rule off-domain, including bare follower selectors', () => {
+      const css = `${wrap('other.com', '.a vsc-controller')},\n.bare vsc-controller {\n  top: 1px;\n}\n${wrap('localhost', '.b vsc-controller')} {\n  top: 2px;\n}`;
+      const out = preprocess(css);
+      expect(out.includes('.a vsc-controller')).toBe(false);
+      expect(out.includes('.bare vsc-controller')).toBe(false);
+      expect(out.includes('top: 1px')).toBe(false);
+      expect(out.includes('.b vsc-controller')).toBe(true);
+      expect(out.includes('top: 2px')).toBe(true);
+    });
+
+    it('removes every domain marker and [style*] probe from the shipped defaults off-domain (#1501)', () => {
+      const out = preprocess(window.VSC.Constants.DEFAULT_CONTROLLER_CSS);
+      // Comments may mention the marker syntax; only live selector text
+      // reaches the style engine, so assert on the comment-stripped sheet.
+      const liveCss = out.replace(/\/\*[\s\S]*?\*\//g, '');
+      expect(liveCss.includes('--vsc-domain')).toBe(false);
+      expect(liveCss.includes(':root[')).toBe(false);
+      expect(liveCss.includes('[style*')).toBe(false);
+      // Unwrapped DOM-contextual rules survive untouched.
+      expect(liveCss.includes('.Shared-Video-player > vsc-controller')).toBe(true);
+    });
+  });
+
   // --- Custom CSS (user additions, stored separately) ---
 
   it('DEFAULT_SETTINGS includes customCSS field defaulting to empty string', () => {

@@ -7,10 +7,14 @@ window.VSC = window.VSC || {};
 class YouTubeHandler extends window.VSC.BaseSiteHandler {
   /**
    * Check if this handler applies to YouTube
+   * @param {string} [hostname] - Injectable for tests; defaults to live location
    * @returns {boolean} True if on YouTube
    */
-  static matches() {
-    return location.hostname === 'www.youtube.com';
+  static matches(hostname = location.hostname) {
+    // youtube-nocookie.com is the privacy-enhanced embed host: identical
+    // player build, DOM, and control layers. music.youtube.com stays
+    // excluded — different player shell.
+    return hostname === 'www.youtube.com' || hostname === 'www.youtube-nocookie.com';
   }
 
   /**
@@ -24,11 +28,35 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     // Default: insert into the .html5-video-player (one level up from video container).
     let targetParent = parent.parentElement;
 
-    // Embedded YouTube has a #player-controls overlay that sits as a sibling of
-    // .html5-video-player and creates a separate stacking context, intercepting
-    // all pointer events. Our controller inside .html5-video-player can't z-index
-    // above it. Fix: insert into #player (the common parent) so our controller
-    // participates in the same stacking context as the overlay.
+    // 2026 embed layout: YouTube moved the #player-controls overlay out of
+    // #player to a position:fixed <body> child (ytm-* control host). Nothing
+    // inserted inside #player can stack above it — #movie_player is a
+    // z-index:0 stacking context painted before that fixed sibling — so the
+    // controller must anchor at body level, where its own z-index competes in
+    // the root stacking context. This also removes #movie_player from the
+    // host's ancestry, so the :host-context(.ytp-autohide) coupling (a class
+    // the ytm UI sets once and never toggles) stops force-hiding the badge.
+    // Trade-off: while the player element itself is fullscreened, a
+    // body-level controller does not render; keyboard shortcuts still work.
+    // Scoped to /embed/ so a desktop page's global #player-controls can never
+    // re-trigger the historical Polymer-crash insertion.
+    if (
+      location.pathname.startsWith('/embed/') &&
+      document.body?.querySelector(':scope > #player-controls')
+    ) {
+      return {
+        insertionPoint: document.body,
+        insertionMethod: 'firstChild',
+        targetParent: document.body,
+      };
+    }
+
+    // Older embed layout: #player-controls overlay sits as a sibling of
+    // .html5-video-player inside #player and creates a separate stacking
+    // context, intercepting all pointer events. Our controller inside
+    // .html5-video-player can't z-index above it. Fix: insert into #player
+    // (the common parent) so our controller participates in the same stacking
+    // context as the overlay.
     // NOTE: Must scope the query to targetParent.parentElement to avoid falsely matching
     // a global #player-controls element on the desktop site, which promotes insertion
     // into the tightly-managed ytd-player > div#container and crashes Polymer.

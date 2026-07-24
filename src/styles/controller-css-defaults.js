@@ -50,9 +50,19 @@ export const DEFAULT_CONTROLLER_CSS = `/* === Domain-based rules (stable — hos
 /* === DOM-contextual rules (may break if site changes HTML structure) === */
 
 /* YouTube — controller can be inside .html5-video-player (main site via
-   youtube-handler) or a sibling of it (embeds, edge cases). Both selectors
-   needed; :has(> ...) handles the sibling case DOM-order-independently. */
-.ytp-hide-info-bar > vsc-controller,
+   youtube-handler) or a sibling of it (edge cases). Both selectors needed;
+   :has(> ...) handles the sibling case DOM-order-independently. Domain-
+   wrapped (marker on the first selector scopes the whole rule) so the
+   :has() probe never evaluates off-YouTube (#1501); the duplicate block
+   covers youtube-nocookie.com, the privacy-enhanced embed host serving the
+   identical player. */
+:root[style*='--vsc-domain: "youtube.com"'] .ytp-hide-info-bar > vsc-controller,
+:has(> .ytp-hide-info-bar) > vsc-controller {
+  position: relative;
+  top: 10px;
+}
+
+:root[style*='--vsc-domain: "youtube-nocookie.com"'] .ytp-hide-info-bar > vsc-controller,
 :has(> .ytp-hide-info-bar) > vsc-controller {
   position: relative;
   top: 10px;
@@ -63,14 +73,32 @@ export const DEFAULT_CONTROLLER_CSS = `/* === Domain-based rules (stable — hos
    [style*=...] forces global style invalidation on every style mutation,
    causing multi-second hangs on heavy pages (Gemini, etc). (#1501) */
 :root[style*='--vsc-domain: "youtube.com"'] .ytp-hide-info-bar:has(.ytp-paid-content-overlay-link:not([style*="display: none"])) > vsc-controller,
-:root[style*='--vsc-domain: "youtube.com"'] :has(> .ytp-hide-info-bar .ytp-paid-content-overlay-link:not([style*="display: none"])) > vsc-controller {
+:has(> .ytp-hide-info-bar .ytp-paid-content-overlay-link:not([style*="display: none"])) > vsc-controller {
   top: 40px;
 }
 
-/* YouTube embedded player (on third-party sites) */
-.html5-video-player:not(.ytp-hide-info-bar) > vsc-controller,
+/* YouTube embedded player — title-bar clearance across all insertion
+   generations: inside the player (classic), promoted to #player (older
+   #player-controls sibling layout), and body-anchored (2026 ytm layout,
+   where youtube-handler escapes the #movie_player stacking context and the
+   never-cleared ytp-autohide coupling). position:relative keeps the
+   deterministic 0,0 inner placeholder (VideoController skips rect math for
+   relative hosts). Domain-wrapped so the :has()/#player probes never
+   evaluate off-YouTube (#1501); previously the bare #player rule applied a
+   60px offset on ANY site with a #player container. The duplicate block
+   covers youtube-nocookie.com privacy-enhanced embeds. */
+:root[style*='--vsc-domain: "youtube.com"'] .html5-video-player:not(.ytp-hide-info-bar) > vsc-controller,
 :has(> .html5-video-player:not(.ytp-hide-info-bar)) > vsc-controller,
-#player > vsc-controller {
+#player > vsc-controller,
+body:has(> #player-controls) > vsc-controller {
+  position: relative;
+  top: 60px;
+}
+
+:root[style*='--vsc-domain: "youtube-nocookie.com"'] .html5-video-player:not(.ytp-hide-info-bar) > vsc-controller,
+:has(> .html5-video-player:not(.ytp-hide-info-bar)) > vsc-controller,
+#player > vsc-controller,
+body:has(> #player-controls) > vsc-controller {
   position: relative;
   top: 60px;
 }

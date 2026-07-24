@@ -199,6 +199,11 @@ class VideoSpeedExtension {
    * non-matching rules never reach the browser's style invalidation engine.
    */
   preprocessDomainCSS(css) {
+    // Contract: the marker appears ONCE, on the FIRST selector, and scopes
+    // the ENTIRE rule (all following selectors stay bare). Do not repeat the
+    // marker on later selectors — it would survive preprocessing as a
+    // dead selector and re-introduce the [style*=...] invalidation hazard
+    // the wrapping exists to remove (#1501).
     const hostname = location.hostname.replace(/^www\./, '');
     return css.replace(
       /:root\[style\*='--vsc-domain:\s*"([^"]+)"'\]([^{]*)\{([^}]*)\}/g,

@@ -38,6 +38,10 @@ single, formally specified arbitration engine.
   from your site rules or the default.
 - **Per-site speed rules behave like a real default**: you can override
   them with any control, and your override sticks until reload
+- **Controller works again in YouTube embeds using the new player UI** —
+  YouTube moved its embed control layer to a fixed body-level overlay and
+  stopped toggling `ytp-autohide`, leaving the controller permanently
+  invisible and unclickable; it now anchors at body level on those embeds
 
 ### Behavior changes worth knowing
 
