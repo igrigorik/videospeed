@@ -82,19 +82,30 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
       docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
     });
 
-    it('falls back to defaults on 2s timeout', async () => {
+    it('fails closed on 2s timeout', async () => {
       vi.useFakeTimers();
 
-      const defaults = { lastSpeed: 1.0, enabled: true };
+      // No responder installed — settings authorization is unknown.
+      const promise = StorageManager.get({ lastSpeed: 1.0, enabled: true });
 
-      // No responder installed — settings will never arrive
-      const promise = StorageManager.get(defaults);
-
-      // Advance past the 2000ms timeout
       await vi.advanceTimersByTimeAsync(2100);
 
-      const result = await promise;
-      expect(result).toEqual(defaults);
+      await expect(promise).resolves.toBeNull();
+    });
+
+    it.each([
+      ['no detail', undefined],
+      ['no settings object', {}],
+      ['array settings', { settings: [] }],
+    ])('fails closed when the bridge response has %s', async (_label, detail) => {
+      const responder = () => {
+        docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail }));
+      };
+      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder);
+
+      await expect(StorageManager.get({ lastSpeed: 1.0 })).resolves.toBeNull();
+
+      docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
     });
 
     it('merges defaults with received settings', async () => {

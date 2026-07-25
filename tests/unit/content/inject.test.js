@@ -253,6 +253,35 @@ describe('Inject', () => {
     expect(video.vsc.parent).toBe(fallbackParent);
   });
 
+  it('teardown cancels DOM work queued before initialization completes', () => {
+    extension = window.VSC_controller;
+    const originalRequestIdleCallback = globalThis.requestIdleCallback;
+    const previousAcceptingMedia = extension.acceptingMedia;
+    const previousInitialized = extension.initialized;
+    const injectCSS = vi.spyOn(extension, 'injectControllerCSS');
+    let queuedCallback;
+
+    try {
+      globalThis.requestIdleCallback = (callback) => {
+        queuedCallback = callback;
+      };
+      extension.acceptingMedia = true;
+      extension.initialized = false;
+
+      extension.deferDOMWork(document);
+      extension.teardown();
+      queuedCallback();
+
+      expect(extension.acceptingMedia).toBe(false);
+      expect(injectCSS).not.toHaveBeenCalled();
+    } finally {
+      globalThis.requestIdleCallback = originalRequestIdleCallback;
+      extension.acceptingMedia = previousAcceptingMedia;
+      extension.initialized = previousInitialized;
+      injectCSS.mockRestore();
+    }
+  });
+
   // --- CSS injection: adoptedStyleSheets composition ---
 
   /** Helper: reset extension CSS state so injectControllerCSS can re-run. */

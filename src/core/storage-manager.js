@@ -45,16 +45,30 @@ if (!window.VSC.StorageManager) {
           clearTimeout(timeout);
           const detail = e.detail;
 
-          // Structured clone failure: detail is null when crossing worlds
+          // Missing bridge data means settings authorization is unknown. Fail
+          // closed rather than initializing with defaults on a disabled site.
           if (!detail) {
             window.VSC.logger?.error?.('StorageManager: bridge response is null (clone failed?)');
-            resolve(defaults);
+            resolve(null);
             return;
           }
 
-          // Bridge signals abort for blacklisted/disabled sites
+          // Bridge signals abort for blacklisted/disabled sites.
           if (detail.abort) {
             window.VSC.logger?.debug?.('StorageManager: site disabled by bridge');
+            resolve(null);
+            return;
+          }
+
+          // CustomEvents are page-visible and therefore not an authentication
+          // boundary. Reject malformed payloads instead of letting `{}` or an
+          // unrelated page event silently activate MAIN with defaults.
+          if (
+            !detail.settings ||
+            typeof detail.settings !== 'object' ||
+            Array.isArray(detail.settings)
+          ) {
+            window.VSC.logger?.error?.('StorageManager: invalid settings response from bridge');
             resolve(null);
             return;
           }
@@ -65,8 +79,8 @@ if (!window.VSC.StorageManager) {
 
         const timeout = setTimeout(() => {
           docEl.removeEventListener('VSC_SETTINGS_READY', onReady);
-          window.VSC.logger?.warn?.('StorageManager: settings timeout, using defaults');
-          resolve(defaults);
+          window.VSC.logger?.warn?.('StorageManager: settings timeout, aborting initialization');
+          resolve(null);
         }, 2000);
 
         docEl.addEventListener('VSC_SETTINGS_READY', onReady);

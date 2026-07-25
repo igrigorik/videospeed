@@ -78,6 +78,10 @@ class VideoSpeedExtension {
   deferExpensiveOperations(document) {
     const callback = () => {
       try {
+        if (!this.acceptingMedia) {
+          return;
+        }
+
         // Start mutation observer — catches dynamically added media elements
         if (this.mutationObserver) {
           this.mutationObserver.start(document);
@@ -106,6 +110,10 @@ class VideoSpeedExtension {
     // Split media scanning into smaller chunks to avoid blocking
     const performChunkedScan = () => {
       try {
+        if (!this.acceptingMedia) {
+          return;
+        }
+
         // Use a lighter initial scan - avoid expensive shadow DOM traversal initially
         const lightMedia = this.mediaObserver.scanForMediaLight(document);
 
@@ -141,6 +149,10 @@ class VideoSpeedExtension {
     // Only do comprehensive scan if we didn't find any media with light scan
     setTimeout(() => {
       try {
+        if (!this.acceptingMedia) {
+          return;
+        }
+
         const comprehensiveMedia = this.mediaObserver.scanAll(document);
 
         comprehensiveMedia.forEach((media) => {
@@ -165,6 +177,12 @@ class VideoSpeedExtension {
    */
   deferDOMWork(document) {
     const doWork = () => {
+      // Disable can arrive after settings load but before this idle callback.
+      // Never let queued startup work resurrect a torn-down extension.
+      if (!this.acceptingMedia) {
+        return;
+      }
+
       this.injectControllerCSS();
       this.setupCSSLiveUpdates();
       this.siteHandlerManager.initialize(document);
@@ -174,10 +192,11 @@ class VideoSpeedExtension {
       this.eventManager.actionHandler = this.actionHandler;
 
       this.setupObservers();
-      this.acceptingMedia = true;
 
       this.initializeWhenReady(document, (doc) => {
-        this.initializeDocument(doc);
+        if (this.acceptingMedia) {
+          this.initializeDocument(doc);
+        }
       });
 
       this.logger.info('Video Speed Controller initialized successfully');
@@ -374,14 +393,16 @@ class VideoSpeedExtension {
    * Counterpart to initialize() — leaves the page as if VSC was never active.
    */
   teardown() {
+    // Invalidate queued startup/media callbacks even when initialization has
+    // not yet reached the point where there are resources to clean up.
+    this.acceptingMedia = false;
+    this.clearDeferredMediaListeners();
+
     if (!this.initialized) {
       return;
     }
 
     this.logger.info('Tearing down Video Speed Controller');
-    this.acceptingMedia = false;
-
-    this.clearDeferredMediaListeners();
 
     // Remove all controllers from tracked media elements
     const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
@@ -524,10 +545,6 @@ class VideoSpeedExtension {
 
         case window.VSC.Constants.MESSAGE_TYPES.TEARDOWN:
           extension.teardown();
-          break;
-
-        case window.VSC.Constants.MESSAGE_TYPES.REINIT:
-          extension.initialize();
           break;
       }
     }

@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>VSC lifecycle test</title>
+    <script>
+      if (new URLSearchParams(location.search).has('delay')) {
+        window.__vscIdleCallbacksScheduled = 0;
+        window.requestIdleCallback = (callback) => {
+          window.__vscIdleCallbacksScheduled += 1;
+          return setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 50 }), 1200);
+        };
+      }
+    </script>
+  </head>
+  <body>
+    <video controls muted width="640" height="360">
+      <source src="fixtures/test.wav" type="audio/wav" />
+    </video>
+    <iframe id="blank-frame" src="about:blank" title="Blank frame"></iframe>
+    <iframe id="uppercase-blank-frame" src="about:BLANK" title="Uppercase blank frame"></iframe>
+    <iframe id="srcdoc-frame" srcdoc="<p>Inherited srcdoc frame</p>" title="Srcdoc frame"></iframe>
+  </body>
+</html>

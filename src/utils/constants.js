@@ -83,7 +83,6 @@ meet.google.com`.replace(regStrip, ''),
     RESET_SPEED: 'VSC_RESET_SPEED',
     TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
     TEARDOWN: 'VSC_TEARDOWN',
-    REINIT: 'VSC_REINIT',
   };
 
   const SPEED_LIMITS = {

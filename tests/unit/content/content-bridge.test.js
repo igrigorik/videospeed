@@ -5,8 +5,8 @@
  *   - Trust boundary: only lastSpeed writable from MAIN world
  *   - Blacklist correctness: domain-boundary matching, invalid regex handling
  *   - Settings handshake: request/response protocol
- *   - Lifecycle: teardown/reinit dispatch on storage changes
- *   - Early exit: disabled/blacklisted sites skip initialization
+ *   - Lifecycle: disable tears down; re-enable waits for reload
+ *   - Early exit: disabled/blacklisted/about: frames skip initialization
  *
  * The bridge auto-inits at module load. Each test uses vi.resetModules() +
  * dynamic import for fresh state. Chrome mock must be configured BEFORE import.
@@ -99,6 +99,11 @@ function collectEvents(...names) {
   };
 }
 
+async function requestSettings() {
+  docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+  await vi.advanceTimersByTimeAsync(0);
+}
+
 // --- Tests ---
 
 describe('content-bridge', () => {
@@ -123,6 +128,7 @@ describe('content-bridge', () => {
       cleanupIntercept = null;
     }
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.useRealTimers();
     cleanupChromeMock();
   });
@@ -140,7 +146,7 @@ describe('content-bridge', () => {
       await loadBridge();
 
       // Bridge responds with abort signal so inject.js knows not to init
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
       expect(events).toHaveLength(1);
       expect(events[0].detail.abort).toBe(true);
     });
@@ -153,7 +159,7 @@ describe('content-bridge', () => {
       eventCleanup = cleanup;
 
       await loadBridge();
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
       expect(events).toHaveLength(1);
       expect(events[0].detail.abort).toBe(true);
     });
@@ -169,7 +175,7 @@ describe('content-bridge', () => {
       eventCleanup = cleanup;
 
       await loadBridge();
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
       expect(events).toHaveLength(1);
       expect(events[0].detail.abort).toBeUndefined(); // NOT aborted
     });
@@ -192,10 +198,24 @@ describe('content-bridge', () => {
       eventCleanup = cleanup;
 
       await loadBridge();
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
       expect(events).toHaveLength(1);
       expect(events[0].detail.abort).toBe(true);
     });
+
+    it.each(['about:blank', 'about:BLANK', 'about:blank#child', 'about:srcdoc'])(
+      'fails closed in inherited frame %s',
+      async (href) => {
+        vi.stubGlobal('location', { href, hostname: '', protocol: 'about:' });
+        const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+        eventCleanup = cleanup;
+
+        await loadBridge();
+        await requestSettings();
+
+        expect(events).toEqual([{ type: 'VSC_SETTINGS_READY', detail: { abort: true } }]);
+      }
+    );
   });
 
   // =========================================================================
@@ -211,7 +231,7 @@ describe('content-bridge', () => {
       const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
       eventCleanup = cleanup;
 
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
       expect(events).toHaveLength(1);
       expect(events[0].detail.settings.lastSpeed).toBe(2.5);
       expect(events[0].detail.settings.rememberSpeed).toBe(true);
@@ -226,7 +246,7 @@ describe('content-bridge', () => {
       const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
       eventCleanup = cleanup;
 
-      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await requestSettings();
 
       const { settings, hostname } = events[0].detail;
       // Stripped from settings
@@ -235,6 +255,76 @@ describe('content-bridge', () => {
       // customCSS passes through (inject.js reads it from config.settings)
       expect(settings.customCSS).toBe('vsc-controller { top: 42px; }');
       expect(typeof hostname).toBe('string');
+    });
+
+    it('does not lose a request while the initial storage read is pending', async () => {
+      let resolveSettings;
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSettings = resolve;
+          })
+      );
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      expect(events).toHaveLength(0);
+
+      resolveSettings({ ...getMockStorage(), lastSpeed: 2.5 });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].detail.settings.lastSpeed).toBe(2.5);
+    });
+
+    it('keeps a pre-handshake disable sticky across rapid re-enable', async () => {
+      let resolveSettings;
+      let onChanged;
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSettings = resolve;
+          })
+      );
+      vi.spyOn(globalThis.chrome.storage.onChanged, 'addListener').mockImplementation(
+        (listener) => {
+          onChanged = listener;
+        }
+      );
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY', 'VSC_MESSAGE');
+      eventCleanup = cleanup;
+
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      onChanged({ enabled: { oldValue: true, newValue: false } }, 'sync');
+      onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
+      resolveSettings({ ...getMockStorage(), enabled: true });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events.some((event) => event.detail?.type === 'VSC_TEARDOWN')).toBe(true);
+      expect(events.find((event) => event.type === 'VSC_SETTINGS_READY')?.detail).toEqual({
+        abort: true,
+      });
+    });
+
+    it('fails closed when the initial storage read fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(globalThis.chrome.storage.sync, 'get').mockRejectedValue(
+        new Error('storage unavailable')
+      );
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+
+      vi.resetModules();
+      await import('../../../src/entries/content-bridge.js');
+      docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(events).toEqual([{ type: 'VSC_SETTINGS_READY', detail: { abort: true } }]);
     });
   });
 
@@ -246,6 +336,7 @@ describe('content-bridge', () => {
     it('writes valid lastSpeed to chrome.storage and clamps to range', async () => {
       await loadBridge();
       const storage = getMockStorage();
+      await requestSettings();
 
       // Valid speed
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
@@ -267,6 +358,7 @@ describe('content-bridge', () => {
       await loadBridge();
       const storage = getMockStorage();
       const originalSpeed = storage.lastSpeed;
+      await requestSettings();
 
       // Non-number
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 'fast' } }));
@@ -291,14 +383,12 @@ describe('content-bridge', () => {
   });
 
   // =========================================================================
-  // Lifecycle — teardown/reinit on storage changes
+  // Lifecycle — disable tears down; re-enable waits for reload
   // =========================================================================
 
   describe('lifecycle', () => {
-    // Lifecycle (teardown/reinit) is scoped to the popup's `enabled` toggle
-    // only. siteRules/blacklist changes take effect on next page load — they
-    // do NOT trigger live lifecycle events. This prevents every options save
-    // from reinitializing every active tab. (#1505)
+    // Disable tears down immediately. Re-enable, siteRules, and blacklist
+    // changes take effect on reload, matching the popup's user-facing contract.
 
     it('dispatches VSC_TEARDOWN when disabled via popup toggle', async () => {
       const onChanged = await loadBridge();
@@ -310,29 +400,33 @@ describe('content-bridge', () => {
       expect(teardowns).toHaveLength(1);
     });
 
-    it('dispatches VSC_REINIT when re-enabled via popup toggle', async () => {
+    it('stays inactive after re-enable until the page reloads', async () => {
       const onChanged = await loadBridge();
+      const storage = getMockStorage();
+      const originalSpeed = storage.lastSpeed;
       const { events, cleanup } = collectEvents('VSC_MESSAGE');
       eventCleanup = cleanup;
 
+      await requestSettings();
+      onChanged({ enabled: { oldValue: true, newValue: false } }, 'sync');
       onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
-      const reinits = events.filter((e) => e.detail?.type === 'VSC_REINIT');
-      expect(reinits).toHaveLength(1);
+      docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
+      await vi.advanceTimersByTimeAsync(20);
+
+      expect(events.map((event) => event.detail?.type)).toEqual(['VSC_TEARDOWN']);
+      expect(storage.lastSpeed).toBe(originalSpeed);
     });
 
-    it('does NOT lifecycle on blacklist changes (takes effect on reload)', async () => {
+    it('does NOT teardown on blacklist changes (takes effect on reload)', async () => {
       const onChanged = await loadBridge();
       const { events, cleanup } = collectEvents('VSC_MESSAGE');
       eventCleanup = cleanup;
 
       onChanged({ blacklist: { oldValue: '', newValue: 'localhost' } }, 'sync');
-      const lifecycle = events.filter(
-        (e) => e.detail?.type === 'VSC_TEARDOWN' || e.detail?.type === 'VSC_REINIT'
-      );
-      expect(lifecycle).toHaveLength(0);
+      expect(events.filter((e) => e.detail?.type === 'VSC_TEARDOWN')).toHaveLength(0);
     });
 
-    it('does NOT lifecycle on siteRules changes (takes effect on reload)', async () => {
+    it('does NOT teardown on siteRules changes (takes effect on reload)', async () => {
       const onChanged = await loadBridge();
       const { events, cleanup } = collectEvents('VSC_MESSAGE');
       eventCleanup = cleanup;
@@ -341,23 +435,16 @@ describe('content-bridge', () => {
         { siteRules: { oldValue: [], newValue: [{ pattern: 'localhost', enabled: false }] } },
         'sync'
       );
-      const lifecycle = events.filter(
-        (e) => e.detail?.type === 'VSC_TEARDOWN' || e.detail?.type === 'VSC_REINIT'
-      );
-      expect(lifecycle).toHaveLength(0);
+      expect(events.filter((e) => e.detail?.type === 'VSC_TEARDOWN')).toHaveLength(0);
     });
 
-    it('does NOT dispatch teardown/reinit on unrelated storage changes', async () => {
+    it('does NOT teardown on unrelated storage changes', async () => {
       const onChanged = await loadBridge();
       const { events, cleanup } = collectEvents('VSC_MESSAGE');
       eventCleanup = cleanup;
 
       onChanged({ lastSpeed: { oldValue: 1.0, newValue: 2.0 } }, 'sync');
-
-      const lifecycle = events.filter(
-        (e) => e.detail?.type === 'VSC_TEARDOWN' || e.detail?.type === 'VSC_REINIT'
-      );
-      expect(lifecycle).toHaveLength(0);
+      expect(events.filter((e) => e.detail?.type === 'VSC_TEARDOWN')).toHaveLength(0);
     });
 
     it('ignores non-sync namespace changes', async () => {
@@ -379,6 +466,7 @@ describe('content-bridge', () => {
       const onChanged = await loadBridge();
       const { events, cleanup } = collectEvents('VSC_STORAGE_CHANGED');
       eventCleanup = cleanup;
+      await requestSettings();
 
       // Mixed change: lastSpeed (should relay) + enabled (should filter)
       onChanged(
@@ -397,8 +485,6 @@ describe('content-bridge', () => {
     });
   });
 
-  // Runtime message relay: chrome mock doesn't expose onMessage listeners,
-  // so we can't unit-test the relay without enhancing the mock. The relay is
-  // a trivial one-liner (line 119 of content-bridge.js) — tested via manual
-  // popup interaction rather than unit tests.
+  // Runtime relay shares the bridgeActive gate covered by the write and
+  // lifecycle tests above; end-to-end coverage verifies the full teardown.
 });
