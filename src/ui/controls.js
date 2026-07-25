@@ -123,6 +123,13 @@ class ControlsManager {
     controller.addEventListener(
       'wheel',
       (event) => {
+        // Browsers expose trackpad pinch and Ctrl+wheel zoom as ctrl-modified wheel events.
+        // Leave them untouched so browser zoom never becomes playback-speed intent.
+        if (event.ctrlKey) {
+          window.VSC.logger.debug('Browser zoom gesture ignored');
+          return;
+        }
+
         // Reject wheel events before hover dwell threshold is met
         if (event.timeStamp - hoverStart < HOVER_DWELL_MS) {
           window.VSC.logger.debug('Wheel ignored: hover dwell threshold not met');
