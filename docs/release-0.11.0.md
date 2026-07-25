@@ -108,20 +108,34 @@ Comment "fixed in 0.11.0" with the relevant mechanism, then close.
 ### Cluster C — plausibly fixed, unconfirmed → ask to retest on 0.11.0
 
 Close after confirmation; investigate only if a report survives retest.
+Live probes on merged master (2026-07-24, Chromium + built extension)
+verified most of this cluster — per-issue evidence below is ready to
+paste into close/retest comments.
 
 - **#1587** Twitch CPU spikes every 20–25s — matches the unbounded
   write-war signature; bounded fighting + echo filter should eliminate
   it (the periodicity fits surrender→quiet→refight loops that no longer
-  exist).
-- **#1556** YouTube UI slowdown — same suspected engine.
+  exist). **Verified 2026-07-24**: 60s on a live stream at 1.5x —
+  conflict record stayed HOLDING, fightCount 0, zero fight-back writes;
+  no periodic war exists. The Edge-specific claim is untestable locally,
+  but the engine that caused the loop is gone.
+- **#1556** YouTube UI slowdown — same suspected engine. **Probed
+  2026-07-24**: measured RecalcStyleDuration over identical scripted UI
+  churn with VSC stylesheets enabled vs removed — ≈6ms difference across
+  16 interaction rounds (the control run performed more recalcs). No
+  reproducible slowdown; ask for a performance trace if it persists.
 - **#1573** bilibili reset on pause/resume — lifecycle re-assert +
-  bounded fighting class.
-- **#1551** YouTube/cineby resets — same class.
-- **#1560** "speed changes without my input" — vague, but every misfire
-  class it could belong to was reworked.
+  bounded fighting class. **Verified 2026-07-24**: 1.5x survives
+  pause→resume on a live bilibili video, zero fights.
+- **#1551** YouTube/cineby resets — same class. YouTube half covered by
+  the #1521/#1562 mechanisms and the live probes; cineby.sc not tested.
+- **#1560** "speed changes without my input" — vague, no repro info;
+  every misfire class it could belong to was reworked. Pure retest ask.
 - **#1578** YT doesn't autoplay after speed-up shortcut — unclear cause,
   but the event pipeline it passes through was rebuilt (no synthetic
-  events, no cooldown propagation-stopping).
+  events, no cooldown propagation-stopping). **Verified 2026-07-24**:
+  three speed-up presses + one down via trusted keyboard — playback
+  never paused (1.1→1.2→1.3→1.2, paused:false throughout).
 
 ### Cluster D — answerable now, no code needed
 
@@ -136,8 +150,10 @@ Close after confirmation; investigate only if a report survives retest.
 - **#1564** Instagram disabled by default — product decision; either flip
   the default (one-line change) or close as working-as-intended with a
   settings pointer.
-- **#1502** controller not visible — `blocked:feedback` since April, no
-  repro. Close as stale.
+- **#1502** controller not visible — `blocked:feedback` since April.
+  **Probed 2026-07-24**: controller attached, visible, and hit-testable
+  on the exact Steam store URL from the issue thread — cannot reproduce
+  on 0.11.0. Close with that evidence; invite re-open with a repro.
 
 ### Cluster E — real, open, not arbitration: UI/positioning
 
@@ -149,13 +165,18 @@ Suggested next workstream after the release sweep.
 - **#1522** overlaps YouTube Shorts controls
 - **#1558** centered on Udemy
 - **#1584** hides when player UI fades (autohide coupling)
-- **#1529** grab-bag: visibility, YT autohide, fullscreen scroll
+- **#1529** grab-bag: visibility, YT autohide, fullscreen scroll —
+  problem 1 ("invisible but keyboard works") matches the new-embed-UI
+  fix shipping in 0.11.0 (retest ask); problem 2 is the #1584 autohide
+  coupling (fold into #1584)
 - **#1519** wants a close button back (product decision)
 
 ### Cluster F — open: site support / needs info
 
 - **#1572** xHamster stopped working
-- **#1520** old.reddit stopped working
+- **#1520** old.reddit stopped working — **probed 2026-07-24**: native
+  expando video is controlled, visible, and interactive on old.reddit;
+  cannot reproduce (RES-inline variant untested). Retest ask.
 - **#1544** Brave thumbnails
 - **#1561** Brave shortcuts (needs info)
 - **#1533** F1 TV won't speed up — site actively enforces; under the new
@@ -194,9 +215,17 @@ Suggested next workstream after the release sweep.
   review independently.
 - **#1518** 1x reset button / **#1517** speed slider / **#1483** volume
   boost — product decisions, not urgent.
-- **16 dependabot PRs** — batch the patch/minor bumps after release; the
-  majors (archiver 8, lint-staged 17, puppeteer 25) need a CI look
-  first.
+- **12 dependabot PRs** — all resolved locally 2026-07-24, each gated:
+  minors superseded by newer in-range versions (eslint 10.8, vitest
+  4.1.10, fs-extra 11.4, jsdom 29.1.1, globals 17.7, prettier 3.9.6,
+  actions/checkout@v7); majors adopted after individual gates —
+  archiver 8 (required the ZipArchive named-import adaptation in
+  package-release.js; zip integrity verified), lint-staged 17.2,
+  puppeteer 25.3 (basic/arbitration/YouTube e2e suites green), esbuild
+  0.28.1 (build + full suite green, clears the last low advisory —
+  `npm audit` now reports zero vulnerabilities). #1579/#1574/#1569/#1538
+  were already satisfied by the earlier lockfile remediation. All
+  auto-close once the tooling commit is pushed.
 
 ### Suggested sequence
 
