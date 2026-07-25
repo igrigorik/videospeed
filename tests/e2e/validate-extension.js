@@ -62,9 +62,9 @@ function validateExtension() {
       'Content scripts defined',
       manifest.content_scripts && manifest.content_scripts.length > 0
     );
-    test('Content script uses bundled file',
-      manifest.content_scripts[0].js &&
-      manifest.content_scripts[0].js[0] === 'dist/content.js'
+    test(
+      'Content script uses bundled file',
+      manifest.content_scripts[0].js && manifest.content_scripts[0].js[0] === 'dist/content.js'
     );
     test(
       'Required permissions present',
@@ -73,7 +73,7 @@ function validateExtension() {
     test(
       'Content script matches all sites',
       manifest.content_scripts[0].matches &&
-      manifest.content_scripts[0].matches.includes('https://*/*')
+        manifest.content_scripts[0].matches.includes('https://*/*')
     );
   } catch (error) {
     test('Manifest.json is valid JSON', false, error.message);

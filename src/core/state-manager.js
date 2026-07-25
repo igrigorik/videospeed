@@ -1,5 +1,5 @@
 /**
- * Video Speed Controller State Manager 
+ * Video Speed Controller State Manager
  * Tracks media elements for popup and keyboard commands.
  */
 
@@ -29,7 +29,7 @@ class VSCStateManager {
       element: controller.video,
       tagName: controller.video?.tagName,
       videoSrc: controller.video?.src || controller.video?.currentSrc,
-      created: Date.now()
+      created: Date.now(),
     };
 
     this.controllers.set(controller.controllerId, controllerInfo);

@@ -35,18 +35,18 @@
     ]
   },
   "devDependencies": {
-    "archiver": "^7.0.1",
     "@eslint/js": "^10.0.1",
-    "esbuild": "^0.27.4",
-    "eslint": "^10.1.0",
-    "fs-extra": "^11.2.0",
-    "globals": "^17.4.0",
+    "archiver": "^8.0.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.8.0",
+    "fs-extra": "^11.4.0",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
-    "jsdom": "^29.0.1",
-    "lint-staged": "^16.4.0",
-    "prettier": "^3.1.0",
-    "puppeteer": "^24.10.2",
-    "vitest": "^4.1.1"
+    "jsdom": "^29.1.1",
+    "lint-staged": "^17.2.0",
+    "prettier": "^3.9.6",
+    "puppeteer": "^25.3.0",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.13.0"

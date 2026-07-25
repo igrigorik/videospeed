@@ -2,7 +2,9 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import archiver from 'archiver';
+// archiver 8 removed the default factory export in favor of named
+// per-format classes.
+import { ZipArchive } from 'archiver';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -37,7 +39,7 @@ async function packageRelease() {
 
   // Create zip
   const output = fs.createWriteStream(zipPath);
-  const archive = archiver('zip', { zlib: { level: 9 } });
+  const archive = new ZipArchive({ zlib: { level: 9 } });
 
   const done = new Promise((resolve, reject) => {
     output.on('close', resolve);
