@@ -68,6 +68,14 @@ export const DEFAULT_CONTROLLER_CSS = `/* === Domain-based rules (stable — hos
   top: 10px;
 }
 
+/* YouTube Shorts — the native 48px play/volume row occupies the regular
+   top-left controller position. Keep the controller below that row without
+   moving it into the Shorts controls on the right. */
+:root[style*='--vsc-domain: "youtube.com"'] #shorts-player > vsc-controller {
+  position: relative;
+  top: 60px;
+}
+
 /* YouTube — shifts below paid promotion overlay when visible.
    Domain-wrapped so preprocessDomainCSS strips it on non-YouTube pages:
    [style*=...] forces global style invalidation on every style mutation,

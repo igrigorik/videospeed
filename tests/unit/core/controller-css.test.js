@@ -68,6 +68,19 @@ describe('ControllerCSS', () => {
     expect(css.includes('#player > vsc-controller')).toBe(true);
   });
 
+  it('positions the Shorts controller below the native top-left controls', () => {
+    const css = window.VSC.Constants.DEFAULT_CONTROLLER_CSS;
+    const selector = '#shorts-player > vsc-controller';
+    const selectorStart = css.indexOf(selector);
+    const ruleStart = css.lastIndexOf(':root', selectorStart);
+    const rule = css.slice(ruleStart, css.indexOf('}', selectorStart));
+
+    expect(selectorStart).toBeGreaterThanOrEqual(0);
+    expect(rule).toContain('--vsc-domain: "youtube.com"');
+    expect(rule).toContain('position: relative');
+    expect(rule).toContain('top: 60px');
+  });
+
   // --- Domain preprocessing (preprocessDomainCSS) ---
 
   describe('preprocessDomainCSS', () => {
