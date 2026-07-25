@@ -46,13 +46,11 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
       predefined: true,
     })),
     siteRules: [
-      { pattern: 'www.instagram.com', enabled: false, speed: null },
       { pattern: 'imgur.com', enabled: false, speed: null },
       { pattern: 'teams.microsoft.com', enabled: false, speed: null },
       { pattern: 'meet.google.com', enabled: false, speed: null },
     ],
-    blacklist: `www.instagram.com
-imgur.com
+    blacklist: `imgur.com
 teams.microsoft.com
 meet.google.com`.replace(regStrip, ''),
     defaultLogLevel: 4,

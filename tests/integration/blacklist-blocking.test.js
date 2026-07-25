@@ -85,33 +85,35 @@ describe('BlacklistBlocking', () => {
     expect(settingsForPage.keyBindings.length).toBe(0);
   });
 
-  it('Default blacklist sites should be blocked', async () => {
-    const defaultBlacklist = `www.instagram.com
-x.com
-imgur.com
-teams.microsoft.com
-meet.google.com`;
+  it('Default disabled sites exclude Instagram and stay aligned across schemas', () => {
+    const defaults = window.VSC.Constants.DEFAULT_SETTINGS;
+    const disabledPatterns = defaults.siteRules
+      .filter((rule) => rule.enabled === false)
+      .map((rule) => rule.pattern);
+
+    expect(disabledPatterns).toEqual(['imgur.com', 'teams.microsoft.com', 'meet.google.com']);
+    expect(defaults.blacklist.split('\n')).toEqual(disabledPatterns);
 
     const blockedSites = [
-      'https://www.instagram.com/p/123',
-      'https://x.com/user/status/456',
       'https://imgur.com/gallery/abc',
       'https://teams.microsoft.com/meeting/xyz',
       'https://meet.google.com/abc-def-ghi',
     ];
 
     const allowedSites = [
+      'https://www.instagram.com/p/123',
+      'https://x.com/user/status/456',
       'https://www.youtube.com/watch?v=123',
       'https://www.netflix.com/watch/456',
       'https://www.example.com/',
     ];
 
     blockedSites.forEach((url) => {
-      expect(isBlacklisted(defaultBlacklist, url)).toBe(true);
+      expect(isBlacklisted(defaults.blacklist, url)).toBe(true);
     });
 
     allowedSites.forEach((url) => {
-      expect(isBlacklisted(defaultBlacklist, url)).toBe(false);
+      expect(isBlacklisted(defaults.blacklist, url)).toBe(false);
     });
   });
 });
