@@ -260,6 +260,32 @@ describe('AudioSizeHandling', () => {
     document.body.removeChild(smallVideo);
   });
 
+  it('startHidden remains the automatic state for audio controllers', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.audioBoolean = true;
+    config.settings.startHidden = true;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const smallAudio = createMockAudio();
+    mockDOM.container.appendChild(smallAudio);
+
+    const controller = new window.VSC.VideoController(
+      smallAudio,
+      mockDOM.container,
+      config,
+      actionHandler
+    );
+
+    expect(controller.div.classList.contains('vsc-hidden')).toBe(true);
+    controller.updateVisibility();
+    expect(controller.div.classList.contains('vsc-hidden')).toBe(true);
+
+    controller.remove();
+    mockDOM.container.removeChild(smallAudio);
+  });
+
   it('Display toggle should work with audio controllers', async () => {
     // Force a fresh config instance
     window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
@@ -310,17 +336,14 @@ describe('AudioSizeHandling', () => {
     expect(mediaElements.includes(smallAudio)).toBe(true);
     expect(mediaElements.length).toBe(1);
 
-    // Toggle display using action handler
+    // Toggle display using action handler. The override remains separate from
+    // automatic audio visibility so the second toggle can return to AUTO.
     actionHandler.runAction('display', 0, null);
+    expect(controller.div.dataset.vscVisibility).toBe('hide');
+    expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
-    // Should now be hidden after first toggle
-    expect(controller.div.classList.contains('vsc-hidden')).toBe(true);
-    expect(controller.div.classList.contains('vsc-manual')).toBe(true);
-
-    // Toggle again
     actionHandler.runAction('display', 0, null);
-
-    // Should be visible again after second toggle
+    expect(controller.div.dataset.vscVisibility).toBeUndefined();
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
     // Cleanup

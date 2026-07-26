@@ -17,6 +17,7 @@ export async function loadCoreModules() {
   await import('../../src/core/arbiter.js');
   await import('../../src/core/intent-classifier.js');
   await import('../../src/core/speed-arbitration.js');
+  await import('../../src/core/controller-visibility.js');
 
   await import('../../src/utils/event-manager.js');
 

@@ -381,16 +381,16 @@ class VideoController {
 
     // Special handling for audio elements - don't hide controllers for functional audio
     if (this.video.tagName === 'AUDIO') {
-      // For audio, only hide if manually hidden or if audio support is disabled
+      // Preserve startHidden; otherwise audio support controls automatic visibility.
       if (!this.config.settings.audioBoolean && !isCurrentlyHidden) {
         this.div.classList.add('vsc-hidden');
         window.VSC.logger.debug('Hiding audio controller - audio support disabled');
       } else if (
         this.config.settings.audioBoolean &&
         isCurrentlyHidden &&
-        !this.div.classList.contains('vsc-manual')
+        !this.config.settings.startHidden
       ) {
-        // Show audio controller if audio support is enabled and not manually hidden
+        // Keep the automatic layer current beneath any explicit override.
         this.div.classList.remove('vsc-hidden');
         window.VSC.logger.debug('Showing audio controller - audio support enabled');
       }
@@ -398,13 +398,8 @@ class VideoController {
     }
 
     // Original logic for video elements
-    if (
-      isVisible &&
-      isCurrentlyHidden &&
-      !this.div.classList.contains('vsc-manual') &&
-      !this.config.settings.startHidden
-    ) {
-      // Video became visible and controller is hidden (but not manually hidden and not set to start hidden)
+    if (isVisible && isCurrentlyHidden && !this.config.settings.startHidden) {
+      // Keep automatic visibility current beneath any explicit override.
       this.div.classList.remove('vsc-hidden');
       window.VSC.logger.debug('Showing controller - video became visible');
     } else if (!isVisible && !isCurrentlyHidden) {

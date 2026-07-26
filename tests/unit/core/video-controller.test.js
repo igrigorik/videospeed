@@ -141,6 +141,34 @@ describe('VideoController', () => {
     expect(controller.speedIndicator).toBeDefined();
   });
 
+  it('tracks automatic media visibility beneath an explicit override', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const mockVideo = createMockVideo();
+    mockDOM.container.appendChild(mockVideo);
+    const controller = new window.VSC.VideoController(
+      mockVideo,
+      mockDOM.container,
+      config,
+      actionHandler
+    );
+    const isVideoVisible = vi.spyOn(controller, 'isVideoVisible');
+    controller.div.dataset.vscVisibility = 'show';
+
+    isVideoVisible.mockReturnValue(false);
+    controller.updateVisibility();
+    expect(controller.div.classList.contains('vsc-hidden')).toBe(true);
+    expect(controller.div.dataset.vscVisibility).toBe('show');
+
+    isVideoVisible.mockReturnValue(true);
+    controller.updateVisibility();
+    expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
+    expect(controller.div.dataset.vscVisibility).toBe('show');
+  });
+
   it('VideoController should handle video without source', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();

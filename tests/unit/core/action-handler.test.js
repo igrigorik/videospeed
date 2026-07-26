@@ -265,34 +265,119 @@ describe('ActionHandler', () => {
     expect(mockVideo.currentTime).toBe(25);
   });
 
-  it('ActionHandler should toggle display visibility', async () => {
+  it('display applies an escapable override opposite automatic visibility', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-
     const video = createTestVideoWithController(config, actionHandler);
     const controller = video.vsc.div;
+    const isControllerVisible = vi
+      .spyOn(actionHandler, 'isControllerVisible')
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
 
-    // Initially controller should not be hidden
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('hide');
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
-    expect(controller.classList.contains('vsc-manual')).toBe(false);
 
-    // First toggle - should hide
     actionHandler.runAction('display', null, null);
-    expect(controller.classList.contains('vsc-hidden')).toBe(true);
-    expect(controller.classList.contains('vsc-manual')).toBe(true);
+    expect(controller.dataset.vscVisibility).toBeUndefined();
 
-    // Second toggle - should show, vsc-manual persists (user expressed intent)
     actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('show');
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
-    expect(controller.classList.contains('vsc-manual')).toBe(true);
 
-    // Third toggle - should hide again
     actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBeUndefined();
+    expect(isControllerVisible).toHaveBeenCalledTimes(2);
+  });
+
+  it('display preserves startHidden beneath a temporary show override', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.startHidden = true;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+    vi.spyOn(actionHandler, 'isControllerVisible').mockReturnValue(false);
+
     expect(controller.classList.contains('vsc-hidden')).toBe(true);
-    expect(controller.classList.contains('vsc-manual')).toBe(true);
+
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('show');
+    expect(controller.classList.contains('vsc-hidden')).toBe(true);
+
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBeUndefined();
+    expect(controller.classList.contains('vsc-hidden')).toBe(true);
+  });
+
+  it('display samples an active flash before clearing it', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.startHidden = false;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+    vi.spyOn(actionHandler, 'isControllerVisible').mockImplementation(() => {
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+      return true;
+    });
+
+    vi.useFakeTimers();
+    try {
+      actionHandler.flashController(controller, 1000);
+      expect(controller.flashTimer).toBeDefined();
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+
+      actionHandler.runAction('display', null, null);
+      expect(controller.flashTimer).toBeUndefined();
+      expect(controller.classList.contains('vsc-show')).toBe(false);
+      expect(controller.dataset.vscVisibility).toBe('hide');
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(controller.dataset.vscVisibility).toBe('hide');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('isControllerVisible reads the rendered shadow controller', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    config.settings.startHidden = false;
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+    const innerController = controller.shadowRoot.querySelector('#controller');
+    let hostStyle = { display: 'block', visibility: 'visible' };
+    let innerStyle = { display: 'block', visibility: 'visible' };
+    const getComputedStyle = vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+      return element === controller ? hostStyle : innerStyle;
+    });
+
+    hostStyle = { display: 'none', visibility: 'visible' };
+    expect(actionHandler.isControllerVisible(controller)).toBe(false);
+
+    hostStyle = { display: 'block', visibility: 'visible' };
+    innerStyle = { display: 'none', visibility: 'visible' };
+    expect(actionHandler.isControllerVisible(controller)).toBe(false);
+
+    innerStyle = { display: 'block', visibility: 'hidden' };
+    expect(actionHandler.isControllerVisible(controller)).toBe(false);
+
+    innerStyle = { display: 'block', visibility: 'visible' };
+    expect(actionHandler.isControllerVisible(controller)).toBe(true);
+    expect(getComputedStyle).toHaveBeenCalledWith(controller);
+    expect(getComputedStyle).toHaveBeenCalledWith(innerController);
   });
 
   // --- flashController visibility rules ---
@@ -311,9 +396,8 @@ describe('ActionHandler', () => {
     actionHandler.flashController(controller);
     expect(controller.classList.contains('vsc-show')).toBe(false);
 
-    // After user presses V (shows controller manually)
-    controller.classList.add('vsc-manual');
-    controller.classList.remove('vsc-hidden');
+    // After user presses V (explicitly shows the controller)
+    controller.dataset.vscVisibility = 'show';
     actionHandler.flashController(controller);
     expect(controller.classList.contains('vsc-show')).toBe(false);
   });
@@ -332,7 +416,7 @@ describe('ActionHandler', () => {
     expect(controller.classList.contains('vsc-show')).toBe(true);
   });
 
-  it('flashController: startHidden=false, user hid with V → does not flash', async () => {
+  it('flashController: explicit hide override does not flash', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.startHidden = false;
@@ -342,9 +426,7 @@ describe('ActionHandler', () => {
     const video = createTestVideoWithController(config, actionHandler);
     const controller = video.vsc.div;
 
-    // User pressed V to hide
-    controller.classList.add('vsc-manual');
-    controller.classList.add('vsc-hidden');
+    controller.dataset.vscVisibility = 'hide';
 
     actionHandler.flashController(controller);
     expect(controller.classList.contains('vsc-show')).toBe(false);

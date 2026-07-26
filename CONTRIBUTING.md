@@ -107,11 +107,22 @@ governed by the arbitration contract in `docs/speed-arbitration.md`
 behavior must identify which transition-table cell(s) they change and
 why. Classifier heuristics (gesture evidence) must cite the issue that
 motivated them. `npm test` runs the JavaScript conformance and differential
-suites. Run `npm run test:tlc` separately for the pinned two-media TLA+
-model; it requires Java 11 or newer and downloads a checksum-verified TLC
-artifact outside the repository. CI runs both commands. Changes to shared/local
+suites. Run `npm run test:tlc` separately for the pinned TLA+ models; it
+requires Java 11 or newer and downloads a checksum-verified TLC artifact
+outside the repository. CI runs both commands. Changes to shared/local
 arbitration or controller lifecycle should also run `npm run build && node
 tests/e2e/run-e2e.js arbitration` for the two-media browser fixture.
+
+## Changing controller visibility
+
+Controller visibility is governed by `docs/controller-visibility.md`
+(machine-checked twin: `specs/ControllerVisibility.tla`). PRs touching the
+visibility override, automatic hiding, feedback timers, CSS precedence,
+broadcast actions, or controller teardown must identify the changed transition
+or precedence rule. Run `npm test`, `npm run test:tlc`, `npm run build`, and
+`node tests/e2e/run-e2e.js display`. The TLA+ model checks temporal behavior;
+the Chrome matrix checks the real adopted shadow stylesheet. Neither replaces
+the other.
 
 ## Optional
 

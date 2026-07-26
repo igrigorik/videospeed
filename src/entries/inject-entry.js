@@ -16,6 +16,7 @@ import '../utils/dom-utils.js';
 import '../core/arbiter.js';
 import '../core/intent-classifier.js';
 import '../core/speed-arbitration.js';
+import '../core/controller-visibility.js';
 
 import '../utils/event-manager.js';
 

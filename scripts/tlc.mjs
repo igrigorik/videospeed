@@ -32,6 +32,10 @@ const cacheRoot = process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache');
 const cacheDir = path.join(cacheRoot, 'videospeed', 'tlc');
 const cachePath = path.join(cacheDir, `tla2tools-${TLC.version}-${TLC.sha256}.jar`);
 const metadataRoot = path.join(cacheDir, 'runs');
+const MODELS = Object.freeze([
+  { module: 'SpeedArbiter', config: 'SpeedArbiter.cfg' },
+  { module: 'ControllerVisibility', config: 'ControllerVisibility.cfg' },
+]);
 
 function resolveOverride() {
   return process.env.TLC_JAR ? path.resolve(process.cwd(), process.env.TLC_JAR) : null;
@@ -109,11 +113,11 @@ async function resolveJar() {
   return cachePath;
 }
 
-async function run() {
-  const jarPath = await resolveJar();
-  await fs.mkdir(metadataRoot, { recursive: true });
-  const metadataDir = await fs.mkdtemp(path.join(metadataRoot, 'run-'));
-  console.log(`Running TLC ${TLC.version} with ${path.relative(rootDir, jarPath) || jarPath}`);
+async function runModel(jarPath, model) {
+  const metadataDir = await fs.mkdtemp(
+    path.join(metadataRoot, `run-${model.module.toLowerCase()}-`)
+  );
+  console.log(`\nRunning ${model.module}.tla`);
 
   try {
     const child = spawn(
@@ -132,8 +136,8 @@ async function run() {
         '-metadir',
         metadataDir,
         '-config',
-        'SpeedArbiter.cfg',
-        'SpeedArbiter.tla',
+        model.config,
+        `${model.module}.tla`,
       ],
       { cwd: specsDir, stdio: 'inherit' }
     );
@@ -154,10 +158,24 @@ async function run() {
     } else {
       console.error(`TLC run metadata retained for diagnosis: ${metadataDir}`);
     }
-    process.exitCode = exitCode;
+    return exitCode;
   } catch (error) {
     console.error(`TLC run metadata retained for diagnosis: ${metadataDir}`);
     throw error;
+  }
+}
+
+async function run() {
+  const jarPath = await resolveJar();
+  await fs.mkdir(metadataRoot, { recursive: true });
+  console.log(`Running TLC ${TLC.version} with ${path.relative(rootDir, jarPath) || jarPath}`);
+
+  for (const model of MODELS) {
+    const exitCode = await runModel(jarPath, model);
+    if (exitCode !== 0) {
+      process.exitCode = exitCode;
+      return;
+    }
   }
 }
 
