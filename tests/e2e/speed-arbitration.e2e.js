@@ -49,6 +49,36 @@ export default async function runSpeedArbitrationE2ETests() {
       );
     });
 
+    await runTest('VSC write echoes remain observable to media listeners', async () => {
+      await page.evaluate(() => {
+        const video = document.querySelector('#videoA');
+        window.__vscObservedRateChanges = [];
+        video.addEventListener(
+          'ratechange',
+          () => window.__vscObservedRateChanges.push(video.playbackRate),
+          { once: true }
+        );
+
+        // The WRITE primitive registers an echo token before assigning the
+        // media register. VSC should consume that token without hiding the
+        // native event from target-level player listeners.
+        video.vsc.actionHandler.writeRate(video, 1.25);
+      });
+
+      await page.waitForFunction(() => window.__vscObservedRateChanges?.length === 1, {
+        timeout: 5000,
+      });
+      const state = await page.evaluate(() => {
+        const videoRate = document.querySelector('#videoA').playbackRate;
+        const observedRate = window.__vscObservedRateChanges[0];
+        delete window.__vscObservedRateChanges;
+        return { observedRate, videoRate };
+      });
+
+      assert.equal(state.videoRate, 1.25, 'The VSC write should update the media register');
+      assert.equal(state.observedRate, 1.25, 'The media listener should observe the VSC write');
+    });
+
     await runTest('A can surrender locally while B still enforces shared authority', async () => {
       const state = await page.evaluate(() => {
         const a = document.querySelector('#videoA');

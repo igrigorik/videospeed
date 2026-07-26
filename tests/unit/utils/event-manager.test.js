@@ -39,7 +39,7 @@ describe('EventManager', () => {
 
   // Echo filter (write-token registry) tests
 
-  it('handleRateChange should consume a matching write token and stop the event', async () => {
+  it('handleRateChange should consume a matching write token without stopping the event', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
@@ -62,8 +62,9 @@ describe('EventManager', () => {
       },
     });
 
-    // Consumed as our own echo: no local fight state is created.
-    expect(eventStopped).toBe(true);
+    // Consumed internally as our own echo: no local fight state is created,
+    // but the native event remains observable to player listeners.
+    expect(eventStopped).toBe(false);
     expect(fightCount(eventManager.arbitration, mockVideo)).toBe(0);
   });
 
@@ -288,8 +289,8 @@ describe('EventManager', () => {
       },
     });
 
-    // Swallowed as our own echo: no local fight, authority untouched.
-    expect(eventStopped).toBe(true);
+    // Filtered from VSC's arbitration as its own echo, but not stopped.
+    expect(eventStopped).toBe(false);
     expect(fightCount(eventManager.arbitration, mockVideo)).toBe(0);
     expect(config.settings.lastSpeed).toBe(2.0);
   });

@@ -402,7 +402,8 @@ class EventManager {
     // invisible write war.
     if (this.arbitration.consumeEcho(video, video.playbackRate)) {
       window.VSC.logger.debug('Ignoring own write echo (in-flight token consumed)');
-      event.stopImmediatePropagation();
+      // Filter the echo only from VSC's decision pipeline. Player listeners
+      // still need the native event to synchronize controls and auxiliary audio.
       return;
     }
 

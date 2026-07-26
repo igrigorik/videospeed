@@ -69,7 +69,7 @@ A bulk VSC command must claim one generation, not one generation per loop iterat
 | `PERSIST(v)` | Claim shared in-memory authority and schedule a storage write only when `rememberSpeed` is enabled |
 | `SYNC_UI(v)` | Update only the affected controller's speed badge                                                  |
 
-Echo queues are per media and tagged with the authority generation that wrote them. `consumeEcho()` discards an older-generation token before matching, so a real site reset that reuses an old rate after a fresh user choice reaches arbitration instead of being swallowed as an echo.
+Echo queues are per media and tagged with the authority generation that wrote them. `consumeEcho()` discards an older-generation token before matching, so a real site reset that reuses an old rate after a fresh user choice reaches arbitration instead of being swallowed as an echo. Consuming an echo filters it only from VSC's decision pipeline; the native event still propagates so player controls and auxiliary media can synchronize with the write.
 
 There is intentionally no document-wide surrender effect. Local surrender is not an authority mutation.
 
