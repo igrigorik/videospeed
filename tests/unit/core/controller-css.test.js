@@ -68,6 +68,27 @@ describe('ControllerCSS', () => {
     expect(css.includes('#player > vsc-controller')).toBe(true);
   });
 
+  it('implements YouTube autohide on the light-DOM host without :host-context()', () => {
+    const css = window.VSC.Constants.DEFAULT_CONTROLLER_CSS;
+    const shadowSource = readFileSync(join(process.cwd(), 'src/ui/shadow-dom.js'), 'utf8');
+    const selector =
+      '.ytp-autohide vsc-controller:not([data-vsc-visibility="show"]):not(.vsc-show)';
+
+    expect(shadowSource).not.toContain(':host-context(');
+
+    for (const hostname of ['www.youtube.com', 'www.youtube-nocookie.com']) {
+      const resolved = window.VSC_controller.preprocessDomainCSS(css, hostname);
+      const ruleStart = resolved.indexOf(selector);
+      const rule = resolved.slice(ruleStart, resolved.indexOf('}', ruleStart) + 1);
+
+      expect(ruleStart).toBeGreaterThanOrEqual(0);
+      expect(rule).toContain('visibility: hidden !important');
+      expect(rule).toContain('opacity: 0 !important');
+    }
+
+    expect(window.VSC_controller.preprocessDomainCSS(css, 'example.com')).not.toContain(selector);
+  });
+
   it('positions the Shorts controller below the native top-left controls', () => {
     const css = window.VSC.Constants.DEFAULT_CONTROLLER_CSS;
     const selector = '#shorts-player > vsc-controller';
@@ -84,7 +105,7 @@ describe('ControllerCSS', () => {
   // --- Domain preprocessing (preprocessDomainCSS) ---
 
   describe('preprocessDomainCSS', () => {
-    const preprocess = (css) => window.VSC_controller.preprocessDomainCSS(css);
+    const preprocess = (css, hostname) => window.VSC_controller.preprocessDomainCSS(css, hostname);
     const wrap = (domain, selector) => `:root[style*='--vsc-domain: "${domain}"'] ${selector}`;
 
     it('strips the leading marker and keeps bare follower selectors on the matching domain', () => {

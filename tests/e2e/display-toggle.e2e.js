@@ -72,6 +72,27 @@ async function waitForState(page, expected, context) {
   assertState(await getControllerState(page), expected, context);
 }
 
+async function installControllerCSSForDomain(page, hostname) {
+  const autohideRuleLoaded = await page.evaluate((domain) => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(
+      window.VSC_controller.preprocessDomainCSS(window.VSC.Constants.DEFAULT_CONTROLLER_CSS, domain)
+    );
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    window.__vscDomainControllerSheet = sheet;
+    return Array.from(sheet.cssRules).some(
+      (rule) =>
+        rule.cssText.includes('.ytp-autohide') &&
+        rule.cssText.includes('[data-vsc-visibility="show"]') &&
+        rule.cssText.includes('.vsc-show')
+    );
+  }, hostname);
+
+  if (!autohideRuleLoaded) {
+    throw new Error(`Failed to load production autohide CSS for ${hostname}`);
+  }
+}
+
 async function assertCssVisibilityMatrix(page) {
   const result = await page.evaluate(() => {
     const host = document.querySelector('vsc-controller');
@@ -245,6 +266,11 @@ async function testDisplayToggle() {
     if (!found) {
       throw new Error('Controller never appeared');
     }
+
+    // The fixture is file://, so install the actual production defaults after
+    // resolving their domain markers as YouTube. This keeps the matrix on the
+    // shipped light-DOM selector instead of a test-only approximation.
+    await installControllerCSSForDomain(page, 'youtube.com');
 
     await waitForState(
       page,

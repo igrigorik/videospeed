@@ -36,15 +36,6 @@ class ShadowDOMManager {
         opacity: 0 !important;
       }
 
-      /* YouTube autohide — fade with player controls.
-         :host-context() matches when any ancestor of <vsc-controller> has the
-         class, so no JS MutationObserver forwarding is needed. */
-      :host-context(.ytp-autohide) #controller {
-        visibility: hidden !important;
-        opacity: 0 !important;
-        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
       /* Explicit show and temporary speed feedback outrank automatic hiding,
          including startHidden, media visibility, and site autohide. */
       :host([data-vsc-visibility="show"]) #controller,

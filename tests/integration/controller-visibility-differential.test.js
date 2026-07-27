@@ -2,8 +2,8 @@
  * Differential replay for controller visibility.
  *
  * One event stream drives both the pure model and real DOM adapters. Chrome
- * checks the actual shadow CSS separately because jsdom does not implement the
- * complete :host/:host-context cascade.
+ * checks the actual document-and-shadow CSS separately because jsdom does not
+ * implement the complete host and shadow cascade.
  */
 
 import { vi } from 'vitest';

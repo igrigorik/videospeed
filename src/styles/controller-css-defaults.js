@@ -49,6 +49,23 @@ export const DEFAULT_CONTROLLER_CSS = `/* === Domain-based rules (stable — hos
 
 /* === DOM-contextual rules (may break if site changes HTML structure) === */
 
+/* YouTube autohide — style the light-DOM host instead of relying on the
+   deprecated Chromium-only :host-context() shadow selector. Explicit SHOW
+   and temporary feedback stop matching this rule; HIDE and no-source remain
+   final in the shadow cascade. Domain wrapping prevents unrelated sites from
+   paying for or accidentally matching the YouTube-owned ancestor class. */
+:root[style*='--vsc-domain: "youtube.com"'] .ytp-autohide vsc-controller:not([data-vsc-visibility="show"]):not(.vsc-show) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[style*='--vsc-domain: "youtube-nocookie.com"'] .ytp-autohide vsc-controller:not([data-vsc-visibility="show"]):not(.vsc-show) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* YouTube — controller can be inside .html5-video-player (main site via
    youtube-handler) or a sibling of it (edge cases). Both selectors needed;
    :has(> ...) handles the sibling case DOM-order-independently. Domain-

@@ -211,22 +211,27 @@ class VideoSpeedExtension {
   }
 
   /**
-   * Resolve domain-based CSS selectors for the current hostname.
+   * Resolve domain-based CSS selectors for a hostname.
    * Matching domains: selector stripped (rule applies unconditionally).
    * Non-matching: entire rule removed. Stripping (vs neutering with a dead
    * selector) ensures perf-sensitive selectors like [style*=...] inside
    * non-matching rules never reach the browser's style invalidation engine.
+   * @param {string} css - CSS containing domain marker selectors
+   * @param {string} [hostname] - Hostname to resolve; defaults to the document host
+   * @returns {string} CSS containing only matching and unscoped rules
    */
-  preprocessDomainCSS(css) {
+  preprocessDomainCSS(css, hostname = location.hostname) {
+    const normalizedHostname = hostname.replace(/^www\./, '');
+
     // Contract: the marker appears ONCE, on the FIRST selector, and scopes
     // the ENTIRE rule (all following selectors stay bare). Do not repeat the
     // marker on later selectors — it would survive preprocessing as a
     // dead selector and re-introduce the [style*=...] invalidation hazard
     // the wrapping exists to remove (#1501).
-    const hostname = location.hostname.replace(/^www\./, '');
     return css.replace(
       /:root\[style\*='--vsc-domain:\s*"([^"]+)"'\]([^{]*)\{([^}]*)\}/g,
-      (match, domain, selector, body) => (domain === hostname ? `${selector.trim()} {${body}}` : '')
+      (match, domain, selector, body) =>
+        domain === normalizedHostname ? `${selector.trim()} {${body}}` : ''
     );
   }
 

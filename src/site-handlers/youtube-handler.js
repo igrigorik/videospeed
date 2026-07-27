@@ -34,8 +34,9 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     // z-index:0 stacking context painted before that fixed sibling — so the
     // controller must anchor at body level, where its own z-index competes in
     // the root stacking context. This also removes #movie_player from the
-    // host's ancestry, so the :host-context(.ytp-autohide) coupling (a class
-    // the ytm UI sets once and never toggles) stops force-hiding the badge.
+    // host's ancestry, so the light-DOM .ytp-autohide descendant rule stops
+    // matching. This matters because the ytm UI sets that class once and never
+    // toggles it.
     // Trade-off: while the player element itself is fullscreened, a
     // body-level controller does not render; keyboard shortcuts still work.
     // Scoped to /embed/ so a desktop page's global #player-controls can never
@@ -75,10 +76,9 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
     };
   }
 
-  // YouTube autohide is handled purely via CSS using :host-context() in
-  // shadow-dom.js — no MutationObserver needed. The shadow DOM rule
-  // :host-context(.ytp-autohide) matches when any ancestor of the
-  // <vsc-controller> host has the ytp-autohide class.
+  // YouTube autohide is handled by domain-scoped light-DOM CSS in
+  // controller-css-defaults.js. The descendant selector reacts to YouTube's
+  // page-owned class without forwarding state through a MutationObserver.
 
   /**
    * Press-and-hold 2x boost (#1554/#1568): the pointer variant fires a

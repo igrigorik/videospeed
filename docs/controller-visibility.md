@@ -20,17 +20,17 @@ Persistence across reloads, cross-frame synchronization, and ownership shared wi
 
 ## State
 
-| Concept            | Pure model        | TLA+                 | DOM/adapter                                                             |
-| ------------------ | ----------------- | -------------------- | ----------------------------------------------------------------------- |
-| Lifecycle          | `attached`        | `attached[i]`        | `video.vsc`, connected `<vsc-controller>`, `StateManager` membership    |
-| User intent        | `override`        | `overrideMode[i]`    | absent `data-vsc-visibility`, or `show` / `hide`                        |
-| Automatic layer    | `automaticHidden` | `automaticHidden[i]` | `vsc-hidden`                                                            |
-| Unusable media     | `noSource`        | `noSource[i]`        | `vsc-nosource`                                                          |
-| Site autohide      | `siteAutohide`    | `siteAutohide[i]`    | page-owned ancestor state such as `.ytp-autohide`                       |
-| External host hide | `hostHidden`      | `hostHidden[i]`      | computed `display` / `visibility` on `<vsc-controller>`                 |
-| Feedback           | `flash`           | `flashMode[i]`       | `vsc-show` plus an optional `flashTimer`                                |
-| Preference         | `startHidden`     | `startHidden`        | live settings value consulted by future automatic-show and flash events |
-| Media kind         | `mediaType`       | `AudioControllers`   | media tag name                                                          |
+| Concept            | Pure model        | TLA+                 | DOM/adapter                                                               |
+| ------------------ | ----------------- | -------------------- | ------------------------------------------------------------------------- |
+| Lifecycle          | `attached`        | `attached[i]`        | `video.vsc`, connected `<vsc-controller>`, `StateManager` membership      |
+| User intent        | `override`        | `overrideMode[i]`    | absent `data-vsc-visibility`, or `show` / `hide`                          |
+| Automatic layer    | `automaticHidden` | `automaticHidden[i]` | `vsc-hidden`                                                              |
+| Unusable media     | `noSource`        | `noSource[i]`        | `vsc-nosource`                                                            |
+| Site autohide      | `siteAutohide`    | `siteAutohide[i]`    | domain-scoped host CSS observing page-owned state such as `.ytp-autohide` |
+| External host hide | `hostHidden`      | `hostHidden[i]`      | computed `display` / `visibility` on `<vsc-controller>`                   |
+| Feedback           | `flash`           | `flashMode[i]`       | `vsc-show` plus an optional `flashTimer`                                  |
+| Preference         | `startHidden`     | `startHidden`        | live settings value consulted by future automatic-show and flash events   |
+| Media kind         | `mediaType`       | `AudioControllers`   | media tag name                                                            |
 
 `startHidden` initializes the automatic layer but is not itself a permanent hard-hide bit. A live change to `startHidden` is non-retroactive: it does not immediately rewrite an existing controller or cancel an active flash. It blocks future automatic-show and flash requests until disabled.
 
@@ -52,9 +52,9 @@ external host hide / no source / FORCE_HIDE
   > automatic hide / site autohide
 ```
 
-`SHOW` deliberately overrides `vsc-hidden` and site autohide, but it cannot resurrect a detached controller, make unusable media useful, or defeat page CSS that hides the light-DOM host. `HIDE` defeats a stale flash class. Opacity is excluded from the discrete visibility predicate because fades pass through zero; computed `display` and `visibility` on both host and shadow controller define the sampled state.
+`SHOW` deliberately overrides `vsc-hidden` and site autohide, but it cannot resurrect a detached controller, make unusable media useful, or defeat unrelated page CSS that hides the light-DOM host. `HIDE` defeats a stale flash class. Opacity is excluded from the discrete visibility predicate because fades pass through zero; computed `display` and `visibility` on both host and shadow controller define the sampled state.
 
-The shadow selectors implementing this relation have equal specificity, so source order is part of the executable contract. Reordering the `vsc-hidden`, site-autohide, show/flash, hide, or no-source rules requires the Chrome matrix test, not just a unit test.
+YouTube site autohide is implemented by domain-scoped light-DOM CSS on `<vsc-controller>`, not by copying page state into extension-owned DOM and not by the deprecated `:host-context()` selector. The host rule excludes explicit `SHOW` and `vsc-show` feedback before applying `visibility: hidden`; shadow selectors keep automatic hide, explicit `HIDE`, and no-source precedence. Changing either side requires the Chrome matrix test, not just a unit test.
 
 ## User toggle transition
 
@@ -107,7 +107,7 @@ The verification layers answer different questions:
 1. `npm run test:tlc` exhaustively checks the two-controller temporal model. The current configuration reaches 49,152 distinct states, generates 724,800 states, and checks three non-vacuous video-timer liveness branches.
 2. `tests/unit/core/controller-visibility.test.js` enumerates 448 valid local states and 6,720 state/event pairs against the pure JavaScript transition policy.
 3. `tests/integration/controller-visibility-differential.test.js` replays deterministic mixed traces through the pure model and real `ActionHandler` / `VideoController` adapters, including local and broadcast actions, video and audio feedback, environment changes, live settings, expiry, and release.
-4. `tests/e2e/display-toggle.e2e.js` checks the real adopted shadow stylesheet across `3 overrides × 2 automaticHidden × 2 siteAutohide × 2 flash × 2 noSource × 2 hostHidden = 96` render combinations, then verifies mixed two-controller local, broadcast, flash-sampling, and release behavior in Chrome.
+4. `tests/e2e/display-toggle.e2e.js` checks the real document-and-shadow cascade across `3 overrides × 2 automaticHidden × 2 siteAutohide × 2 flash × 2 noSource × 2 hostHidden = 96` render combinations, then verifies mixed two-controller local, broadcast, flash-sampling, and release behavior in Chrome.
 
 A green TLA+ run cannot prove that CSS source order is correct, and a green browser matrix cannot prove timer liveness or non-interference across all action sequences. Both are required for changes to this contract.
 
