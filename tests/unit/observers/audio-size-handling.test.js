@@ -336,14 +336,14 @@ describe('AudioSizeHandling', () => {
     expect(mediaElements.includes(smallAudio)).toBe(true);
     expect(mediaElements.length).toBe(1);
 
-    // Toggle display using action handler. The override remains separate from
-    // automatic audio visibility so the second toggle can return to AUTO.
+    // Toggle display using action handler. Explicit audio visibility remains
+    // separate from the automatic layer and alternates after the first press.
     actionHandler.runAction('display', 0, null);
     expect(controller.div.dataset.vscVisibility).toBe('hide');
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
     actionHandler.runAction('display', 0, null);
-    expect(controller.div.dataset.vscVisibility).toBeUndefined();
+    expect(controller.div.dataset.vscVisibility).toBe('show');
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
     // Cleanup

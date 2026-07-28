@@ -95,16 +95,20 @@ class ControllerVisibility {
   }
 
   /**
-   * The first toggle opposes pre-action rendering; either override toggles
-   * back to AUTO. The adapter must sample rendering before cancelling flash.
+   * The first toggle opposes pre-action rendering; later toggles alternate
+   * persistent SHOW/HIDE intent. AUTO is re-entered only by controller release.
+   * The adapter must sample rendering before cancelling flash.
    * @param {*} override
-   * @param {boolean} renderedVisible
-   * @returns {'auto'|'show'|'hide'}
+   * @param {boolean} [renderedVisible] - Required only when toggling from AUTO
+   * @returns {'show'|'hide'}
    */
   static nextOverride(override, renderedVisible) {
     const current = this.normalizeOverride(override);
-    if (current !== this.OVERRIDES.AUTO) {
-      return this.OVERRIDES.AUTO;
+    if (current === this.OVERRIDES.SHOW) {
+      return this.OVERRIDES.HIDE;
+    }
+    if (current === this.OVERRIDES.HIDE) {
+      return this.OVERRIDES.SHOW;
     }
     if (typeof renderedVisible !== 'boolean') {
       throw new TypeError('renderedVisible must be boolean when toggling from AUTO');

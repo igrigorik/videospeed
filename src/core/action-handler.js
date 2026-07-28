@@ -166,8 +166,8 @@ class ActionHandler {
   /**
    * Toggle an explicit visibility override without mutating the automatic
    * state maintained by startHidden, media visibility, and site autohide.
-   * The first toggle applies the opposite of automatic rendering; the next
-   * removes the override and returns control to the automatic layer.
+   * The first toggle opposes rendered AUTO; later toggles alternate persistent
+   * SHOW/HIDE intent so player autohide cannot silently retake control.
    * @param {HTMLMediaElement} video - Media element whose controller is toggled
    */
   toggleControllerVisibility(video) {
@@ -182,7 +182,9 @@ class ActionHandler {
     // Sample before cancelling a flash: the first V press must flip what the
     // user currently sees, including temporary speed feedback.
     const isVisible =
-      currentOverride === visibility.OVERRIDES.AUTO ? this.isControllerVisible(controller) : null;
+      currentOverride === visibility.OVERRIDES.AUTO
+        ? this.isControllerVisible(controller)
+        : undefined;
     const nextOverride =
       currentOverride === visibility.OVERRIDES.AUTO && isVisible === null
         ? null
@@ -194,12 +196,7 @@ class ActionHandler {
     }
     controller.classList.remove('vsc-show');
 
-    if (nextOverride === null) {
-      return;
-    }
-    if (nextOverride === visibility.OVERRIDES.AUTO) {
-      delete controller.dataset.vscVisibility;
-    } else {
+    if (nextOverride !== null) {
       controller.dataset.vscVisibility = nextOverride;
     }
   }

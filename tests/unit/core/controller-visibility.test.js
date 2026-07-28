@@ -136,12 +136,29 @@ describe('ControllerVisibility pure policy', () => {
   it.each([
     ['auto', true, 'hide'],
     ['auto', false, 'show'],
-    ['show', true, 'auto'],
-    ['show', false, 'auto'],
-    ['hide', true, 'auto'],
-    ['hide', false, 'auto'],
+    ['show', true, 'hide'],
+    ['show', false, 'hide'],
+    ['hide', true, 'show'],
+    ['hide', false, 'show'],
   ])('maps toggle %s with rendered=%s to %s', (override, rendered, expected) => {
     expect(V().nextOverride(override, rendered)).toBe(expected);
+  });
+
+  it('keeps SHOW sticky when site autohide starts after a visible-first toggle sequence', () => {
+    let state = V().createState();
+    expect(V().isVisible(state)).toBe(true);
+
+    state = V().step(state, { type: V().EVENTS.TOGGLE });
+    expect(state.override).toBe(V().OVERRIDES.HIDE);
+    expect(V().isVisible(state)).toBe(false);
+
+    state = V().step(state, { type: V().EVENTS.TOGGLE });
+    expect(state.override).toBe(V().OVERRIDES.SHOW);
+    expect(V().isVisible(state)).toBe(true);
+
+    state = V().step(state, { type: V().EVENTS.SET_SITE_AUTOHIDE, value: true });
+    expect(state.override).toBe(V().OVERRIDES.SHOW);
+    expect(V().isVisible(state)).toBe(true);
   });
 
   it('samples flash visibility before TOGGLE clears it', () => {

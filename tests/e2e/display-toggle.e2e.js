@@ -284,24 +284,81 @@ async function testDisplayToggle() {
       'matrix cleanup'
     );
 
-    // AUTO + visible -> FORCE_HIDE.
+    // First V opposes rendered AUTO; later presses alternate persistent intent.
     await page.keyboard.press('v');
     await waitForState(
       page,
       { mode: 'hide', automaticHidden: false, visible: false },
       'first V press while automatically visible'
     );
-
-    // The next press clears the override instead of creating sticky state.
     await page.keyboard.press('v');
     await waitForState(
       page,
-      { mode: 'auto', automaticHidden: false, visible: true },
-      'second V press returning to automatic visibility'
+      { mode: 'show', automaticHidden: false, visible: true },
+      'second V press selects persistent show'
     );
 
-    // FORCE_SHOW overrides the automatic class used by startHidden and media visibility.
-    await page.evaluate(() => document.querySelector('vsc-controller').classList.add('vsc-hidden'));
+    // Regression for #1584: YouTube autohide must not retake control after
+    // the visible AUTO -> HIDE -> SHOW sequence.
+    await page.evaluate(() => document.body.classList.add('ytp-autohide'));
+    await waitForState(
+      page,
+      { mode: 'show', automaticHidden: false, visible: true },
+      'persistent show survives site autohide'
+    );
+    await page.keyboard.press('v');
+    await waitForState(page, { mode: 'hide', visible: false }, 'show alternates to hide');
+    await page.keyboard.press('v');
+    await waitForState(page, { mode: 'show', visible: true }, 'hide alternates back to show');
+
+    // A controller without usable media stays hidden even under FORCE_SHOW,
+    // then resumes the same explicit intent when media becomes usable.
+    await page.evaluate(() =>
+      document.querySelector('vsc-controller').classList.add('vsc-nosource')
+    );
+    await waitForState(
+      page,
+      { mode: 'show', visible: false },
+      'no-source state beats show override'
+    );
+    await page.evaluate(() =>
+      document.querySelector('vsc-controller').classList.remove('vsc-nosource')
+    );
+    await waitForState(page, { mode: 'show', visible: true }, 'show resumes when media is usable');
+
+    // Reset to untouched AUTO to exercise first-toggle sampling under flash.
+    await page.evaluate(() => {
+      const host = document.querySelector('vsc-controller');
+      delete host.dataset.vscVisibility;
+      host.classList.add('vsc-show');
+    });
+    await waitForState(
+      page,
+      { mode: 'auto', flashing: true, visible: true },
+      'flash overrides autohide'
+    );
+    await page.keyboard.press('v');
+    await waitForState(
+      page,
+      { mode: 'hide', flashing: false, visible: false },
+      'V samples flash before selecting hide'
+    );
+    await page.keyboard.press('v');
+    await waitForState(
+      page,
+      { mode: 'show', flashing: false, visible: true },
+      'hide alternates to sticky show under autohide'
+    );
+
+    // FORCE_SHOW also overrides the automatic class used by startHidden and
+    // media visibility; the automatic layer keeps updating underneath.
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      delete video.vsc.div.dataset.vscVisibility;
+      document.body.classList.remove('ytp-autohide');
+      video.style.visibility = 'hidden';
+      video.vsc.updateVisibility();
+    });
     await waitForState(
       page,
       { mode: 'auto', automaticHidden: true, visible: false },
@@ -316,89 +373,19 @@ async function testDisplayToggle() {
     await page.keyboard.press('v');
     await waitForState(
       page,
-      { mode: 'auto', automaticHidden: true, visible: false },
-      'show override clears back to automatic hidden'
-    );
-    await page.evaluate(() =>
-      document.querySelector('vsc-controller').classList.remove('vsc-hidden')
-    );
-    await waitForState(
-      page,
-      { mode: 'auto', automaticHidden: false, visible: true },
-      'automatic hidden class cleared'
+      { mode: 'hide', automaticHidden: true, visible: false },
+      'show alternates to persistent hide'
     );
 
-    // Use the same ancestor contract as YouTube without relying on a live site.
-    await page.evaluate(() => document.body.classList.add('ytp-autohide'));
-    await waitForState(page, { mode: 'auto', visible: false }, 'automatic site autohide');
-
-    // AUTO + hidden -> FORCE_SHOW, which must outrank site autohide.
-    await page.keyboard.press('v');
-    await waitForState(
-      page,
-      { mode: 'show', automaticHidden: false, visible: true },
-      'V press while automatically hidden'
-    );
-
-    // A controller without usable media stays hidden even under FORCE_SHOW.
-    await page.evaluate(() =>
-      document.querySelector('vsc-controller').classList.add('vsc-nosource')
-    );
-    await waitForState(
-      page,
-      { mode: 'show', visible: false },
-      'no-source state beats show override'
-    );
-    await page.evaluate(() =>
-      document.querySelector('vsc-controller').classList.remove('vsc-nosource')
-    );
-    await waitForState(page, { mode: 'show', visible: true }, 'show resumes when media is usable');
-
-    await page.keyboard.press('v');
-    await waitForState(
-      page,
-      { mode: 'auto', visible: false },
-      'show override cleared back to autohide'
-    );
-
-    // Temporary speed feedback wins over autohide, but V must still flip the
-    // currently rendered state instead of pinning the flash visible.
-    await page.evaluate(() => document.querySelector('vsc-controller').classList.add('vsc-show'));
-    await waitForState(
-      page,
-      { mode: 'auto', flashing: true, visible: true },
-      'flash overrides autohide'
-    );
-    await page.keyboard.press('v');
-    await waitForState(
-      page,
-      { mode: 'hide', flashing: false, visible: false },
-      'V hides a controller currently visible from flash'
-    );
-    await page.keyboard.press('v');
-    await waitForState(
-      page,
-      { mode: 'auto', flashing: false, visible: false },
-      'flash hide override clears back to autohide'
-    );
-
-    await page.evaluate(() => document.body.classList.remove('ytp-autohide'));
-    await waitForState(
-      page,
-      { mode: 'auto', visible: true },
-      'automatic visibility restored with site controls'
-    );
-
-    // Force-hide is final even if a stale flash class is present.
-    await page.keyboard.press('v');
-    await waitForState(page, { mode: 'hide', visible: false }, 'explicit hide override');
+    // Explicit hide is final even if a stale flash class is present.
     await page.evaluate(() => document.querySelector('vsc-controller').classList.add('vsc-show'));
     await waitForState(page, { mode: 'hide', visible: false }, 'hide override beats flash');
-    await page.evaluate(() =>
-      document.querySelector('vsc-controller').classList.remove('vsc-show')
-    );
     await page.keyboard.press('v');
-    await waitForState(page, { mode: 'auto', visible: true }, 'hide override cleared to auto');
+    await waitForState(
+      page,
+      { mode: 'show', flashing: false, visible: true },
+      'hide alternates to show and clears stale flash'
+    );
 
     // Broadcast actions must sample and transition each controller independently.
     const dualVideoPath = `file://${path.join(__dirname, 'dual-video.html')}`;
@@ -439,15 +426,22 @@ async function testDisplayToggle() {
     await waitForDualControllerStates(
       page,
       {
-        video1: { mode: 'auto', automaticHidden: true, visible: false },
-        video2: { mode: 'auto', automaticHidden: true, visible: false },
+        video1: { mode: 'show', automaticHidden: true, visible: true },
+        video2: { mode: 'hide', automaticHidden: true, visible: false },
       },
-      'broadcast independently clears overrides'
+      'broadcast independently alternates persistent intent'
     );
 
-    // A targeted adapter action must not rewrite the other controller.
+    // A targeted adapter action must not rewrite the other controller. Reset
+    // both hosts to untouched AUTO so only the targeted controller leaves it.
     await page.evaluate(() => {
-      document.getElementById('videoA').vsc.div.classList.remove('vsc-hidden');
+      const first = document.getElementById('videoA').vsc.div;
+      const second = document.getElementById('videoB').vsc.div;
+      delete first.dataset.vscVisibility;
+      delete second.dataset.vscVisibility;
+      first.classList.remove('vsc-hidden', 'vsc-show');
+      second.classList.add('vsc-hidden');
+      second.classList.remove('vsc-show');
     });
     await waitForDualControllerStates(
       page,
@@ -476,10 +470,10 @@ async function testDisplayToggle() {
     await waitForDualControllerStates(
       page,
       {
-        video1: { mode: 'auto', visible: true },
+        video1: { mode: 'show', visible: true },
         video2: { mode: 'auto', visible: false },
       },
-      'targeted action clears one override'
+      'targeted action alternates one controller to show'
     );
 
     // A released controller is no longer part of document-wide broadcasts.

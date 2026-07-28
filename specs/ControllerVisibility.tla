@@ -6,6 +6,8 @@
 (* document-wide broadcasts. The model therefore uses two controllers: a   *)
 (* video (timed flash) and an audio element (persistent flash). It checks   *)
 (* both local non-interference and independent broadcast transitions.       *)
+(* The first toggle samples AUTO rendering; later toggles alternate explicit *)
+(* SHOW/HIDE intent, which remains manual until controller release.          *)
 (*                                                                         *)
 (* Rendering is a precedence relation, not a mutable variable:              *)
 (*                                                                         *)
@@ -70,9 +72,9 @@ Visible(i) ==
   (ForcedShown(i) \/ (~automaticHidden[i] /\ ~siteAutohide[i]))
 
 ToggleTarget(i) ==
-  IF overrideMode[i] # Auto
-    THEN Auto
-    ELSE IF Visible(i) THEN Hide ELSE Show
+  IF overrideMode[i] = Auto
+    THEN IF Visible(i) THEN Hide ELSE Show
+    ELSE IF overrideMode[i] = Show THEN Hide ELSE Show
 
 FlashTarget(i) == IF IsAudio(i) THEN Persistent ELSE TimedArmed
 
@@ -318,6 +320,14 @@ ToggleAllContract ==
             ELSE /\ overrideMode'[i] = overrideMode[i]
                  /\ flashMode'[i] = flashMode[i]]_vars
 
+StickyToggleIntentContract ==
+  [] [\A i \in Controllers :
+        attached[i] /\ (ToggleOne(i) \/ ToggleAll)
+          => overrideMode'[i] =
+               (IF overrideMode[i] = Auto
+                  THEN IF Visible(i) THEN Hide ELSE Show
+                  ELSE IF overrideMode[i] = Show THEN Hide ELSE Show)]_vars
+
 EnvironmentPreservesIntent ==
   [] [\A i \in Controllers :
         EnvironmentChange(i) =>
@@ -348,6 +358,11 @@ IntentChangesOnlyByToggleOrRelease ==
   [] [(overrideMode' # overrideMode) =>
         (\/ ToggleAll
          \/ \E i \in Controllers : ToggleOne(i) \/ Release(i))]_vars
+
+ManualIntentPersistsUntilRelease ==
+  [] [\A i \in Controllers :
+        attached[i] /\ overrideMode[i] # Auto /\ attached'[i]
+          => overrideMode'[i] # Auto]_vars
 
 TimerRefreshOnlyStops ==
   [] [(timerRefreshEnabled' # timerRefreshEnabled) =>

@@ -265,7 +265,7 @@ describe('ActionHandler', () => {
     expect(mockVideo.currentTime).toBe(25);
   });
 
-  it('display applies an escapable override opposite automatic visibility', async () => {
+  it('display samples AUTO once, then alternates persistent HIDE and SHOW', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
@@ -275,26 +275,25 @@ describe('ActionHandler', () => {
     const controller = video.vsc.div;
     const isControllerVisible = vi
       .spyOn(actionHandler, 'isControllerVisible')
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(false);
+      .mockReturnValueOnce(true);
 
     actionHandler.runAction('display', null, null);
     expect(controller.dataset.vscVisibility).toBe('hide');
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
 
     actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBeUndefined();
+    expect(controller.dataset.vscVisibility).toBe('show');
+
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('hide');
 
     actionHandler.runAction('display', null, null);
     expect(controller.dataset.vscVisibility).toBe('show');
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
-
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBeUndefined();
-    expect(isControllerVisible).toHaveBeenCalledTimes(2);
+    expect(isControllerVisible).toHaveBeenCalledTimes(1);
   });
 
-  it('display preserves startHidden beneath a temporary show override', async () => {
+  it('display preserves startHidden beneath persistent show/hide intent', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.startHidden = true;
@@ -312,7 +311,7 @@ describe('ActionHandler', () => {
     expect(controller.classList.contains('vsc-hidden')).toBe(true);
 
     actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBeUndefined();
+    expect(controller.dataset.vscVisibility).toBe('hide');
     expect(controller.classList.contains('vsc-hidden')).toBe(true);
   });
 

@@ -16,7 +16,7 @@ The contract covers:
 - targeted and document-wide display actions;
 - timer expiry and controller teardown.
 
-Persistence across reloads, cross-frame synchronization, and ownership shared with page scripts are not part of this contract. Adding any of them changes the concurrency model and requires revisiting both the TLA+ state space and the DOM adapter.
+Explicit `SHOW` / `HIDE` intent persists for the lifetime of its controller. Persistence across reloads, cross-frame synchronization, and ownership shared with page scripts are not part of this contract. Adding any of them changes the concurrency model and requires revisiting both the TLA+ state space and the DOM adapter.
 
 ## State
 
@@ -64,12 +64,12 @@ A display action samples rendered visibility before cancelling feedback:
 | ---------------- | ------------------------- | ------------- | ------------------ |
 | `AUTO`           | visible                   | `HIDE`        | none               |
 | `AUTO`           | hidden                    | `SHOW`        | none               |
-| `SHOW`           | either                    | `AUTO`        | none               |
-| `HIDE`           | either                    | `AUTO`        | none               |
+| `SHOW`           | either                    | `HIDE`        | none               |
+| `HIDE`           | either                    | `SHOW`        | none               |
 
-This is intentionally not a fixed `AUTO → SHOW → HIDE → AUTO` cycle. The first press opposes what the user can currently see; the second press returns control to the automatic layer. Sampling before clearing `vsc-show` is essential: `AUTO + site autohide + flash` is visibly shown, so the first press must select `HIDE`, not `SHOW`.
+The first press opposes what the user can currently see. Later presses alternate persistent `SHOW` / `HIDE` intent, so player autohide cannot silently retake control; `AUTO` is re-entered only when that controller is released and a fresh controller is created. Sampling before clearing `vsc-show` remains essential for the first press: `AUTO + site autohide + flash` is visibly shown, so the action must select `HIDE`, not `SHOW`.
 
-Keyboard and popup display actions broadcast to every attached controller. Each controller samples and transitions independently, so one broadcast may produce `HIDE` on a visible controller and `SHOW` on a hidden controller. A targeted adapter action affects only its owner. Released controllers are absent from broadcasts and cannot be mutated by an expired timer.
+Keyboard and popup display actions broadcast to every attached controller. Each controller samples its first transition independently, so one broadcast may produce `HIDE` on a visible controller and `SHOW` on a hidden controller; later broadcasts alternate those controllers in opposite phase. A targeted adapter action affects only its owner. Released controllers are absent from broadcasts and cannot be mutated by an expired timer.
 
 ## Automatic, feedback, and lifecycle transitions
 
@@ -91,8 +91,9 @@ TLC checks:
 - explicit `HIDE` / flash exclusion;
 - detached-controller inertness;
 - targeted-action locality and broadcast independence;
+- the render-aware first toggle and subsequent explicit `SHOW` / `HIDE` alternation;
 - environment and settings non-interference with user intent;
-- intent changes only through toggle or release;
+- intent changes only through toggle or release, and explicit intent cannot return to `AUTO` before release;
 - weak-fair eventual progress for armed and due video timer phases;
 - eventual video flash clearance or release after the environment stops re-arming the timer.
 
