@@ -25,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: '17'
           check-latest: false
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/videospeed/tlc
           key: ${{ runner.os }}-tlc-${{ hashFiles('scripts/tlc.mjs') }}
