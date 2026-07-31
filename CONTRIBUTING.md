@@ -15,7 +15,7 @@ a POSIX shell. Windows users need:
 1. **[Git for Windows](https://git-scm.com/download/win)** — provides the
    `sh.exe` that Husky hooks run under. Use Git Bash or a terminal backed by
    Git's bundled shell.
-2. **Node.js >= 22.13** — install via any version manager that reads `.nvmrc`
+2. **Node.js 22.22.2+, 24.15.0+, or 26+** — install via any version manager that reads `.nvmrc`
    ([fnm](https://github.com/Schniz/fnm), [nvm-windows](https://github.com/coreybutler/nvm-windows),
    [volta](https://volta.sh/), etc.). Make sure Node is available in both your
    regular terminal and Git Bash.

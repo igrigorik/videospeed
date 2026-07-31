@@ -40,16 +40,16 @@
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
     "fs-extra": "^11.4.0",
-    "globals": "^17.7.0",
+    "globals": "^17.8.0",
     "husky": "^9.1.7",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "lint-staged": "^17.2.0",
     "prettier": "^3.9.6",
-    "puppeteer": "^25.3.0",
+    "puppeteer": "^25.4.0",
     "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=22.13.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "prettier": {
     "singleQuote": true,
