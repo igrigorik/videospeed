@@ -19,7 +19,7 @@
     "lint:fix": "eslint 'src/**/*.js' 'tests/**/*.js' --fix",
     "format": "prettier --write 'src/**/*.js' 'tests/**/*.js'",
     "build:release": "RELEASE=1 node scripts/build.mjs",
-    "prerelease": "npm run clean && npm test",
+    "prerelease": "npm run clean && npm run lint && npm test && npm run test:tlc",
     "release": "npm run build:release && node scripts/package-release.js",
     "release:github": "node scripts/github-release.js",
     "clean": "node scripts/clean.mjs dist release",
