@@ -1,7 +1,5 @@
 # Release 0.11.0
 
-Status: DRAFT — changes since v0.10.2.
-
 ## Playback
 
 - Rebuilt speed decisions around a single arbitration engine that adopts native player choices, bounds site conflicts, and distinguishes user actions from automatic player changes.
@@ -17,7 +15,7 @@ Status: DRAFT — changes since v0.10.2.
 
 ## Controller and site fixes
 
-- Fixed V-key show/hide across automatic player UI fading; the first press flips current visibility and the next resumes automatic behavior (#1584).
+- Fixed V-key show/hide across automatic player UI fading; the first press flips current visibility and later presses alternate persistent show/hide intent (#1584).
 - Fixed centered and doubly offset controllers in positioned, flex, and grid layouts, including Udemy and TVer; added Frame.io viewport handling (#1557, #1558, #1570).
 - Restored controller visibility and interaction in modern YouTube and youtube-nocookie embeds, and stopped YouTube-only CSS selectors from affecting unrelated sites (#1501).
 - Moved the controller below YouTube Shorts play and volume controls (#1522).

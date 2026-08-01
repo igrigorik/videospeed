@@ -1,6 +1,6 @@
 {
   "name": "video-speed-controller",
-  "version": "0.10.2",
+  "version": "0.11.0",
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "type": "module",
   "scripts": {
