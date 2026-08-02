@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import { execFileSync, execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -19,10 +19,6 @@ const zipPath = path.join(releaseDir, zipName);
 const curatedNotesPath = path.join(rootDir, 'docs', `release-${version}.md`);
 const artifactName = 'videospeed-release-node-22.x';
 const dryRun = process.argv.includes('--dry-run');
-
-function run(command) {
-  return execSync(command, { encoding: 'utf-8', cwd: rootDir }).trim();
-}
 
 function runFile(command, args) {
   return execFileSync(command, args, { encoding: 'utf-8', cwd: rootDir }).trim();
@@ -126,12 +122,12 @@ export function inspectReleaseZip(archivePath, expectedVersion) {
 }
 
 function getReleaseContext() {
-  run('gh --version');
+  runFile('gh', ['--version']);
   runFile('gh', ['auth', 'status', '--hostname', 'github.com']);
 
   check(
     'Git worktree',
-    run('git status --porcelain --untracked-files=all') === '',
+    runFile('git', ['status', '--porcelain', '--untracked-files=all']) === '',
     'tracked or untracked changes remain; commit or remove them before creating a release'
   );
 
@@ -152,13 +148,13 @@ function getReleaseContext() {
   const notes = prepareReleaseNotes(curatedNotes);
   check('Curated notes', notes.trim().length > 0, 'release notes are empty');
 
-  const originUrl = run('git remote get-url origin');
+  const originUrl = runFile('git', ['remote', 'get-url', 'origin']);
   const repoPath = parseGitHubRepo(originUrl);
   check('Git remote', Boolean(repoPath), `origin is not a supported GitHub URL: ${originUrl}`);
   const repo = `github.com/${repoPath}`;
 
-  const headCommit = run('git rev-parse HEAD');
-  const remoteMasterOutput = run('git ls-remote origin refs/heads/master');
+  const headCommit = runFile('git', ['rev-parse', 'HEAD']);
+  const remoteMasterOutput = runFile('git', ['ls-remote', 'origin', 'refs/heads/master']);
   const remoteMasterCommit = remoteMasterOutput.split(/\s+/)[0] || null;
   check('Remote master', Boolean(remoteMasterCommit), 'origin/master not found');
   check(
@@ -167,15 +163,19 @@ function getReleaseContext() {
     `origin/master is ${remoteMasterCommit}, not HEAD ${headCommit}`
   );
 
-  const tagType = run(`git cat-file -t ${tag}`);
+  const tagType = runFile('git', ['cat-file', '-t', tag]);
   check('Git tag', tagType === 'tag', `${tag} must be an annotated tag`);
-  const tagCommit = run(`git rev-parse ${tag}^{commit}`);
-  const tagObject = run(`git rev-parse ${tag}`);
+  const tagCommit = runFile('git', ['rev-parse', `${tag}^{commit}`]);
+  const tagObject = runFile('git', ['rev-parse', tag]);
   check('Git tag', tagCommit === headCommit, `${tag} does not point at HEAD ${headCommit}`);
 
-  const remoteTagOutput = run(
-    `git ls-remote --tags origin "refs/tags/${tag}" "refs/tags/${tag}^{}"`
-  );
+  const remoteTagOutput = runFile('git', [
+    'ls-remote',
+    '--tags',
+    'origin',
+    `refs/tags/${tag}`,
+    `refs/tags/${tag}^{}`,
+  ]);
   const remoteTagRefs = parseRemoteTagRefs(remoteTagOutput, tag);
   check('Remote tag', Boolean(remoteTagRefs.direct), `${tag} has not been pushed to origin`);
   check('Remote tag', Boolean(remoteTagRefs.peeled), `origin/${tag} is not annotated`);
