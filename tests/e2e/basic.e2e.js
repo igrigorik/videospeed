@@ -145,6 +145,44 @@ export default async function runBasicE2ETests() {
       );
     });
 
+    await runTest(
+      'Page legacy mousewheel handlers should receive trusted wheel input',
+      async () => {
+        const point = await page.evaluate(() => {
+          const video = document.querySelector('video');
+          video.muted = false;
+          video.volume = 0.5;
+          window.__legacyMousewheelCount = 0;
+          document.addEventListener('mousewheel', (event) => {
+            if (!event.isTrusted) {
+              return;
+            }
+            window.__legacyMousewheelCount++;
+            video.volume = Math.min(1, video.volume + (event.wheelDelta > 0 ? 0.03 : -0.03));
+          });
+          const rect = video.getBoundingClientRect();
+          return {
+            x: rect.x + rect.width / 2,
+            y: rect.y + rect.height / 2,
+          };
+        });
+
+        // CDP-backed mouse input is trusted browser input. Synthetic dispatchEvent()
+        // bypasses Chromium's wheel/mousewheel compatibility selection and would
+        // not catch the document-level listener regression from #1598.
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.wheel({ deltaY: -120 });
+        await sleep(200);
+
+        const result = await page.evaluate(() => ({
+          count: window.__legacyMousewheelCount,
+          volume: document.querySelector('video').volume,
+        }));
+        assert.true(result.count > 0, 'Page should receive trusted legacy mousewheel input');
+        assert.true(result.volume > 0.5, 'Page mousewheel handler should be able to change volume');
+      }
+    );
+
     // Take a screenshot for verification
     await takeScreenshot(page, 'basic-test-final.png');
   } catch (error) {

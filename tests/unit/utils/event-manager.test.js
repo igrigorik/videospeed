@@ -666,6 +666,30 @@ describe('EventManager', () => {
     siteResolver.mockRestore();
   });
 
+  it('does not replace Chromium legacy mousewheel dispatch with a document wheel listener', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    const addEventListener = vi.spyOn(document, 'addEventListener');
+    const eventManager = new window.VSC.EventManager(config, null);
+    eventManager.setupUserGestureListener(document);
+
+    const registeredTypes = addEventListener.mock.calls.map(([type]) => type);
+    expect(registeredTypes).not.toContain('wheel');
+    expect(addEventListener).toHaveBeenCalledWith('pointermove', expect.any(Function), {
+      capture: true,
+      passive: true,
+    });
+    expect(addEventListener).toHaveBeenCalledWith('touchstart', expect.any(Function), {
+      capture: true,
+      passive: true,
+    });
+    expect(eventManager.listeners.get(document).map(({ type }) => type)).not.toContain('wheel');
+
+    eventManager.cleanup();
+    addEventListener.mockRestore();
+  });
+
   it('passes a resolved media owner into the pointer-hold ledger', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();

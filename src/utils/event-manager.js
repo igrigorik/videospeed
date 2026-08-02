@@ -278,9 +278,8 @@ class EventManager {
       }
     };
     // Presence-only evidence for the quiet/activity axis: a single
-    // timestamp assignment per event, passive so scrolling never blocks.
-    // Deliberately coarse — no payloads are read (see classifier privacy
-    // note).
+    // timestamp assignment per event. Deliberately coarse — no payloads are
+    // read (see classifier privacy note).
     const inputHandler = (event) => {
       this.arbitration.classifier.observeInput(event);
     };
@@ -290,7 +289,9 @@ class EventManager {
     document.addEventListener('pointercancel', pointerEndHandler, true);
     document.addEventListener('visibilitychange', visibilityHandler, true);
     document.addEventListener('pointermove', inputHandler, { capture: true, passive: true });
-    document.addEventListener('wheel', inputHandler, { capture: true, passive: true });
+    // Do not observe `wheel` on document. In Chromium, registering the modern
+    // event there suppresses the legacy `mousewheel` fallback used by page
+    // controls such as Bilibili's web-fullscreen volume handler (#1598).
     document.addEventListener('touchstart', inputHandler, { capture: true, passive: true });
 
     if (!this.listeners.has(document)) {
@@ -305,7 +306,6 @@ class EventManager {
         { type: 'pointercancel', handler: pointerEndHandler, useCapture: true },
         { type: 'visibilitychange', handler: visibilityHandler, useCapture: true },
         { type: 'pointermove', handler: inputHandler, useCapture: true },
-        { type: 'wheel', handler: inputHandler, useCapture: true },
         { type: 'touchstart', handler: inputHandler, useCapture: true }
       );
 
