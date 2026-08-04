@@ -47,6 +47,10 @@ we don't read at a fixed pace, and we shouldn't watch at one either.
 - **Custom controller CSS** - style or reposition the overlay with your own
   CSS rules.
 
+## New features (this fork)
+- Added a remaining time display under the video speed controller. Remaining time is calculated based on the current playbackRate, so faster playback shows the real remaining watch time.
+- Added Fullscreen as a configurable shortcut action in Options > Shortcuts.
+
 ## Default keyboard shortcuts
 
 - **S** - decrease playback speed
