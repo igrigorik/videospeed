@@ -95,12 +95,26 @@ class ShadowDOMManager {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 2.8em;
-        height: 1.4em;
+        min-width: 2.8em;
+        min-height: 1.4em;
         text-align: center;
         vertical-align: middle;
         box-sizing: border-box;
         touch-action: none;
+      }
+
+      .vsc-remaining-time {
+        cursor: -webkit-grab;
+        display: block;
+        margin-top: 4px;
+        min-width: 58px;
+        text-align: center;
+        touch-action: none;
+        user-select: none;
+      }
+
+      .vsc-remaining-time:active {
+        cursor: -webkit-grabbing;
       }
       
       .draggable:active {
@@ -154,7 +168,7 @@ class ShadowDOMManager {
     const draggable = document.createElement('span');
     draggable.setAttribute('data-action', 'drag');
     draggable.className = 'draggable';
-    draggable.style.cssText = `font-size: ${buttonSize}px;`;
+    draggable.style.cssText = `font-size: ${buttonSize}px; display:block; text-align:center; width:100%; box-sizing:border-box;`;
     draggable.textContent = speed;
     controller.appendChild(draggable);
 
@@ -182,6 +196,14 @@ class ShadowDOMManager {
     });
 
     controller.appendChild(controls);
+
+    const remainingTime = document.createElement('span');
+    remainingTime.setAttribute('data-action', 'drag');
+    remainingTime.className = 'vsc-remaining-time';
+    remainingTime.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
+    remainingTime.textContent = '-:--';
+    controller.appendChild(remainingTime);
+
     shadow.appendChild(controller);
 
     window.VSC.logger.debug('Shadow DOM created for video controller');
@@ -213,6 +235,15 @@ class ShadowDOMManager {
    */
   static getSpeedIndicator(shadow) {
     return shadow.querySelector('.draggable');
+  }
+
+  /**
+   * Get remaining time indicator from shadow DOM
+   * @param {ShadowRoot} shadow - Shadow root
+   * @returns {HTMLElement} Remaining time indicator element
+   */
+  static getRemainingTimeIndicator(shadow) {
+    return shadow.querySelector('.vsc-remaining-time');
   }
 
   /**

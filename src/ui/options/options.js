@@ -101,6 +101,7 @@ const ACTION_OPTIONS = [
   ['mark', 'Set marker'],
   ['jump', 'Jump to marker'],
   ['display', 'Show/hide controller'],
+  ['fullscreen', 'Fullscreen'],
 ];
 
 // Column spec for shortcut rows (used by createRow)
@@ -724,6 +725,7 @@ async function save_options() {
     const rememberSpeed = document.getElementById('rememberSpeed').checked;
     const exclusiveKeys = document.getElementById('exclusiveKeys').checked;
     const audioBoolean = document.getElementById('audioBoolean').checked;
+    const showRemainingTime = document.getElementById('showRemainingTime').checked;
     const startHidden = document.getElementById('startHidden').checked;
     const controllerOpacity = Number(document.getElementById('controllerOpacity').value);
     const controllerButtonSize = Number(document.getElementById('controllerButtonSize').value);
@@ -764,6 +766,7 @@ async function save_options() {
       rememberSpeed: rememberSpeed,
       exclusiveKeys: exclusiveKeys,
       audioBoolean: audioBoolean,
+      showRemainingTime: showRemainingTime,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
@@ -810,6 +813,7 @@ async function restore_options() {
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('exclusiveKeys').checked = storage.exclusiveKeys;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
+    document.getElementById('showRemainingTime').checked = storage.showRemainingTime !== false;
     document.getElementById('startHidden').checked = storage.startHidden;
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('controllerButtonSize').value = storage.controllerButtonSize;

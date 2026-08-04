@@ -29,18 +29,28 @@ class ControlsManager {
    * @private
    */
   setupDragHandler(shadow) {
-    const draggable = shadow.querySelector('.draggable');
+    const dragHandles = [
+      shadow.querySelector('.draggable'),
+      this.config.settings.showRemainingTime ? shadow.querySelector('.vsc-remaining-time') : null,
+    ].filter(Boolean);
 
-    // Pointer-based drag (unified mouse + touch)
-    draggable.addEventListener(
-      'pointerdown',
-      (e) => {
-        this.actionHandler.runAction(e.target.dataset['action'], false, e);
-        e.stopPropagation();
-        e.preventDefault();
-      },
-      true
-    );
+    dragHandles.forEach((handle) => {
+      // Pointer-based drag (unified mouse + touch)
+      handle.addEventListener(
+        'pointerdown',
+        (e) => {
+          this.actionHandler.runAction('drag', false, e);
+          e.stopPropagation();
+          e.preventDefault();
+        },
+        true
+      );
+    });
+
+    const draggable = shadow.querySelector('.draggable');
+    if (!draggable) {
+      return;
+    }
 
     // Double-click / double-tap to reset speed
     draggable.addEventListener(

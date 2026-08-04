@@ -103,6 +103,11 @@ class ActionHandler {
         this.toggleControllerVisibility(video);
         break;
 
+      case 'fullscreen':
+        window.VSC.logger.debug('Fullscreen action triggered');
+        this.toggleFullscreen(video);
+        break;
+
       case 'blink':
         window.VSC.logger.debug('Showing controller momentarily');
         this.flashController(video.vsc.div, value);
@@ -160,6 +165,25 @@ class ActionHandler {
 
       default:
         window.VSC.logger.warn(`Unknown action: ${action}`);
+    }
+  }
+
+  /**
+   * Toggle fullscreen for the closest player container, falling back to the media element.
+   * @param {HTMLMediaElement} video - Media element whose player is toggled
+   */
+  toggleFullscreen(video) {
+    const target = video.closest?.('.html5-video-player') || video.parentElement || video;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+      return;
+    }
+
+    if (target.requestFullscreen) {
+      target.requestFullscreen();
+    } else {
+      video.requestFullscreen?.();
     }
   }
 

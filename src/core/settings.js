@@ -163,6 +163,7 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.startHidden = Boolean(storage.startHidden);
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
+        this.settings.showRemainingTime = storage.showRemainingTime !== false;
         // One-time migration: drop legacy controllerCSS key, reset to new model.
         if (storage.controllerCSS !== null) {
           window.VSC.StorageManager.remove(['controllerCSS']);

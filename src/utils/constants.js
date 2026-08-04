@@ -39,6 +39,7 @@ if (!window.VSC.Constants.DEFAULT_SETTINGS) {
     startHidden: false, // default: false
     controllerOpacity: 0.3, // default: 0.3
     controllerButtonSize: 14,
+    showRemainingTime: true,
     customCSS: '', // user's additional CSS injected alongside the built-in defaults
     keyBindings: PREDEFINED_ACTIONS.map((action) => ({
       action,
@@ -100,7 +101,7 @@ meet.google.com`.replace(regStrip, ''),
     AUDIO_MIN_HEIGHT: 20,
   };
 
-  const CUSTOM_ACTIONS_NO_VALUES = ['pause', 'muted', 'mark', 'jump', 'display'];
+  const CUSTOM_ACTIONS_NO_VALUES = ['pause', 'muted', 'mark', 'jump', 'display', 'fullscreen'];
 
   // Assign to global namespace
   window.VSC.Constants.LOG_LEVELS = LOG_LEVELS;

@@ -162,8 +162,15 @@ class VideoController {
     // Set up control events
     this.controlsManager.setupControlEvents(shadow, this.video);
 
-    // Store speed indicator reference
+    // Store indicator references
     this.speedIndicator = window.VSC.ShadowDOMManager.getSpeedIndicator(shadow);
+    this.remainingTimeIndicator = this.config.settings.showRemainingTime
+      ? window.VSC.ShadowDOMManager.getRemainingTimeIndicator(shadow)
+      : null;
+
+    if (!this.config.settings.showRemainingTime) {
+      window.VSC.ShadowDOMManager.getRemainingTimeIndicator(shadow)?.remove();
+    }
 
     // Insert into DOM FIRST — position calculation needs the wrapper in the DOM
     this.insertIntoDOM(document, wrapper);
@@ -176,8 +183,10 @@ class VideoController {
     if (computedPosition !== 'relative') {
       const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
       const innerController = window.VSC.ShadowDOMManager.getController(shadow);
-      innerController.style.top = position.top;
-      innerController.style.left = position.left;
+      if (innerController) {
+        innerController.style.top = position.top;
+        innerController.style.left = position.left;
+      }
     }
 
     window.VSC.logger.debug('initializeControls End');
@@ -241,11 +250,21 @@ class VideoController {
       mediaEventAction.call(this, event);
     };
 
-    // Add essential event listeners for speed restoration
+    this.handleTimeUpdate = () => this.updateRemainingTime();
+    this.handleDurationChange = () => this.updateRemainingTime();
+    this.handleRateUpdate = () => this.updateRemainingTime();
+
+    // Add essential event listeners for speed restoration and remaining-time updates
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
+    this.video.addEventListener('timeupdate', this.handleTimeUpdate);
+    this.video.addEventListener('durationchange', this.handleDurationChange);
+    this.video.addEventListener('ratechange', this.handleRateUpdate);
+    this.updateRemainingTime();
 
-    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
+    window.VSC.logger.debug(
+      'Added essential media event handlers: play, seeked, timeupdate, durationchange, ratechange'
+    );
   }
 
   /**
@@ -300,6 +319,16 @@ class VideoController {
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
     }
+    if (this.handleTimeUpdate) {
+      this.video.removeEventListener('timeupdate', this.handleTimeUpdate);
+    }
+    if (this.handleDurationChange) {
+      this.video.removeEventListener('durationchange', this.handleDurationChange);
+    }
+    if (this.handleRateUpdate) {
+      this.video.removeEventListener('ratechange', this.handleRateUpdate);
+    }
+
     if (this.handleLoadedMetadata) {
       this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);
       this.handleLoadedMetadata = null;
@@ -323,6 +352,36 @@ class VideoController {
     delete this.video.vsc;
 
     window.VSC.logger.debug('VideoController removed successfully');
+  }
+
+  /**
+   * Update the remaining-time display. The value is adjusted by playbackRate,
+   * so it represents real watch time remaining at the current speed.
+   * @private
+   */
+  updateRemainingTime() {
+    if (!this.remainingTimeIndicator) {
+      return;
+    }
+
+    const { duration, currentTime, playbackRate } = this.video;
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(currentTime)) {
+      this.remainingTimeIndicator.textContent = '-:--';
+      return;
+    }
+
+    const mediaSecondsRemaining = Math.max(0, duration - currentTime);
+    const watchSecondsRemaining =
+      playbackRate > 0 ? mediaSecondsRemaining / playbackRate : mediaSecondsRemaining;
+    const totalSeconds = Math.floor(watchSecondsRemaining);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    this.remainingTimeIndicator.textContent =
+      hours > 0
+        ? `-${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        : `-${minutes}:${String(seconds).padStart(2, '0')}`;
   }
 
   /**
