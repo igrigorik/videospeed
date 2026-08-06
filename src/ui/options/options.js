@@ -725,6 +725,7 @@ async function save_options() {
     const exclusiveKeys = document.getElementById('exclusiveKeys').checked;
     const audioBoolean = document.getElementById('audioBoolean').checked;
     const startHidden = document.getElementById('startHidden').checked;
+    const keepControlsExpanded = document.getElementById('keepControlsExpanded').checked;
     const controllerOpacity = Number(document.getElementById('controllerOpacity').value);
     const controllerButtonSize = Number(document.getElementById('controllerButtonSize').value);
     const logLevel = parseInt(document.getElementById('logLevel').value);
@@ -765,6 +766,7 @@ async function save_options() {
       exclusiveKeys: exclusiveKeys,
       audioBoolean: audioBoolean,
       startHidden: startHidden,
+      keepControlsExpanded: keepControlsExpanded,
       controllerOpacity: controllerOpacity,
       controllerButtonSize: controllerButtonSize,
       logLevel: logLevel,
@@ -811,6 +813,7 @@ async function restore_options() {
     document.getElementById('exclusiveKeys').checked = storage.exclusiveKeys;
     document.getElementById('audioBoolean').checked = storage.audioBoolean;
     document.getElementById('startHidden').checked = storage.startHidden;
+    document.getElementById('keepControlsExpanded').checked = storage.keepControlsExpanded;
     document.getElementById('controllerOpacity').value = storage.controllerOpacity;
     document.getElementById('controllerButtonSize').value = storage.controllerButtonSize;
     document.getElementById('logLevel').value = storage.logLevel;

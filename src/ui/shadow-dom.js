@@ -12,7 +12,14 @@ class ShadowDOMManager {
    * @returns {ShadowRoot} Created shadow root
    */
   static createShadowDOM(wrapper, options = {}) {
-    const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
+    const {
+      top = '0px',
+      left = '0px',
+      speed = '1.00',
+      opacity = 0.3,
+      buttonSize = 14,
+      keepControlsExpanded = false,
+    } = options;
 
     const shadow = wrapper.attachShadow({ mode: 'open' });
 
@@ -25,7 +32,8 @@ class ShadowDOMManager {
         font-size: 13px;
       }
       
-      :host(:hover) #controls {
+      :host(:hover) #controls,
+      #controller.vsc-expanded #controls {
         display: inline-block;
       }
       
@@ -72,7 +80,8 @@ class ShadowDOMManager {
         opacity: 0.7;
       }
       
-      #controller:hover>.draggable {
+      #controller:hover>.draggable,
+      #controller.vsc-expanded>.draggable {
         margin-right: 0.8em;
       }
       
@@ -183,6 +192,7 @@ class ShadowDOMManager {
 
     controller.appendChild(controls);
     shadow.appendChild(controller);
+    this.setControlsExpanded(shadow, keepControlsExpanded);
 
     window.VSC.logger.debug('Shadow DOM created for video controller');
     return shadow;
@@ -204,6 +214,16 @@ class ShadowDOMManager {
    */
   static getControls(shadow) {
     return shadow.querySelector('#controls');
+  }
+
+  /**
+   * Keep the controller button row expanded without changing controller visibility.
+   * @param {ShadowRoot} shadow - Shadow root containing the controller
+   * @param {boolean} expanded - Whether controls should remain expanded
+   */
+  static setControlsExpanded(shadow, expanded) {
+    const controller = this.getController(shadow);
+    controller?.classList.toggle('vsc-expanded', Boolean(expanded));
   }
 
   /**
