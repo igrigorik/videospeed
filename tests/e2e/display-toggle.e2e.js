@@ -72,6 +72,50 @@ async function waitForState(page, expected, context) {
   assertState(await getControllerState(page), expected, context);
 }
 
+async function getControlsExpansionState(page) {
+  return page.evaluate(() => {
+    const host = document.querySelector('vsc-controller');
+    const controller = host?.shadowRoot?.querySelector('#controller');
+    const controls = host?.shadowRoot?.querySelector('#controls');
+    const draggable = host?.shadowRoot?.querySelector('.draggable');
+    return {
+      found: !!controller && !!controls && !!draggable,
+      expanded: !!controller?.classList.contains('vsc-expanded'),
+      controlsVisible: controls ? getComputedStyle(controls).display !== 'none' : false,
+      indicatorMarginRight: draggable ? parseFloat(getComputedStyle(draggable).marginRight) : 0,
+    };
+  });
+}
+
+async function waitForControlsExpansion(page, expected, context) {
+  await page.waitForFunction(
+    (expanded) => {
+      const host = document.querySelector('vsc-controller');
+      const controller = host?.shadowRoot?.querySelector('#controller');
+      const controls = host?.shadowRoot?.querySelector('#controls');
+      if (!controller || !controls) {
+        return false;
+      }
+      return (
+        controller.classList.contains('vsc-expanded') === expanded &&
+        (getComputedStyle(controls).display !== 'none') === expanded
+      );
+    },
+    { timeout: 2000, polling: 50 },
+    expected
+  );
+
+  const state = await getControlsExpansionState(page);
+  if (
+    !state.found ||
+    state.expanded !== expected ||
+    state.controlsVisible !== expected ||
+    (expected && state.indicatorMarginRight <= 0)
+  ) {
+    throw new Error(`${context}: unexpected expansion state ${JSON.stringify(state)}`);
+  }
+}
+
 async function installControllerCSSForDomain(page, hostname) {
   const autohideRuleLoaded = await page.evaluate((domain) => {
     const sheet = new CSSStyleSheet();
@@ -266,6 +310,39 @@ async function testDisplayToggle() {
     if (!found) {
       throw new Error('Controller never appeared');
     }
+
+    // Keep the pointer outside the controller so computed display reflects the
+    // preference rather than the existing hover behavior.
+    await page.mouse.move(1200, 700);
+    await waitForControlsExpansion(page, false, 'controls collapsed by default');
+
+    await page.evaluate(() => {
+      document.documentElement.dispatchEvent(
+        new CustomEvent('VSC_STORAGE_CHANGED', {
+          detail: { keepControlsExpanded: { oldValue: false, newValue: true } },
+        })
+      );
+    });
+    await waitForControlsExpansion(page, true, 'live preference enables expanded controls');
+
+    await page.evaluate(() => {
+      document
+        .querySelector('vsc-controller')
+        ?.shadowRoot?.querySelector('button[data-action="advance"]')
+        ?.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await waitForControlsExpansion(page, true, 'expanded controls remain after use and timeout');
+
+    await page.evaluate(() => {
+      document.documentElement.dispatchEvent(
+        new CustomEvent('VSC_STORAGE_CHANGED', {
+          detail: { keepControlsExpanded: { oldValue: true, newValue: false } },
+        })
+      );
+    });
+    await waitForControlsExpansion(page, false, 'live preference restores hover behavior');
+    console.log('   ✅ Live controls expansion preference');
 
     // The fixture is file://, so install the actual production defaults after
     // resolving their domain markers as YouTube. This keeps the matrix on the
