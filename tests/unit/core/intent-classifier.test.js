@@ -39,8 +39,26 @@ describe('IntentClassifier click attribution', () => {
     classifier.observeClick({ timeStamp: 100 }, videoA);
     classifier.observeClick({ timeStamp: 200 }, videoA);
 
-    expect(classifier.classify(context(videoA))).toBe(verdicts().USER_INTENT);
-    expect(classifier.classify(context(videoB))).toBe(verdicts().AUTONOMOUS);
+    expect(classifier.classify(context(videoA, 1.5))).toBe(verdicts().USER_INTENT);
+    expect(classifier.classify(context(videoB, 1.5))).toBe(verdicts().AUTONOMOUS);
+    expect(classifier.hasStrongIntent({ media: videoA, timeStamp: 250 })).toBe(true);
+    expect(classifier.hasStrongIntent({ media: videoB, timeStamp: 250 })).toBe(false);
+  });
+
+  it('never adopts an exact 1.0 reset, however deep the click sequence (#1600)', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    // Two unrelated clicks (play, then a seek) are observationally identical
+    // to menu traversal, so neither may persist the player's reset.
+    classifier.observeClick({ timeStamp: 100 }, video);
+    classifier.observeClick({ timeStamp: 200 }, video);
+    expect(classifier.classify(context(video, 1.0))).toBe(verdicts().AUTONOMOUS);
+
+    // A native speed shortcut still names the speed control, so 1.0 through
+    // `<`/`>` stays durable.
+    classifier.observeUnhandledKey({ timeStamp: 240, key: '<', code: 'Comma', shiftKey: true });
+    expect(classifier.classify(context(video, 1.0))).toBe(verdicts().USER_INTENT);
   });
 
   it('retains unresolved click evidence as the backward-compatible fallback', () => {
@@ -51,8 +69,8 @@ describe('IntentClassifier click attribution', () => {
     classifier.observeClick({ timeStamp: 100 });
     classifier.observeClick({ timeStamp: 200 });
 
-    expect(classifier.classify(context(videoA))).toBe(verdicts().USER_INTENT);
-    expect(classifier.classify(context(videoB))).toBe(verdicts().USER_INTENT);
+    expect(classifier.classify(context(videoA, 1.5))).toBe(verdicts().USER_INTENT);
+    expect(classifier.classify(context(videoB, 1.5))).toBe(verdicts().USER_INTENT);
   });
 
   it('does not synthesize a strong sequence from scoped and unresolved clicks', () => {
@@ -62,8 +80,10 @@ describe('IntentClassifier click attribution', () => {
     classifier.observeClick({ timeStamp: 100 }, video);
     classifier.observeClick({ timeStamp: 200 });
 
-    // Each ledger has only weak evidence, so a 1x reset remains autonomous.
-    expect(classifier.classify(context(video))).toBe(verdicts().AUTONOMOUS);
+    // Each ledger holds a single click, so neither reaches the sequence tier
+    // even though the weak tier is satisfied for a non-1.0 value.
+    expect(classifier.hasStrongIntent({ media: video, timeStamp: 250 })).toBe(false);
+    expect(classifier.classify(context(video, 1.5))).toBe(verdicts().USER_INTENT);
   });
 
   it('keeps a resolved pointer temporary override scoped to its media element', () => {

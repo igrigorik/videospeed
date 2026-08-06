@@ -798,10 +798,42 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
-  it('menu "Normal" (click sequence -> 1.0) is still adopted', async () => {
-    // Real speed menus are >= 2 clicks deep, so choosing 1.0 through one
-    // reaches the STRONG tier naturally — the value asymmetry costs
-    // legitimate menu users nothing.
+  it('#1600 (classifier): FIXED — ordinary clicks never make a 1.0 reset durable', async () => {
+    // The click-sequence tier could not tell "menu -> Normal" apart from
+    // two unrelated clicks (play, then a seek) followed by the player's own
+    // reset: both produce two clicks inside the sequence window and a 1.0
+    // ratechange inside the gesture window. Adopting persisted 1.0 as the
+    // remembered speed for every later video, so click evidence no longer
+    // makes an exact-1.0 transition durable at any tier.
+    const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
+    const ops = [
+      { op: 'gestureClick' }, // click play
+      { op: 'gestureClick', pace: 'quick' }, // click the progress bar
+      { op: 'siteRate', rate: 1.0, pace: 'quick' }, // player resets on seek
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // fought, not adopted
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
+  });
+
+  it('a native speed shortcut still adopts 1.0 (the only durable path to normal)', async () => {
+    // `<`/`>` name the speed control directly, so they stay durable at every
+    // value — including the one clicks may no longer persist.
+    const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
+    const ops = [
+      { op: 'gestureKey', keyCode: 188, code: 'Comma', key: '<', shiftKey: true },
+      { op: 'siteRate', rate: 1.0, pace: 'quick' },
+    ];
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
+  });
+
+  it('menu "Normal" (click sequence -> 1.0) is fought instead of persisted', async () => {
+    // Indistinguishable from the #1600 trace above, so it resolves the same
+    // way: this media surrenders to 1.0 after its fight budget, while the
+    // remembered speed survives for the next video. Recoverable in one VSC
+    // keystroke, unlike a clobbered lastSpeed.
     const init = { rememberEnabled: true, rememberedSpeed: 2.0 };
     const ops = [
       { op: 'gestureClick' }, // open the menu
@@ -809,8 +841,8 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
       { op: 'siteRate', rate: 1.0, pace: 'quick' },
     ];
     const pipeline = await runLegacyModules(init, ops);
-    expect(pipeline).toMatchObject({ rate: 1.0, mem: 1.0 }); // adopted
-    expect(runArbiter(init, ops)).toMatchObject({ rate: 1.0, mem: 1.0 });
+    expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
   });
 
   it('single click still adopts non-1.0 values (weak tier suffices)', async () => {

@@ -1038,6 +1038,10 @@ describe('EventManager', () => {
 
     dispatchPointerEvent('pointerup', 7);
     classifier.observeClick({ timeStamp: 700 }, mockVideo);
+    // The menu-like sequence is real evidence, but a click sequence no longer
+    // makes an exact 1.0 durable (#1600), so the release is now guarded twice:
+    // the verdict itself is autonomous, and the pending release still wins.
+    expect(classifier.hasStrongIntent({ media: mockVideo, timeStamp: 705 })).toBe(true);
     expect(
       classifier.classify({
         media: mockVideo,
@@ -1046,7 +1050,7 @@ describe('EventManager', () => {
         readyState: 4,
         detail: null,
       })
-    ).toBe(window.VSC.IntentClassifier.VERDICTS.USER_INTENT);
+    ).toBe(window.VSC.IntentClassifier.VERDICTS.AUTONOMOUS);
     mockVideo.playbackRate = 1.0;
     let stopped = false;
     eventManager.handleRateChange({

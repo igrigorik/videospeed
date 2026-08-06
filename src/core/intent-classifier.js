@@ -9,16 +9,24 @@
  * classifier mistakes are recoverable, never correct — see the contract doc.
  *
  * Evidence tiers (TARGET_RULES):
- *   STRONG — native speed key, site signature (YT hold/space), or a click
- *     SEQUENCE (two clicks within CLICK_SEQUENCE_WINDOW_MS, the last
- *     within the gesture window). Real speed menus are always >= 2 clicks
- *     deep, so menu choices — including "Normal" — reach this tier
- *     naturally.
- *   WEAK — a single click within the gesture window. Sufficient to adopt
- *     any NON-1.0 value (sites have no reason to autonomously set 1.7x),
- *     but NOT a transition to 1.0: every documented false positive
- *     (#1581, #1562-class) is a click-side-effect reset to exactly 1.0.
+ *   KEY — a recognized native speed shortcut. It names the speed control
+ *     itself, so it adopts any value, including exactly 1.0.
+ *   STRONG — a click SEQUENCE (two clicks within CLICK_SEQUENCE_WINDOW_MS,
+ *     the last within the gesture window) or a site signature (YT
+ *     hold/space). Real speed menus are >= 2 clicks deep, so a menu choice
+ *     reaches this tier; it outranks the hold signature.
+ *   WEAK — a single click within the gesture window.
  *   Otherwise AUTONOMOUS.
+ *
+ * NO click tier adopts a transition to exactly 1.0. Sites have no reason to
+ * autonomously set 1.7x, so any non-1.0 value is safe on weak evidence, but
+ * every documented false positive (#1600, #1581, #1562-class) is a
+ * click-side-effect reset to exactly 1.0. Click counting cannot separate
+ * "menu -> Normal" from "play, then seek" — both are two clicks inside the
+ * sequence window followed by a 1.0 ratechange — and the two mistakes are
+ * not symmetric: wrongly adopting rewrites the remembered speed for every
+ * later video, while wrongly fighting costs one bounded fight budget on one
+ * media element and leaves lastSpeed intact.
  *
  * Privacy: the evidence ledger is deliberately coarse — four in-memory
  * timestamps, short-lived active pointer IDs, a transient Space-held flag,
@@ -472,7 +480,8 @@ class IntentClassifier {
    * state. A strong native choice must outrank a concurrent hold signature:
    * users can deliberately select 2x while a pointer remains down.
    * @param {Object} ctx - { media?, timeStamp }
-   * @returns {{clickInWindow: boolean, strong: boolean}}
+   * @returns {{clickInWindow: boolean, clickSequence: boolean, speedKey: boolean,
+   *   strong: boolean}}
    * @private
    */
   intentEvidence(ctx) {
@@ -494,9 +503,12 @@ class IntentClassifier {
         ledger.prevClickAt > 0 &&
         ledger.lastClickAt - ledger.prevClickAt <= CLICK_SEQUENCE_WINDOW_MS
     );
+    const speedKey = withinWindow(this.lastGestureAt);
     return {
       clickInWindow,
-      strong: withinWindow(this.lastGestureAt) || clickSequence,
+      clickSequence,
+      speedKey,
+      strong: speedKey || clickSequence,
     };
   }
 
@@ -529,18 +541,24 @@ class IntentClassifier {
       return CLASSIFIER_VERDICTS.INIT_NOISE;
     }
 
-    const { clickInWindow, strong } = this.intentEvidence(ctx);
-    // Strong speed-key/menu evidence is an explicit durable choice. Check it
-    // before the YouTube hold signature so held-pointer 2x does not swallow
-    // an intentional native 2x selection.
-    if (strong) {
+    const { clickInWindow, clickSequence, speedKey } = this.intentEvidence(ctx);
+    const isNormalReset = Math.abs(ctx.rate - 1.0) < NORMAL_RATE_EPSILON;
+
+    // A recognized native speed shortcut names the speed control itself, so it
+    // stays durable at every value. Checked before the YouTube hold signature
+    // so held-pointer 2x cannot swallow an intentional native 2x selection.
+    if (speedKey) {
+      return CLASSIFIER_VERDICTS.USER_INTENT;
+    }
+    // Menu-depth evidence still outranks the hold signature, but only for the
+    // values clicks are allowed to make durable (see below).
+    if (clickSequence && !isNormalReset) {
       return CLASSIFIER_VERDICTS.USER_INTENT;
     }
     if (this.isTemporaryOverride(ctx)) {
       return CLASSIFIER_VERDICTS.TEMPORARY_OVERRIDE;
     }
 
-    const isNormalReset = Math.abs(ctx.rate - 1.0) < NORMAL_RATE_EPSILON;
     if (clickInWindow && !isNormalReset) {
       return CLASSIFIER_VERDICTS.USER_INTENT;
     }
