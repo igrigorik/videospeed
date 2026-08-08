@@ -223,7 +223,7 @@ describe('IntentClassifier click attribution', () => {
   });
 });
 
-describe('IntentClassifier side-effect 1.0 demotion (#1600)', () => {
+describe('IntentClassifier side-effect 1.0 demotion', () => {
   // The false-positive shape: two chrome clicks (play, then skip/seek) form
   // a strong sequence, and the site's post-seek reset to 1.0 lands inside
   // the gesture window. Without side-effect evidence this was adopted and
@@ -241,6 +241,18 @@ describe('IntentClassifier side-effect 1.0 demotion (#1600)', () => {
     classifier.observeSeek(video, 210);
 
     expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+  });
+
+  it('demotes before the seeking event only for the media reporting an active seek', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const videoA = document.createElement('video');
+    const videoB = document.createElement('video');
+    Object.defineProperty(videoA, 'seeking', { configurable: true, value: true });
+
+    clickSequence(classifier);
+
+    expect(classifier.classify(context(videoA, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+    expect(classifier.classify(context(videoB, 1.0, 250))).toBe(verdicts().USER_INTENT);
   });
 
   it('still adopts a menu "Normal" choice when nothing explains the reset', () => {
@@ -264,9 +276,10 @@ describe('IntentClassifier side-effect 1.0 demotion (#1600)', () => {
     expect(classifier.classify(context(video, 1.7, 250))).toBe(verdicts().USER_INTENT);
   });
 
-  it('lets a native speed key adopt 1.0 even right after a seek', () => {
+  it('lets a native speed key adopt 1.0 even during a seek', () => {
     const classifier = new window.VSC.IntentClassifier();
     const video = document.createElement('video');
+    Object.defineProperty(video, 'seeking', { configurable: true, value: true });
 
     classifier.observeSeek(video, 210);
     classifier.observeUnhandledKey({ key: '<', timeStamp: 230 });
@@ -309,11 +322,24 @@ describe('IntentClassifier side-effect 1.0 demotion (#1600)', () => {
     expect(classifier.classify(context(videoB, 1.0, 250))).toBe(verdicts().USER_INTENT);
   });
 
+  it('scopes media-init evidence to its media element', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const videoA = document.createElement('video');
+    const videoB = document.createElement('video');
+
+    clickSequence(classifier);
+    classifier.observeMediaInit(videoA, 210);
+
+    expect(classifier.classify(context(videoA, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+    expect(classifier.classify(context(videoB, 1.0, 250))).toBe(verdicts().USER_INTENT);
+  });
+
   it('clears side-effect evidence when its media is released', () => {
     const classifier = new window.VSC.IntentClassifier();
     const video = document.createElement('video');
 
     classifier.observeSeek(video, 210);
+    classifier.observeMediaInit(video, 210);
     classifier.releaseMedia(video);
     clickSequence(classifier);
 

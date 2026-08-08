@@ -387,6 +387,63 @@ describe('VideoController', () => {
     expect(mockVideo.vsc.speedIndicator.textContent).toBeDefined();
   });
 
+  it('records and retires seek and resource-boundary evidence', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const classifier = eventManager.arbitration.classifier;
+    const observeSeek = vi.spyOn(classifier, 'observeSeek');
+    const observeMediaInit = vi.spyOn(classifier, 'observeMediaInit');
+    const mockVideo = createMockVideo({ readyState: 1 });
+    mockDOM.container.appendChild(mockVideo);
+
+    const addedTypes = [];
+    const removedTypes = [];
+    const originalAddEventListener = mockVideo.addEventListener;
+    const originalRemoveEventListener = mockVideo.removeEventListener;
+    mockVideo.addEventListener = function (type, listener, options) {
+      addedTypes.push(type);
+      return originalAddEventListener.call(this, type, listener, options);
+    };
+    mockVideo.removeEventListener = function (type, listener, options) {
+      removedTypes.push(type);
+      return originalRemoveEventListener.call(this, type, listener, options);
+    };
+
+    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+
+    expect(observeMediaInit).toHaveBeenCalledWith(mockVideo, expect.any(Number));
+    expect(addedTypes.filter((type) => type === 'seeked')).toHaveLength(1);
+    expect(addedTypes).toEqual(expect.arrayContaining(['play', 'seeking', 'seeked', 'loadstart']));
+
+    mockVideo.dispatchEvent({ type: 'seeking', timeStamp: 100 });
+    mockVideo.dispatchEvent({ type: 'seeked', timeStamp: 200 });
+    mockVideo.dispatchEvent({ type: 'loadstart', timeStamp: 300 });
+
+    expect(observeSeek).toHaveBeenNthCalledWith(1, mockVideo, 100);
+    expect(observeSeek).toHaveBeenNthCalledWith(2, mockVideo, 200);
+    expect(observeMediaInit).toHaveBeenCalledWith(mockVideo, 300);
+
+    controller.remove();
+    const seekCallsAfterRemoval = observeSeek.mock.calls.length;
+    const initCallsAfterRemoval = observeMediaInit.mock.calls.length;
+    mockVideo.dispatchEvent({ type: 'seeking', timeStamp: 400 });
+    mockVideo.dispatchEvent({ type: 'seeked', timeStamp: 500 });
+    mockVideo.dispatchEvent({ type: 'loadstart', timeStamp: 600 });
+
+    expect(observeSeek).toHaveBeenCalledTimes(seekCallsAfterRemoval);
+    expect(observeMediaInit).toHaveBeenCalledTimes(initCallsAfterRemoval);
+    expect(removedTypes).toEqual(
+      expect.arrayContaining(['play', 'seeking', 'seeked', 'loadstart'])
+    );
+    expect(controller.handlePlay).toBeNull();
+    expect(controller.handleSeek).toBeNull();
+    expect(controller.handleSeekEvidence).toBeNull();
+    expect(controller.handleMediaInit).toBeNull();
+  });
+
   it('VideoController should handle media events correctly', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();

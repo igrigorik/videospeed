@@ -98,7 +98,7 @@ class VideoController {
     // Mark the (re)initialization moment before deciding whether to write:
     // sites commonly answer this phase with their own playbackRate = 1.0,
     // which must not read as a user's menu choice even when no restore was
-    // needed (classifier MEDIA_INIT_GRACE_MS, #1600).
+    // needed (classifier MEDIA_INIT_GRACE_MS).
     if (eventType === 'initializeSpeed' || eventType === 'loadedmetadata') {
       this.arbitration.classifier?.observeMediaInit(this.video, performance.now());
     }
@@ -238,39 +238,33 @@ class VideoController {
       this.applyLifecycleSpeed(event.type);
     };
 
-    // Bind event handlers
+    // Bind event handlers. Seek evidence is recorded before the readyState
+    // restore guard so initialization-time seeks can explain a 1.0 reset.
     this.handlePlay = mediaEventAction.bind(this);
-    // Don't restore speed on seeked if the video hasn't loaded data yet —
-    // the player may still be initializing.
+    this.handleSeekEvidence = (event) => {
+      this.arbitration.classifier?.observeSeek(this.video, event.timeStamp);
+    };
     this.handleSeek = (event) => {
+      this.handleSeekEvidence(event);
       if (event.target.readyState < 2) {
         return;
       }
       mediaEventAction.call(this, event);
     };
-
-    // Add essential event listeners for speed restoration
-    this.video.addEventListener('play', this.handlePlay);
-    this.video.addEventListener('seeked', this.handleSeek);
-
-    // Side-effect evidence feeds (classifier, #1600): a seek or a new
-    // resource load explains a following site-side 1.0 reset. `seeking`
-    // fires at seek start because reactive sites reset the rate before the
-    // seek completes; `seeked` refreshes the window for slow network seeks.
-    // `loadstart` covers source swaps (quality changes, ad transitions) that
-    // reuse the element without reattaching this controller. Observed at any
-    // readyState, unlike the restore path above.
-    this.handleSeekEvidence = (event) => {
-      this.arbitration.classifier?.observeSeek(this.video, event.timeStamp);
-    };
-    this.handleLoadStart = (event) => {
+    this.handleMediaInit = (event) => {
       this.arbitration.classifier?.observeMediaInit(this.video, event.timeStamp);
     };
-    this.video.addEventListener('seeking', this.handleSeekEvidence);
-    this.video.addEventListener('seeked', this.handleSeekEvidence);
-    this.video.addEventListener('loadstart', this.handleLoadStart);
 
-    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
+    // `seeking` covers resets during an active seek; `seeked` refreshes the
+    // evidence window after slow seeks while retaining its lifecycle restore.
+    // `loadstart` marks a resource boundary on a reused element; ordinary MSE
+    // representation switches need not emit it.
+    this.video.addEventListener('play', this.handlePlay);
+    this.video.addEventListener('seeking', this.handleSeekEvidence);
+    this.video.addEventListener('seeked', this.handleSeek);
+    this.video.addEventListener('loadstart', this.handleMediaInit);
+
+    window.VSC.logger.debug('Added media event handlers: play, seeking, seeked, loadstart');
   }
 
   /**
@@ -321,18 +315,19 @@ class VideoController {
     // Remove event listeners
     if (this.handlePlay) {
       this.video.removeEventListener('play', this.handlePlay);
+      this.handlePlay = null;
     }
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
+      this.handleSeek = null;
     }
     if (this.handleSeekEvidence) {
       this.video.removeEventListener('seeking', this.handleSeekEvidence);
-      this.video.removeEventListener('seeked', this.handleSeekEvidence);
       this.handleSeekEvidence = null;
     }
-    if (this.handleLoadStart) {
-      this.video.removeEventListener('loadstart', this.handleLoadStart);
-      this.handleLoadStart = null;
+    if (this.handleMediaInit) {
+      this.video.removeEventListener('loadstart', this.handleMediaInit);
+      this.handleMediaInit = null;
     }
     if (this.handleLoadedMetadata) {
       this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);

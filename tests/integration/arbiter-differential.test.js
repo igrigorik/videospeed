@@ -138,7 +138,18 @@ async function legacyStep(world, op) {
       world.eventManager.handleKeydown(ev);
       break;
     }
+    case 'seeking':
+      world.controller.handleSeekEvidence({
+        type: 'seeking',
+        target: world.video,
+        timeStamp: world.now,
+      });
+      break;
     case 'siteRate':
+      Object.defineProperty(world.video, 'seeking', {
+        configurable: true,
+        value: !!op.seeking,
+      });
       world.video.playbackRate = op.rate;
       world.eventManager.handleRateChange({
         composedPath: () => [world.video],
@@ -210,7 +221,7 @@ function createArbiterWorld(init) {
     stored: init.rememberedSpeed ?? 1.0,
     rememberEnabled: !!init.rememberEnabled,
     classifier: new IC({ rules }),
-    media: {},
+    media: { seeking: false },
     now: 100000,
     sinceFight: 0, // mirrors the legacy fightTimer's re-arm-on-fight behavior
   };
@@ -281,7 +292,11 @@ function arbStep(world, op) {
         timeStamp: world.now,
       });
       break;
+    case 'seeking':
+      world.classifier.observeSeek(world.media, world.now);
+      break;
     case 'siteRate': {
+      world.media.seeking = !!op.seeking;
       world.register = round2(op.rate); // the site wrote the register
       let verdict = world.classifier.classify({
         media: world.media,
@@ -796,6 +811,35 @@ describe('Bug ledger: deterministic regression pins for every known bug', () => 
     const pipeline = await runLegacyModules(init, ops);
     expect(pipeline).toMatchObject({ rate: 2.0, mem: 2.0 }); // production: fought
     expect(runArbiter(init, ops)).toMatchObject({ rate: 2.0, mem: 2.0 });
+  });
+
+  it('seek-before-rate reset to 1.0 is fought without corrupting storage', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 2.1 };
+    const ops = [
+      { op: 'gestureClick' },
+      { op: 'gestureClick', pace: 'quick' },
+      { op: 'seeking', pace: 'quick' },
+      { op: 'siteRate', rate: 1.0, pace: 'quick' },
+    ];
+
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.1, mem: 2.1, stored: 2.1 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.1, mem: 2.1, stored: 2.1 });
+  });
+
+  it('rate-before-seeking-event reset uses live media state and preserves storage', async () => {
+    const init = { rememberEnabled: true, rememberedSpeed: 2.1 };
+    const ops = [
+      { op: 'gestureClick' },
+      { op: 'gestureClick', pace: 'quick' },
+      // Chromium sets media.seeking synchronously even when ratechange is
+      // dispatched before the queued seeking event.
+      { op: 'siteRate', rate: 1.0, seeking: true, pace: 'quick' },
+    ];
+
+    const pipeline = await runLegacyModules(init, ops);
+    expect(pipeline).toMatchObject({ rate: 2.1, mem: 2.1, stored: 2.1 });
+    expect(runArbiter(init, ops)).toMatchObject({ rate: 2.1, mem: 2.1, stored: 2.1 });
   });
 
   it('menu "Normal" (click sequence -> 1.0) is still adopted', async () => {

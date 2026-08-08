@@ -14,10 +14,10 @@
  *     within the gesture window). Real speed menus are always >= 2 clicks
  *     deep, so menu choices — including "Normal" — reach this tier
  *     naturally. Sequence-based adoption of exactly 1.0 is additionally
- *     vetoed by side-effect evidence — a recent seek or media (re)init on
- *     the same element (#1600): those contexts produce the same two-click
- *     shape as menu traversal while the reset is the site's own. Speed-key
- *     evidence is exempt from the veto.
+ *     vetoed by side-effect evidence — an active/recent seek or media
+ *     (re)init on the same element. Those contexts produce the same click
+ *     shape as menu traversal while the reset is the site's own.
+ *     Speed-key evidence is exempt from the veto.
  *   WEAK — a single click within the gesture window. Sufficient to adopt
  *     any NON-1.0 value (sites have no reason to autonomously set 1.7x),
  *     but NOT a transition to 1.0: every documented false positive
@@ -72,15 +72,15 @@ const CLICK_SEQUENCE_WINDOW_MS = 5000;
 // Autonomous resets land on exactly 1.0; tolerance for float noise.
 const NORMAL_RATE_EPSILON = 0.005;
 // A 1.0 reset landing this soon after a seek on the same media reads as the
-// seek's side effect, not a menu choice (#1600: play-then-skip forms a click
-// sequence indistinguishable from menu traversal, and the site's post-seek
-// reset arrives inside the gesture window). Menu speed selection never
+// seek's side effect, not a menu choice. Play-then-skip forms a click sequence
+// indistinguishable from menu traversal, and the site's post-seek reset arrives
+// inside the gesture window. Menu speed selection never
 // seeks, so this only demotes what a menu could not have produced.
 const SEEK_RESET_WINDOW_MS = 1000;
 // Players routinely write playbackRate = 1.0 while (re)initializing — after
 // readyState leaves 0 (past the INIT_NOISE guard) but before a user could
-// plausibly traverse a speed menu (#1600: the misadoption fired within a
-// second of controller attach). Lifecycle restores and loadstart re-arm it.
+// plausibly traverse a speed menu. The grace period covers resets shortly
+// after controller attachment; lifecycle restores and loadstart re-arm it.
 const MEDIA_INIT_GRACE_MS = 2000;
 // YouTube's documented long-press boost is specifically 2x. Keeping this
 // narrow means a native menu choice or shortcut remains durable USER_INTENT.
@@ -150,7 +150,7 @@ class IntentClassifier {
     // intent; recording it would let two hold attempts manufacture a strong
     // click sequence that adopts YouTube's structural 1.0 release reset.
     this.longPressEndAt = 0;
-    // Negative evidence for 1.0 adoption (#1600): what the media itself just
+    // Negative evidence for 1.0 adoption: what the media itself just
     // did. Same lifetime discipline as clicksByMedia — coarse timestamps in
     // WeakMaps, nothing persisted.
     this.seeksByMedia = new WeakMap();
@@ -235,9 +235,9 @@ class IntentClassifier {
 
   /**
    * This media entered a (re)initialization moment: attach-time restore,
-   * deferred loadedmetadata restore, or a new resource load (loadstart —
-   * quality switches and ad transitions swap sources without reattaching the
-   * controller). Negative evidence only, same shape as observeSeek.
+   * deferred loadedmetadata restore, or a `loadstart` resource boundary on a
+   * reused element. Negative evidence only, same shape as observeSeek;
+   * ordinary MSE representation switches need not emit `loadstart`.
    * @param {HTMLMediaElement} media
    * @param {number} timeStamp
    */
@@ -544,7 +544,7 @@ class IntentClassifier {
     );
     // keyIntent is surfaced separately because it is the one evidence kind
     // exempt from side-effect demotion: a native speed shortcut is
-    // unambiguous, while a click sequence merely correlates (#1600).
+    // unambiguous, while a click sequence merely correlates.
     const keyIntent = withinWindow(this.lastGestureAt);
     return {
       clickInWindow,
@@ -561,7 +561,7 @@ class IntentClassifier {
    * evidence cannot tell them apart, but menu selection neither seeks nor
    * re-initializes. Demotion is the recoverable direction under the arbiter
    * contract: a wrongly demoted menu choice costs one fight/re-click, while
-   * a wrong adoption persists 1.0 over the remembered speed (#1600).
+   * a wrong adoption persists 1.0 over the remembered speed.
    * @param {Object} ctx - { media?, timeStamp }
    * @returns {boolean}
    * @private
@@ -570,6 +570,14 @@ class IntentClassifier {
     if (!ctx.media) {
       return false;
     }
+
+    // Chromium exposes the synchronous seeking state before it dispatches
+    // the queued seeking event. This closes the playbackRate-before-seek
+    // ordering hole without weakening intentional native Normal choices.
+    if (ctx.media.seeking) {
+      return true;
+    }
+
     const within = (ts, windowMs) =>
       typeof ts === 'number' && ctx.timeStamp - ts >= 0 && ctx.timeStamp - ts < windowMs;
     return (

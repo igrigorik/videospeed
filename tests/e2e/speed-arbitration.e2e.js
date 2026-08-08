@@ -29,9 +29,150 @@ export default async function runSpeedArbitrationE2ETests() {
     const launched = await launchChromeWithExtension();
     browser = launched.browser;
     const { page } = launched;
-    await page.goto(`file://${process.cwd()}/tests/e2e/dual-video.html`, {
-      waitUntil: 'domcontentloaded',
-    });
+    const fixtureUrl = `file://${process.cwd()}/tests/e2e/dual-video.html`;
+    const normalResetFixtureUrl = `file://${process.cwd()}/tests/e2e/test-video.html`;
+    await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
+
+    // Opening an extension page can background the dual-video fixture and
+    // defer media readiness, so create the storage page only for the later
+    // persistence scenarios after the fixture lifecycle tests are complete.
+    let storagePage = null;
+    const getStoragePage = async () => {
+      if (storagePage) {
+        return storagePage;
+      }
+      const worker = await browser.waitForTarget((target) => target.type() === 'service_worker', {
+        timeout: 15000,
+      });
+      const extensionId = new URL(worker.url()).host;
+      storagePage = await browser.newPage();
+      await storagePage.goto(`chrome-extension://${extensionId}/ui/options/options.html`, {
+        waitUntil: 'domcontentloaded',
+      });
+      return storagePage;
+    };
+    const resetStoredSpeed = async (speed) => {
+      const extensionPage = await getStoragePage();
+      return extensionPage.evaluate(async (lastSpeed) => {
+        await new Promise((resolve) => chrome.storage.sync.clear(resolve));
+        await new Promise((resolve) =>
+          chrome.storage.sync.set(
+            { enabled: true, rememberSpeed: true, lastSpeed, siteRules: [] },
+            resolve
+          )
+        );
+      }, speed);
+    };
+    const readStoredSpeed = async () => {
+      const extensionPage = await getStoragePage();
+      return extensionPage.evaluate(
+        () =>
+          new Promise((resolve) =>
+            chrome.storage.sync.get('lastSpeed', ({ lastSpeed }) => resolve(lastSpeed))
+          )
+      );
+    };
+
+    const runNormalResetScenario = async (order) => {
+      await resetStoredSpeed(2.1);
+      const scenarioPage = await browser.newPage();
+      try {
+        // Register before MAIN-world document_idle listeners so the fixture
+        // can observe the original native event even when VSC later stops it.
+        await scenarioPage.evaluateOnNewDocument(() => {
+          window.__vscNormalResetEvents = [];
+          for (const type of ['seeking', 'seeked', 'ratechange']) {
+            document.addEventListener(
+              type,
+              (event) => {
+                if (event.target instanceof HTMLMediaElement) {
+                  window.__vscNormalResetEvents.push({
+                    type,
+                    rate: event.target.playbackRate,
+                    seeking: event.target.seeking,
+                  });
+                }
+              },
+              true
+            );
+          }
+        });
+        await scenarioPage.goto(normalResetFixtureUrl, { waitUntil: 'domcontentloaded' });
+        await scenarioPage.waitForFunction(
+          () => {
+            const video = document.querySelector('video');
+            return video?.readyState >= 2 && !!video.vsc && video.playbackRate === 2.1;
+          },
+          { timeout: 15000 }
+        );
+
+        const timing = await scenarioPage.evaluate(() => ({
+          initGraceMs: window.VSC.IntentClassifier.MEDIA_INIT_GRACE_MS,
+          saveDelayMs: window.VSC_controller.config.SAVE_DELAY,
+        }));
+        await scenarioPage.evaluate((scenarioOrder) => {
+          const video = document.querySelector('video');
+          const controls = document.createElement('div');
+          controls.style.cssText =
+            'position:fixed;right:10px;top:10px;z-index:2147483647;background:white;padding:8px';
+
+          const openMenu = document.createElement('button');
+          openMenu.id = 'vsc-normal-reset-open-menu';
+          openMenu.textContent = 'Open speed menu';
+
+          const chooseNormal = document.createElement('button');
+          chooseNormal.id = 'vsc-normal-reset-choose-normal';
+          chooseNormal.textContent = 'Choose Normal';
+          chooseNormal.addEventListener('click', () => {
+            const seekTarget = Math.min(video.duration - 1, video.currentTime + 5);
+            if (scenarioOrder === 'seek-rate') {
+              video.currentTime = seekTarget;
+              video.playbackRate = 1.0;
+            } else if (scenarioOrder === 'rate-seek') {
+              video.playbackRate = 1.0;
+              video.currentTime = seekTarget;
+            } else {
+              video.playbackRate = 1.0;
+            }
+          });
+
+          controls.append(openMenu, chooseNormal);
+          document.body.append(controls);
+        }, order);
+
+        // Attachment is intentionally negative evidence. Let it expire so
+        // each case proves only its stated seek/menu behavior.
+        await sleep(timing.initGraceMs + 100);
+        await scenarioPage.evaluate(() => {
+          window.__vscNormalResetEvents = [];
+        });
+        await scenarioPage.click('#vsc-normal-reset-open-menu');
+        await sleep(100);
+        await scenarioPage.click('#vsc-normal-reset-choose-normal');
+
+        const expectedRate = order === 'menu-normal' ? 1.0 : 2.1;
+        await scenarioPage.waitForFunction(
+          (rate) =>
+            window.__vscNormalResetEvents.some((event) => event.type === 'ratechange') &&
+            Math.abs(document.querySelector('video').playbackRate - rate) < 0.001,
+          { timeout: 5000 },
+          expectedRate
+        );
+        // Accepted choices persist through the settings debounce; demoted
+        // resets must leave the already-stored authority untouched.
+        await sleep(timing.saveDelayMs + 200);
+
+        const state = await scenarioPage.evaluate(() => ({
+          earlyEvents: window.__vscNormalResetEvents,
+          lastSpeed: window.VSC_controller.config.settings.lastSpeed,
+          rate: document.querySelector('video').playbackRate,
+        }));
+        state.storedSpeed = await readStoredSpeed();
+        return state;
+      } finally {
+        await scenarioPage.close();
+      }
+    };
 
     await runTest('two real media elements receive controllers', async () => {
       await page.waitForFunction(
@@ -235,6 +376,53 @@ export default async function runSpeedArbitrationE2ETests() {
       assert.false(state.initialized, 'Extension should remain torn down');
       assert.false(state.hasController, 'Deferred D must not attach after teardown');
       assert.equal(state.controllerCount, 0, 'Teardown should remove A and B without resurrection');
+    });
+
+    await runTest('seek-before-rate reset preserves remembered authority', async () => {
+      const state = await runNormalResetScenario('seek-rate');
+      const eventTypes = state.earlyEvents.map((event) => event.type);
+      const seekingIndex = eventTypes.indexOf('seeking');
+      const rateChangeIndex = eventTypes.indexOf('ratechange');
+      const firstRateChange = state.earlyEvents[rateChangeIndex];
+      assert.true(
+        seekingIndex >= 0 && rateChangeIndex >= 0 && seekingIndex < rateChangeIndex,
+        `Expected seeking before ratechange, got ${eventTypes.join(' -> ')}`
+      );
+      assert.equal(firstRateChange.rate, 1.0, 'The original site event should carry the 1.0 reset');
+      assert.equal(state.rate, 2.1, 'The seek-side reset should be fought');
+      assert.equal(state.lastSpeed, 2.1, 'The seek-side reset must not replace session authority');
+      assert.equal(state.storedSpeed, 2.1, 'The seek-side reset must not corrupt storage');
+    });
+
+    await runTest('rate-before-seeking-event reset uses live media state', async () => {
+      const state = await runNormalResetScenario('rate-seek');
+      const eventTypes = state.earlyEvents.map((event) => event.type);
+      const rateChangeIndex = eventTypes.indexOf('ratechange');
+      const seekingIndex = eventTypes.indexOf('seeking');
+      const firstRateChange = state.earlyEvents[rateChangeIndex];
+      assert.true(
+        rateChangeIndex >= 0 && seekingIndex >= 0 && rateChangeIndex < seekingIndex,
+        `Expected ratechange before seeking, got ${eventTypes.join(' -> ')}`
+      );
+      assert.equal(firstRateChange.rate, 1.0, 'The original site event should carry the 1.0 reset');
+      assert.true(
+        firstRateChange.seeking === true,
+        'The media must expose seeking=true before its seeking event is delivered'
+      );
+      assert.equal(state.rate, 2.1, 'The early rate reset should be fought');
+      assert.equal(state.lastSpeed, 2.1, 'The early rate reset must not replace session authority');
+      assert.equal(state.storedSpeed, 2.1, 'The early rate reset must not corrupt storage');
+    });
+
+    await runTest('native menu Normal remains an intentional durable choice', async () => {
+      const state = await runNormalResetScenario('menu-normal');
+      assert.false(
+        state.earlyEvents.some((event) => event.type === 'seeking'),
+        'The menu-only fixture must not supply seek evidence'
+      );
+      assert.equal(state.rate, 1.0, 'An intentional Normal choice should remain at 1.0');
+      assert.equal(state.lastSpeed, 1.0, 'An intentional Normal choice should claim authority');
+      assert.equal(state.storedSpeed, 1.0, 'An intentional Normal choice should persist');
     });
   } catch (error) {
     console.log(`   💥 Test setup failed: ${error.message}`);
