@@ -161,6 +161,7 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.exclusiveKeys = Boolean(storage.exclusiveKeys);
         this.settings.audioBoolean = Boolean(storage.audioBoolean);
         this.settings.startHidden = Boolean(storage.startHidden);
+        this.settings.keepControlsExpanded = Boolean(storage.keepControlsExpanded);
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
         // One-time migration: drop legacy controllerCSS key, reset to new model.

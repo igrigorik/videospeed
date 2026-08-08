@@ -223,6 +223,7 @@ describe('SettingsRaceCondition', () => {
       rememberSpeed: true,
       audioBoolean: true,
       startHidden: false,
+      keepControlsExpanded: true,
       controllerOpacity: 0.5,
       controllerButtonSize: 16,
       logLevel: 4,
@@ -238,6 +239,7 @@ describe('SettingsRaceCondition', () => {
 
     // But options settings should be saved
     expect(storage.rememberSpeed).toBe(true);
+    expect(storage.keepControlsExpanded).toBe(true);
     expect(storage.controllerOpacity).toBe(0.5);
   });
 
@@ -251,10 +253,11 @@ describe('SettingsRaceCondition', () => {
     await config.load();
 
     // Options-page style change in another context
-    simulateExternalStorageWrite({ controllerOpacity: 0.8 });
+    simulateExternalStorageWrite({ controllerOpacity: 0.8, keepControlsExpanded: true });
 
     // In-memory should be updated via onChanged
     expect(config.settings.controllerOpacity).toBe(0.8);
+    expect(config.settings.keepControlsExpanded).toBe(true);
   });
 
   it('onChanged listener never adopts remote lastSpeed (session isolation, #1559)', async () => {
