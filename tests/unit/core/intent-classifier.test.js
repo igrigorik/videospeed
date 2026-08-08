@@ -222,3 +222,101 @@ describe('IntentClassifier click attribution', () => {
     expect(classifier.classify(context(videoB))).toBe(verdicts().AUTONOMOUS);
   });
 });
+
+describe('IntentClassifier side-effect 1.0 demotion (#1600)', () => {
+  // The false-positive shape: two chrome clicks (play, then skip/seek) form
+  // a strong sequence, and the site's post-seek reset to 1.0 lands inside
+  // the gesture window. Without side-effect evidence this was adopted and
+  // persisted over the remembered speed.
+  function clickSequence(classifier, media = null) {
+    classifier.observeClick({ timeStamp: 100 }, media);
+    classifier.observeClick({ timeStamp: 200 }, media);
+  }
+
+  it('demotes a click-sequence 1.0 adoption that follows a seek', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    clickSequence(classifier);
+    classifier.observeSeek(video, 210);
+
+    expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+  });
+
+  it('still adopts a menu "Normal" choice when nothing explains the reset', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    clickSequence(classifier);
+
+    expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().USER_INTENT);
+  });
+
+  it('leaves non-1.0 sequence adoption unaffected by a recent seek', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    clickSequence(classifier);
+    classifier.observeSeek(video, 210);
+
+    // Sites have no reason to autonomously pick 1.7x; the veto is scoped to
+    // the documented false-positive value.
+    expect(classifier.classify(context(video, 1.7, 250))).toBe(verdicts().USER_INTENT);
+  });
+
+  it('lets a native speed key adopt 1.0 even right after a seek', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    classifier.observeSeek(video, 210);
+    classifier.observeUnhandledKey({ key: '<', timeStamp: 230 });
+
+    expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().USER_INTENT);
+  });
+
+  it('demotes a click-sequence 1.0 adoption during the media init grace', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    classifier.observeMediaInit(video, 50);
+    clickSequence(classifier);
+
+    expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+  });
+
+  it('expires seek and init evidence after their windows', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    classifier.observeSeek(video, 100);
+    classifier.observeMediaInit(video, 100);
+    classifier.observeClick({ timeStamp: 4000 });
+    classifier.observeClick({ timeStamp: 4100 });
+
+    const ts = 100 + window.VSC.IntentClassifier.MEDIA_INIT_GRACE_MS + 2050;
+    expect(classifier.classify(context(video, 1.0, ts))).toBe(verdicts().USER_INTENT);
+  });
+
+  it('scopes seek evidence to its media element', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const videoA = document.createElement('video');
+    const videoB = document.createElement('video');
+
+    clickSequence(classifier);
+    classifier.observeSeek(videoA, 210);
+
+    expect(classifier.classify(context(videoA, 1.0, 250))).toBe(verdicts().AUTONOMOUS);
+    expect(classifier.classify(context(videoB, 1.0, 250))).toBe(verdicts().USER_INTENT);
+  });
+
+  it('clears side-effect evidence when its media is released', () => {
+    const classifier = new window.VSC.IntentClassifier();
+    const video = document.createElement('video');
+
+    classifier.observeSeek(video, 210);
+    classifier.releaseMedia(video);
+    clickSequence(classifier);
+
+    expect(classifier.classify(context(video, 1.0, 250))).toBe(verdicts().USER_INTENT);
+  });
+});

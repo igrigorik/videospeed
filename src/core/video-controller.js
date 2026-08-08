@@ -95,6 +95,14 @@ class VideoController {
       return;
     }
 
+    // Mark the (re)initialization moment before deciding whether to write:
+    // sites commonly answer this phase with their own playbackRate = 1.0,
+    // which must not read as a user's menu choice even when no restore was
+    // needed (classifier MEDIA_INIT_GRACE_MS, #1600).
+    if (eventType === 'initializeSpeed' || eventType === 'loadedmetadata') {
+      this.arbitration.classifier?.observeMediaInit(this.video, performance.now());
+    }
+
     const targetSpeed = this.arbitration.lifecycleTarget(this.video);
     if (targetSpeed === null) {
       window.VSC.logger.debug(
@@ -245,6 +253,23 @@ class VideoController {
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
 
+    // Side-effect evidence feeds (classifier, #1600): a seek or a new
+    // resource load explains a following site-side 1.0 reset. `seeking`
+    // fires at seek start because reactive sites reset the rate before the
+    // seek completes; `seeked` refreshes the window for slow network seeks.
+    // `loadstart` covers source swaps (quality changes, ad transitions) that
+    // reuse the element without reattaching this controller. Observed at any
+    // readyState, unlike the restore path above.
+    this.handleSeekEvidence = (event) => {
+      this.arbitration.classifier?.observeSeek(this.video, event.timeStamp);
+    };
+    this.handleLoadStart = (event) => {
+      this.arbitration.classifier?.observeMediaInit(this.video, event.timeStamp);
+    };
+    this.video.addEventListener('seeking', this.handleSeekEvidence);
+    this.video.addEventListener('seeked', this.handleSeekEvidence);
+    this.video.addEventListener('loadstart', this.handleLoadStart);
+
     window.VSC.logger.debug('Added essential media event handlers: play, seeked');
   }
 
@@ -299,6 +324,15 @@ class VideoController {
     }
     if (this.handleSeek) {
       this.video.removeEventListener('seeked', this.handleSeek);
+    }
+    if (this.handleSeekEvidence) {
+      this.video.removeEventListener('seeking', this.handleSeekEvidence);
+      this.video.removeEventListener('seeked', this.handleSeekEvidence);
+      this.handleSeekEvidence = null;
+    }
+    if (this.handleLoadStart) {
+      this.video.removeEventListener('loadstart', this.handleLoadStart);
+      this.handleLoadStart = null;
     }
     if (this.handleLoadedMetadata) {
       this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);

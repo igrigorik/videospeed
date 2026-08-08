@@ -13,7 +13,11 @@
  *     SEQUENCE (two clicks within CLICK_SEQUENCE_WINDOW_MS, the last
  *     within the gesture window). Real speed menus are always >= 2 clicks
  *     deep, so menu choices — including "Normal" — reach this tier
- *     naturally.
+ *     naturally. Sequence-based adoption of exactly 1.0 is additionally
+ *     vetoed by side-effect evidence — a recent seek or media (re)init on
+ *     the same element (#1600): those contexts produce the same two-click
+ *     shape as menu traversal while the reset is the site's own. Speed-key
+ *     evidence is exempt from the veto.
  *   WEAK — a single click within the gesture window. Sufficient to adopt
  *     any NON-1.0 value (sites have no reason to autonomously set 1.7x),
  *     but NOT a transition to 1.0: every documented false positive
@@ -67,6 +71,17 @@ const USER_GESTURE_WINDOW_MS = 300; // ms after a gesture in which a ratechange 
 const CLICK_SEQUENCE_WINDOW_MS = 5000;
 // Autonomous resets land on exactly 1.0; tolerance for float noise.
 const NORMAL_RATE_EPSILON = 0.005;
+// A 1.0 reset landing this soon after a seek on the same media reads as the
+// seek's side effect, not a menu choice (#1600: play-then-skip forms a click
+// sequence indistinguishable from menu traversal, and the site's post-seek
+// reset arrives inside the gesture window). Menu speed selection never
+// seeks, so this only demotes what a menu could not have produced.
+const SEEK_RESET_WINDOW_MS = 1000;
+// Players routinely write playbackRate = 1.0 while (re)initializing — after
+// readyState leaves 0 (past the INIT_NOISE guard) but before a user could
+// plausibly traverse a speed menu (#1600: the misadoption fired within a
+// second of controller attach). Lifecycle restores and loadstart re-arm it.
+const MEDIA_INIT_GRACE_MS = 2000;
 // YouTube's documented long-press boost is specifically 2x. Keeping this
 // narrow means a native menu choice or shortcut remains durable USER_INTENT.
 const TEMPORARY_HOLD_RATE = 2.0;
@@ -135,6 +150,11 @@ class IntentClassifier {
     // intent; recording it would let two hold attempts manufacture a strong
     // click sequence that adopts YouTube's structural 1.0 release reset.
     this.longPressEndAt = 0;
+    // Negative evidence for 1.0 adoption (#1600): what the media itself just
+    // did. Same lifetime discipline as clicksByMedia — coarse timestamps in
+    // WeakMaps, nothing persisted.
+    this.seeksByMedia = new WeakMap();
+    this.mediaInitByMedia = new WeakMap();
   }
 
   /** Any user input at all — presence evidence only, never intent. */
@@ -197,6 +217,34 @@ class IntentClassifier {
     const ledger = media ? this.getClickLedger(media) : this;
     ledger.prevClickAt = ledger.lastClickAt;
     ledger.lastClickAt = event.timeStamp;
+  }
+
+  /**
+   * A seek began or completed on this media. Negative evidence only: it can
+   * demote a following 1.0 adoption to AUTONOMOUS, never bless anything.
+   * Recorded at `seeking` because reactive sites reset the rate before the
+   * seek completes; refreshed at `seeked` so slow network seeks stay covered.
+   * @param {HTMLMediaElement} media
+   * @param {number} timeStamp
+   */
+  observeSeek(media, timeStamp) {
+    if (media) {
+      this.seeksByMedia.set(media, timeStamp);
+    }
+  }
+
+  /**
+   * This media entered a (re)initialization moment: attach-time restore,
+   * deferred loadedmetadata restore, or a new resource load (loadstart —
+   * quality switches and ad transitions swap sources without reattaching the
+   * controller). Negative evidence only, same shape as observeSeek.
+   * @param {HTMLMediaElement} media
+   * @param {number} timeStamp
+   */
+  observeMediaInit(media, timeStamp) {
+    if (media) {
+      this.mediaInitByMedia.set(media, timeStamp);
+    }
   }
 
   /**
@@ -494,10 +542,40 @@ class IntentClassifier {
         ledger.prevClickAt > 0 &&
         ledger.lastClickAt - ledger.prevClickAt <= CLICK_SEQUENCE_WINDOW_MS
     );
+    // keyIntent is surfaced separately because it is the one evidence kind
+    // exempt from side-effect demotion: a native speed shortcut is
+    // unambiguous, while a click sequence merely correlates (#1600).
+    const keyIntent = withinWindow(this.lastGestureAt);
     return {
       clickInWindow,
-      strong: withinWindow(this.lastGestureAt) || clickSequence,
+      keyIntent,
+      strong: keyIntent || clickSequence,
     };
+  }
+
+  /**
+   * Whether a reset to exactly 1.0 is explained by the media's own recent
+   * behavior. Two chrome clicks plus a 1.0 ratechange inside the gesture
+   * window is the exact shape of BOTH a native menu "Normal" choice and a
+   * click-side-effect reset (skip/seek controls, player init) — the click
+   * evidence cannot tell them apart, but menu selection neither seeks nor
+   * re-initializes. Demotion is the recoverable direction under the arbiter
+   * contract: a wrongly demoted menu choice costs one fight/re-click, while
+   * a wrong adoption persists 1.0 over the remembered speed (#1600).
+   * @param {Object} ctx - { media?, timeStamp }
+   * @returns {boolean}
+   * @private
+   */
+  isSideEffectNormalReset(ctx) {
+    if (!ctx.media) {
+      return false;
+    }
+    const within = (ts, windowMs) =>
+      typeof ts === 'number' && ctx.timeStamp - ts >= 0 && ctx.timeStamp - ts < windowMs;
+    return (
+      within(this.seeksByMedia.get(ctx.media), SEEK_RESET_WINDOW_MS) ||
+      within(this.mediaInitByMedia.get(ctx.media), MEDIA_INIT_GRACE_MS)
+    );
   }
 
   /**
@@ -529,18 +607,24 @@ class IntentClassifier {
       return CLASSIFIER_VERDICTS.INIT_NOISE;
     }
 
-    const { clickInWindow, strong } = this.intentEvidence(ctx);
+    const { clickInWindow, keyIntent, strong } = this.intentEvidence(ctx);
+    const isNormalReset = Math.abs(ctx.rate - 1.0) < NORMAL_RATE_EPSILON;
     // Strong speed-key/menu evidence is an explicit durable choice. Check it
     // before the YouTube hold signature so held-pointer 2x does not swallow
     // an intentional native 2x selection.
     if (strong) {
+      // Click-sequence strength adopts 1.0 only when the media's own recent
+      // behavior doesn't explain the reset; a native speed key remains
+      // sufficient on its own (see isSideEffectNormalReset).
+      if (isNormalReset && !keyIntent && this.isSideEffectNormalReset(ctx)) {
+        return CLASSIFIER_VERDICTS.AUTONOMOUS;
+      }
       return CLASSIFIER_VERDICTS.USER_INTENT;
     }
     if (this.isTemporaryOverride(ctx)) {
       return CLASSIFIER_VERDICTS.TEMPORARY_OVERRIDE;
     }
 
-    const isNormalReset = Math.abs(ctx.rate - 1.0) < NORMAL_RATE_EPSILON;
     if (clickInWindow && !isNormalReset) {
       return CLASSIFIER_VERDICTS.USER_INTENT;
     }
@@ -601,6 +685,8 @@ class IntentClassifier {
   /** Release short-lived evidence attached to a removed media element. */
   releaseMedia(media) {
     this.clicksByMedia.delete(media);
+    this.seeksByMedia.delete(media);
+    this.mediaInitByMedia.delete(media);
     for (const [pointerId, entry] of this.pointerOwners) {
       if (entry.media === media) {
         this.removePointer(pointerId);
@@ -623,6 +709,8 @@ class IntentClassifier {
     this.clearTemporaryHolds();
     this.clicksByMedia = new WeakMap();
     this.activePointersByMedia = new WeakMap();
+    this.seeksByMedia = new WeakMap();
+    this.mediaInitByMedia = new WeakMap();
   }
 }
 
@@ -631,6 +719,8 @@ window.VSC.IntentClassifier.VERDICTS = CLASSIFIER_VERDICTS;
 window.VSC.IntentClassifier.TARGET_RULES = TARGET_RULES;
 window.VSC.IntentClassifier.USER_GESTURE_WINDOW_MS = USER_GESTURE_WINDOW_MS;
 window.VSC.IntentClassifier.CLICK_SEQUENCE_WINDOW_MS = CLICK_SEQUENCE_WINDOW_MS;
+window.VSC.IntentClassifier.SEEK_RESET_WINDOW_MS = SEEK_RESET_WINDOW_MS;
+window.VSC.IntentClassifier.MEDIA_INIT_GRACE_MS = MEDIA_INIT_GRACE_MS;
 window.VSC.IntentClassifier.QUIET_CONTEXT_MS = QUIET_CONTEXT_MS;
 window.VSC.IntentClassifier.TEMPORARY_HOLD_RATE = TEMPORARY_HOLD_RATE;
 window.VSC.IntentClassifier.LONG_PRESS_CLICK_MS = LONG_PRESS_CLICK_MS;
