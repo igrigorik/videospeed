@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      - uses: actions/setup-java@v5.6.0
+      - uses: actions/setup-java@v5.7.0
         with:
           distribution: temurin
           java-version: '17'
