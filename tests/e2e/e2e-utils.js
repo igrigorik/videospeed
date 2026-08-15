@@ -41,6 +41,8 @@ export async function launchChromeWithExtension() {
         '--disable-ipc-flooding-protection',
         '--window-size=1280,720',
         '--allow-file-access-from-files',
+        // Simulate the user-enabled "Allow access to file URLs" extension setting.
+        '--disable-extensions-file-access-check',
       ],
       ignoreDefaultArgs: ['--disable-extensions', '--enable-automation'],
     });
