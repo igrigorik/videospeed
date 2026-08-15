@@ -185,6 +185,7 @@ class VideoSpeedExtension {
 
       this.injectControllerCSS();
       this.setupCSSLiveUpdates();
+      this.setupControllerExpansionLiveUpdates();
       this.siteHandlerManager.initialize(document);
 
       this.eventManager = new this.EventManager(this.config, null);
@@ -287,6 +288,27 @@ class VideoSpeedExtension {
           (s) => s !== this._customSheet
         );
         this._customSheet = null;
+      }
+    });
+  }
+
+  /** Live-update expanded controls on every attached controller. */
+  setupControllerExpansionLiveUpdates() {
+    document.documentElement.addEventListener('VSC_STORAGE_CHANGED', (event) => {
+      const changes = event.detail;
+      if (!Object.prototype.hasOwnProperty.call(changes || {}, 'keepControlsExpanded')) {
+        return;
+      }
+
+      const expanded = changes.keepControlsExpanded?.newValue === true;
+      this.config.settings.keepControlsExpanded = expanded;
+
+      const mediaElements = window.VSC.stateManager?.getAllMediaElements() || [];
+      for (const media of mediaElements) {
+        const shadow = media.vsc?.div?.shadowRoot;
+        if (shadow) {
+          window.VSC.ShadowDOMManager.setControlsExpanded(shadow, expanded);
+        }
       }
     });
   }

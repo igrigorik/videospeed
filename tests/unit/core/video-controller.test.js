@@ -141,6 +141,29 @@ describe('VideoController', () => {
     expect(controller.speedIndicator).toBeDefined();
   });
 
+  it('keeps controls collapsed by default and expands them when configured', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+
+    const collapsedVideo = createMockVideo();
+    mockDOM.container.appendChild(collapsedVideo);
+    const collapsed = new window.VSC.VideoController(collapsedVideo, null, config, actionHandler);
+    expect(
+      collapsed.div.shadowRoot.querySelector('#controller').classList.contains('vsc-expanded')
+    ).toBe(false);
+    collapsed.remove();
+
+    config.settings.keepControlsExpanded = true;
+    const expandedVideo = createMockVideo();
+    mockDOM.container.appendChild(expandedVideo);
+    const expanded = new window.VSC.VideoController(expandedVideo, null, config, actionHandler);
+    expect(
+      expanded.div.shadowRoot.querySelector('#controller').classList.contains('vsc-expanded')
+    ).toBe(true);
+  });
+
   it('tracks automatic media visibility beneath an explicit override', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();

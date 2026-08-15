@@ -379,4 +379,35 @@ describe('Inject', () => {
     expect(extension._customSheet).toBeNull();
     expect(document.adoptedStyleSheets).toContain(extension._controllerSheet);
   });
+
+  it('applies keepControlsExpanded changes to existing controllers immediately', async () => {
+    extension = window.VSC_controller;
+    await extension.config.load();
+
+    const eventManager = new window.VSC.EventManager(extension.config, null);
+    const actionHandler = new window.VSC.ActionHandler(extension.config, eventManager);
+    const video = createMockVideo();
+    mockDOM.container.appendChild(video);
+    const controller = new window.VSC.VideoController(video, null, extension.config, actionHandler);
+    const innerController = controller.div.shadowRoot.querySelector('#controller');
+    extension.setupControllerExpansionLiveUpdates();
+
+    document.documentElement.dispatchEvent(
+      new CustomEvent('VSC_STORAGE_CHANGED', {
+        detail: { keepControlsExpanded: { newValue: true } },
+      })
+    );
+
+    expect(extension.config.settings.keepControlsExpanded).toBe(true);
+    expect(innerController.classList.contains('vsc-expanded')).toBe(true);
+
+    document.documentElement.dispatchEvent(
+      new CustomEvent('VSC_STORAGE_CHANGED', {
+        detail: { keepControlsExpanded: { newValue: false } },
+      })
+    );
+
+    expect(extension.config.settings.keepControlsExpanded).toBe(false);
+    expect(innerController.classList.contains('vsc-expanded')).toBe(false);
+  });
 });

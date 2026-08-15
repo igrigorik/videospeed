@@ -10,6 +10,7 @@ const mockStorage = {
 
   audioBoolean: false,
   startHidden: false,
+  keepControlsExpanded: false,
   controllerOpacity: 0.3,
   controllerButtonSize: 14,
   blacklist: 'www.instagram.com\nx.com',
@@ -137,6 +138,7 @@ export function resetMockStorage() {
 
     audioBoolean: false,
     startHidden: false,
+    keepControlsExpanded: false,
     controllerOpacity: 0.3,
     controllerButtonSize: 14,
     blacklist: 'www.instagram.com\nx.com',

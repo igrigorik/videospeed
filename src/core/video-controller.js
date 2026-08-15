@@ -165,6 +165,7 @@ class VideoController {
       speed: speed,
       opacity: this.config.settings.controllerOpacity,
       buttonSize: this.config.settings.controllerButtonSize,
+      keepControlsExpanded: this.config.settings.keepControlsExpanded,
     });
 
     // Set up control events
