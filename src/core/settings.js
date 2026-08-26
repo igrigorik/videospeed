@@ -46,7 +46,29 @@ if (!window.VSC.VideoSpeedConfig) {
               continue;
             }
 
-            this.settings[key] = change.newValue;
+            this.settings[key] =
+              key === 'controllerHideMode'
+                ? VideoSpeedConfig.normalizeControllerHideMode(change.newValue)
+                : key === 'controllerHideDelay'
+                  ? VideoSpeedConfig.normalizeControllerHideDelay(change.newValue)
+                  : change.newValue;
+            if (key === 'controllerHideMode') {
+              const timerMode = this.settings.controllerHideMode === 'timer';
+              const media = window.VSC.stateManager?.getControlledElements?.() || [];
+              for (const element of media) {
+                const controller = element.vsc?.div;
+                if (!controller) {
+                  continue;
+                }
+                if (controller.flashTimer !== undefined) {
+                  clearTimeout(controller.flashTimer);
+                  controller.flashTimer = undefined;
+                }
+                controller.classList.remove('vsc-show');
+                controller.classList.toggle('vsc-timer-mode', timerMode);
+                delete controller.dataset.vscVisibility;
+              }
+            }
             window.VSC.logger.debug(`Settings updated from storage change: ${key}`);
           }
         });
@@ -161,6 +183,12 @@ if (!window.VSC.VideoSpeedConfig) {
         this.settings.exclusiveKeys = Boolean(storage.exclusiveKeys);
         this.settings.audioBoolean = Boolean(storage.audioBoolean);
         this.settings.startHidden = Boolean(storage.startHidden);
+        this.settings.controllerHideMode = VideoSpeedConfig.normalizeControllerHideMode(
+          storage.controllerHideMode
+        );
+        this.settings.controllerHideDelay = VideoSpeedConfig.normalizeControllerHideDelay(
+          storage.controllerHideDelay
+        );
         this.settings.controllerOpacity = Number(storage.controllerOpacity);
         this.settings.controllerButtonSize = Number(storage.controllerButtonSize);
         // One-time migration: drop legacy controllerCSS key, reset to new model.
@@ -181,6 +209,17 @@ if (!window.VSC.VideoSpeedConfig) {
         window.VSC.logger.error(`Failed to load settings: ${error.message}`);
         return window.VSC.Constants.DEFAULT_SETTINGS;
       }
+    }
+
+    static normalizeControllerHideMode(value) {
+      return value === 'timer' ? 'timer' : 'manual';
+    }
+
+    static normalizeControllerHideDelay(value) {
+      const delay = Number(value);
+      return Number.isFinite(delay) && delay >= 1 && delay <= 60
+        ? delay
+        : window.VSC.Constants.DEFAULT_SETTINGS.controllerHideDelay;
     }
 
     /**

@@ -36,6 +36,14 @@ class ShadowDOMManager {
         opacity: 0 !important;
       }
 
+      /* Auto-hide mode is site-independent: idle is hidden everywhere and
+         shortcut feedback reveals the controller for the configured delay. */
+      :host(.vsc-timer-mode) #controller {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+
       /* Explicit show and temporary speed feedback outrank automatic hiding,
          including startHidden, media visibility, and site autohide. */
       :host([data-vsc-visibility="show"]) #controller,

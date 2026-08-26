@@ -138,6 +138,10 @@ class VideoController {
     // Apply all CSS classes at once to prevent race condition flash
     const cssClasses = ['vsc-controller'];
 
+    if (this.config.settings.controllerHideMode === 'timer') {
+      cssClasses.push('vsc-timer-mode');
+    }
+
     // Only hide controller if video has no source AND is not ready/functional
     // This prevents hiding controllers for live streams or dynamically loaded videos
     if (!this.video.currentSrc && !this.video.src && this.video.readyState < 2) {

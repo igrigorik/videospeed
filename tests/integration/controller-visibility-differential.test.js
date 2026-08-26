@@ -11,7 +11,7 @@ import { createMockVideo } from '../helpers/test-utils.js';
 
 const V = () => window.VSC.ControllerVisibility;
 const IDS = ['A', 'B'];
-const FLASH_MS = 100;
+const FLASH_MS = 1000;
 
 function createAudio() {
   const audio = document.createElement('audio');
@@ -32,12 +32,14 @@ function createAudio() {
   return audio;
 }
 
-function createWorld() {
+function createWorld(timerMode = false) {
   const config = window.VSC.videoSpeedConfig;
   config.settings = {
     ...window.VSC.Constants.DEFAULT_SETTINGS,
     startHidden: false,
     audioBoolean: true,
+    controllerHideMode: timerMode ? 'timer' : 'manual',
+    controllerHideDelay: 1,
   };
 
   const eventManager = new window.VSC.EventManager(config, null);
@@ -64,8 +66,8 @@ function createWorld() {
   vi.spyOn(controllers.A, 'isVideoVisible').mockImplementation(() => mediaVisible.A);
 
   let model = {
-    A: V().createState({ mediaType: V().MEDIA_TYPES.VIDEO }),
-    B: V().createState({ mediaType: V().MEDIA_TYPES.AUDIO }),
+    A: V().createState({ mediaType: V().MEDIA_TYPES.VIDEO, timerMode }),
+    B: V().createState({ mediaType: V().MEDIA_TYPES.AUDIO, timerMode }),
   };
   const idByHost = new Map(IDS.map((id) => [controllers[id].div, id]));
   vi.spyOn(actionHandler, 'isControllerVisible').mockImplementation((host) => {
@@ -108,6 +110,7 @@ function pipelineState(world, id) {
   const common = {
     attached,
     startHidden: world.config.settings.startHidden,
+    timerMode: world.config.settings.controllerHideMode === 'timer',
     mediaType: id === 'B' ? V().MEDIA_TYPES.AUDIO : V().MEDIA_TYPES.VIDEO,
     automaticHidden: controller.div.classList.contains('vsc-hidden'),
     noSource: controller.div.classList.contains('vsc-nosource'),
@@ -325,6 +328,34 @@ describe('controller visibility production differential', () => {
       } finally {
         cleanupWorld(world);
       }
+    }
+  });
+
+  it('matches site-independent Auto-hide rearming and expiry', async () => {
+    const world = await createWorld(true);
+    const operations = [
+      { kind: 'automatic', id: 'A', value: false },
+      { kind: 'site-autohide', id: 'A', value: true },
+      { kind: 'toggle-one', id: 'A' },
+      { kind: 'toggle-one', id: 'A' },
+      { kind: 'expire' },
+      { kind: 'flash', id: 'B' },
+      { kind: 'toggle-all' },
+      { kind: 'expire' },
+      { kind: 'release', id: 'A' },
+      { kind: 'release', id: 'B' },
+    ];
+    const trace = ['mode=auto-hide'];
+
+    try {
+      assertEquivalent(world, trace);
+      for (const operation of operations) {
+        trace.push(JSON.stringify(operation));
+        await applyOperation(world, operation);
+        assertEquivalent(world, trace);
+      }
+    } finally {
+      cleanupWorld(world);
     }
   });
 });

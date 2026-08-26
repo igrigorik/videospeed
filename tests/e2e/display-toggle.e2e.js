@@ -499,6 +499,43 @@ async function testDisplayToggle() {
     }
 
     console.log('   ✅ Mixed-controller local/broadcast/release transitions');
+
+    // Auto-hide is extension-owned and site-independent: every shortcut shows
+    // feedback, the latest shortcut rearms the configured delay, and neither
+    // automatic media hiding nor a site's autohide class changes that policy.
+    await page.goto(testPagePath, { waitUntil: 'networkidle2' });
+    await page.waitForFunction(() => document.querySelector('video')?.vsc?.div?.shadowRoot, {
+      timeout: 15000,
+      polling: 100,
+    });
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      const host = video.vsc.div;
+      video.vsc.config.settings.controllerHideMode = 'timer';
+      video.vsc.config.settings.controllerHideDelay = 1;
+      host.classList.add('vsc-timer-mode', 'vsc-hidden');
+      host.classList.remove('vsc-show');
+      delete host.dataset.vscVisibility;
+      document.body.classList.add('ytp-autohide');
+    });
+    await waitForState(page, { mode: 'auto', flashing: false, visible: false }, 'auto-hide idle');
+    await page.keyboard.press('d');
+    await waitForState(page, { mode: 'auto', flashing: true, visible: true }, 'shortcut feedback');
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await page.keyboard.press('d');
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    assertState(
+      await getControllerState(page),
+      { mode: 'auto', flashing: true, visible: true },
+      'latest shortcut rearms delay'
+    );
+    await waitForState(
+      page,
+      { mode: 'auto', flashing: false, visible: false },
+      'configured auto-hide expiry'
+    );
+
+    console.log('   ✅ Site-independent configurable auto-hide feedback');
     console.log('✅ Display visibility override test passed!');
     return { success: true };
   } catch (error) {

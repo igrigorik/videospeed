@@ -18,7 +18,7 @@ function expectedVisible(state) {
   return (
     state.override === V().OVERRIDES.SHOW ||
     state.flash !== V().FLASH.NONE ||
-    (!state.automaticHidden && !state.siteAutohide)
+    (!state.timerMode && !state.automaticHidden && !state.siteAutohide)
   );
 }
 
@@ -32,34 +32,37 @@ function allValidStates() {
 
     for (const attached of BOOLS) {
       for (const startHidden of BOOLS) {
-        for (const automaticHidden of BOOLS) {
-          for (const noSource of BOOLS) {
-            for (const siteAutohide of BOOLS) {
-              for (const hostHidden of BOOLS) {
-                for (const override of Object.values(V().OVERRIDES)) {
-                  for (const flash of flashModes) {
-                    if (
-                      !attached &&
-                      (override !== V().OVERRIDES.AUTO || flash !== V().FLASH.NONE)
-                    ) {
-                      continue;
+        for (const timerMode of BOOLS) {
+          for (const automaticHidden of BOOLS) {
+            for (const noSource of BOOLS) {
+              for (const siteAutohide of BOOLS) {
+                for (const hostHidden of BOOLS) {
+                  for (const override of Object.values(V().OVERRIDES)) {
+                    for (const flash of flashModes) {
+                      if (
+                        !attached &&
+                        (override !== V().OVERRIDES.AUTO || flash !== V().FLASH.NONE)
+                      ) {
+                        continue;
+                      }
+                      if (override === V().OVERRIDES.HIDE && flash !== V().FLASH.NONE) {
+                        continue;
+                      }
+                      states.push(
+                        V().createState({
+                          attached,
+                          override,
+                          automaticHidden,
+                          noSource,
+                          siteAutohide,
+                          hostHidden,
+                          flash,
+                          startHidden,
+                          timerMode,
+                          mediaType,
+                        })
+                      );
                     }
-                    if (override === V().OVERRIDES.HIDE && flash !== V().FLASH.NONE) {
-                      continue;
-                    }
-                    states.push(
-                      V().createState({
-                        attached,
-                        override,
-                        automaticHidden,
-                        noSource,
-                        siteAutohide,
-                        hostHidden,
-                        flash,
-                        startHidden,
-                        mediaType,
-                      })
-                    );
                   }
                 }
               }
@@ -127,7 +130,7 @@ describe('ControllerVisibility pure policy', () => {
 
   it('implements the complete render precedence relation', () => {
     const states = allValidStates();
-    expect(states).toHaveLength(448);
+    expect(states).toHaveLength(896);
     for (const state of states) {
       assertSafetyInvariants(state);
     }
@@ -144,7 +147,16 @@ describe('ControllerVisibility pure policy', () => {
     expect(V().nextOverride(override, rendered)).toBe(expected);
   });
 
-  it('keeps SHOW sticky when site autohide starts after a visible-first toggle sequence', () => {
+  it.each([
+    ['auto', true, 'auto'],
+    ['auto', false, 'auto'],
+    ['show', true, 'auto'],
+    ['hide', false, 'auto'],
+  ])('maps timer toggle %s with rendered=%s to %s', (override, rendered, expected) => {
+    expect(V().nextOverride(override, rendered, true)).toBe(expected);
+  });
+
+  it('keeps manual display overrides sticky', () => {
     let state = V().createState();
     expect(V().isVisible(state)).toBe(true);
 
@@ -154,10 +166,22 @@ describe('ControllerVisibility pure policy', () => {
 
     state = V().step(state, { type: V().EVENTS.TOGGLE });
     expect(state.override).toBe(V().OVERRIDES.SHOW);
+    expect(state.flash).toBe(V().FLASH.NONE);
+    expect(V().isVisible(state)).toBe(true);
+  });
+
+  it('uses display to rearm the timed interval in auto-hide mode', () => {
+    let state = V().createState({ timerMode: true });
+    expect(V().isVisible(state)).toBe(false);
+
+    state = V().step(state, { type: V().EVENTS.TOGGLE });
+    expect(state.override).toBe(V().OVERRIDES.AUTO);
+    expect(state.flash).toBe(V().FLASH.TIMED_ARMED);
     expect(V().isVisible(state)).toBe(true);
 
-    state = V().step(state, { type: V().EVENTS.SET_SITE_AUTOHIDE, value: true });
-    expect(state.override).toBe(V().OVERRIDES.SHOW);
+    state = V().step(state, { type: V().EVENTS.TOGGLE });
+    expect(state.override).toBe(V().OVERRIDES.AUTO);
+    expect(state.flash).toBe(V().FLASH.TIMED_ARMED);
     expect(V().isVisible(state)).toBe(true);
   });
 
@@ -192,12 +216,20 @@ describe('ControllerVisibility pure policy', () => {
     expect(audio.flash).toBe(V().FLASH.PERSISTENT);
   });
 
-  it('blocks new flash under startHidden or explicit HIDE without retroactive cancellation', () => {
+  it('keeps hard-hidden/manual blockers while timer mode can recover a stale HIDE', () => {
     const startHidden = V().createState({ startHidden: true, automaticHidden: true });
     expect(V().step(startHidden, { type: V().EVENTS.FLASH_REQUEST })).toEqual(startHidden);
 
     const hidden = V().createState({ override: V().OVERRIDES.HIDE });
     expect(V().step(hidden, { type: V().EVENTS.FLASH_REQUEST })).toEqual(hidden);
+
+    const timedHidden = V().createState({
+      override: V().OVERRIDES.HIDE,
+      timerMode: true,
+    });
+    const timedFlash = V().step(timedHidden, { type: V().EVENTS.FLASH_REQUEST });
+    expect(timedFlash.override).toBe(V().OVERRIDES.AUTO);
+    expect(timedFlash.flash).toBe(V().FLASH.TIMED_ARMED);
 
     let active = V().createState({ flash: V().FLASH.TIMED_ARMED });
     active = V().step(active, { type: V().EVENTS.SET_START_HIDDEN, value: true });
@@ -267,6 +299,6 @@ describe('ControllerVisibility exhaustive bounded transition model', () => {
       }
     }
 
-    expect(transitions).toBe(6720);
+    expect(transitions).toBe(13440);
   });
 });

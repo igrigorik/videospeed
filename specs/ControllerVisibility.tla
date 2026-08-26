@@ -52,11 +52,12 @@ VARIABLES
   hostHidden,        \* external CSS hides the light-DOM controller host
   flashMode,          \* none, timed video flash, or persistent audio flash
   startHidden,        \* live document preference consulted by future events
+  timerMode,          \* FALSE = persistent manual V, TRUE = timed shortcut feedback
   timerRefreshEnabled \* auxiliary: environment may stop re-arming video timer
 
 vars ==
   <<attached, overrideMode, automaticHidden, noSource, siteAutohide,
-    hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+    hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 Replace(f, i, value) == [j \in Controllers |-> IF j = i THEN value ELSE f[j]]
 
@@ -69,16 +70,23 @@ ForcedShown(i) == overrideMode[i] = Show \/ flashMode[i] # NoFlash
 
 Visible(i) ==
   ~HardHidden(i) /\
-  (ForcedShown(i) \/ (~automaticHidden[i] /\ ~siteAutohide[i]))
+  (ForcedShown(i) \/ (~timerMode /\ ~automaticHidden[i] /\ ~siteAutohide[i]))
 
 ToggleTarget(i) ==
-  IF overrideMode[i] = Auto
+  IF timerMode
+    THEN Auto
+    ELSE IF overrideMode[i] = Auto
     THEN IF Visible(i) THEN Hide ELSE Show
     ELSE IF overrideMode[i] = Show THEN Hide ELSE Show
 
 FlashTarget(i) == IF IsAudio(i) THEN Persistent ELSE TimedArmed
 
-FlashAllowed(i) == attached[i] /\ ~startHidden /\ overrideMode[i] # Hide
+FlashAllowed(i) == attached[i] /\ ~startHidden /\ (timerMode \/ overrideMode[i] # Hide)
+
+ToggleFlash(i) ==
+  IF timerMode /\ FlashAllowed(i) /\ (IsAudio(i) \/ timerRefreshEnabled[i])
+    THEN FlashTarget(i)
+    ELSE NoFlash
 
 TypeOK ==
   /\ attached \in [Controllers -> BOOLEAN]
@@ -89,10 +97,12 @@ TypeOK ==
   /\ hostHidden \in [Controllers -> BOOLEAN]
   /\ flashMode \in [Controllers -> FlashModes]
   /\ startHidden \in BOOLEAN
+  /\ timerMode \in BOOLEAN
   /\ timerRefreshEnabled \in [Controllers -> BOOLEAN]
 
 Init ==
   /\ startHidden \in BOOLEAN
+  /\ timerMode \in BOOLEAN
   /\ attached = [i \in Controllers |-> TRUE]
   /\ overrideMode = [i \in Controllers |-> Auto]
   /\ automaticHidden \in [Controllers -> BOOLEAN]
@@ -110,9 +120,9 @@ Init ==
 ToggleOne(i) ==
   /\ attached[i]
   /\ overrideMode' = Replace(overrideMode, i, ToggleTarget(i))
-  /\ flashMode' = Replace(flashMode, i, NoFlash)
+  /\ flashMode' = Replace(flashMode, i, ToggleFlash(i))
   /\ UNCHANGED <<attached, automaticHidden, noSource, siteAutohide,
-                 hostHidden, startHidden, timerRefreshEnabled>>
+                 hostHidden, startHidden, timerMode, timerRefreshEnabled>>
 
 ToggleAll ==
   /\ \E i \in Controllers : attached[i]
@@ -121,9 +131,9 @@ ToggleAll ==
          IF attached[i] THEN ToggleTarget(i) ELSE overrideMode[i]]
   /\ flashMode' =
        [i \in Controllers |->
-         IF attached[i] THEN NoFlash ELSE flashMode[i]]
+         IF attached[i] THEN ToggleFlash(i) ELSE flashMode[i]]
   /\ UNCHANGED <<attached, automaticHidden, noSource, siteAutohide,
-                 hostHidden, startHidden, timerRefreshEnabled>>
+                 hostHidden, startHidden, timerMode, timerRefreshEnabled>>
 
 FlashAttempt(i) ==
   /\ attached[i]
@@ -131,21 +141,21 @@ FlashAttempt(i) ==
   /\ flashMode' =
        Replace(flashMode, i, IF FlashAllowed(i) THEN FlashTarget(i) ELSE flashMode[i])
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, hostHidden, startHidden, timerRefreshEnabled>>
+                 siteAutohide, hostHidden, startHidden, timerMode, timerRefreshEnabled>>
 
 TimerTick(i) ==
   /\ attached[i]
   /\ flashMode[i] = TimedArmed
   /\ flashMode' = Replace(flashMode, i, TimedDue)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, hostHidden, startHidden, timerRefreshEnabled>>
+                 siteAutohide, hostHidden, startHidden, timerMode, timerRefreshEnabled>>
 
 FlashExpire(i) ==
   /\ attached[i]
   /\ flashMode[i] = TimedDue
   /\ flashMode' = Replace(flashMode, i, NoFlash)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, hostHidden, startHidden, timerRefreshEnabled>>
+                 siteAutohide, hostHidden, startHidden, timerMode, timerRefreshEnabled>>
 
 StopTimerRefresh(i) ==
   /\ attached[i]
@@ -153,7 +163,7 @@ StopTimerRefresh(i) ==
   /\ timerRefreshEnabled[i]
   /\ timerRefreshEnabled' = Replace(timerRefreshEnabled, i, FALSE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, hostHidden, flashMode, startHidden>>
+                 siteAutohide, hostHidden, flashMode, startHidden, timerMode>>
 
 (***************************************************************************)
 (* Automatic and environment-owned inputs. None may rewrite explicit user  *)
@@ -166,7 +176,7 @@ AutomaticHide(i) ==
   /\ ~automaticHidden[i]
   /\ automaticHidden' = Replace(automaticHidden, i, TRUE)
   /\ UNCHANGED <<attached, overrideMode, noSource, siteAutohide,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 AutomaticShow(i) ==
   /\ attached[i]
@@ -174,56 +184,65 @@ AutomaticShow(i) ==
   /\ ~startHidden
   /\ automaticHidden' = Replace(automaticHidden, i, FALSE)
   /\ UNCHANGED <<attached, overrideMode, noSource, siteAutohide,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 SourceLost(i) ==
   /\ attached[i]
   /\ ~noSource[i]
   /\ noSource' = Replace(noSource, i, TRUE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, siteAutohide,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 SourceGained(i) ==
   /\ attached[i]
   /\ noSource[i]
   /\ noSource' = Replace(noSource, i, FALSE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, siteAutohide,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 SiteAutohideOn(i) ==
   /\ attached[i]
   /\ ~siteAutohide[i]
   /\ siteAutohide' = Replace(siteAutohide, i, TRUE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 SiteAutohideOff(i) ==
   /\ attached[i]
   /\ siteAutohide[i]
   /\ siteAutohide' = Replace(siteAutohide, i, FALSE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 hostHidden, flashMode, startHidden, timerRefreshEnabled>>
+                 hostHidden, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 HostHide(i) ==
   /\ attached[i]
   /\ ~hostHidden[i]
   /\ hostHidden' = Replace(hostHidden, i, TRUE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, flashMode, startHidden, timerRefreshEnabled>>
+                 siteAutohide, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 HostShow(i) ==
   /\ attached[i]
   /\ hostHidden[i]
   /\ hostHidden' = Replace(hostHidden, i, FALSE)
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, flashMode, startHidden, timerRefreshEnabled>>
+                 siteAutohide, flashMode, startHidden, timerMode, timerRefreshEnabled>>
 
 SetStartHidden(value) ==
   /\ value \in BOOLEAN
   /\ value # startHidden
   /\ startHidden' = value
   /\ UNCHANGED <<attached, overrideMode, automaticHidden, noSource,
-                 siteAutohide, hostHidden, flashMode, timerRefreshEnabled>>
+                 siteAutohide, hostHidden, flashMode, timerMode, timerRefreshEnabled>>
+
+SetTimerMode(value) ==
+  /\ value \in BOOLEAN
+  /\ value # timerMode
+  /\ timerMode' = value
+  /\ overrideMode' = [i \in Controllers |-> Auto]
+  /\ flashMode' = [i \in Controllers |-> NoFlash]
+  /\ UNCHANGED <<attached, automaticHidden, noSource, siteAutohide,
+                 hostHidden, startHidden, timerRefreshEnabled>>
 
 Release(i) ==
   /\ attached[i]
@@ -231,7 +250,7 @@ Release(i) ==
   /\ overrideMode' = Replace(overrideMode, i, Auto)
   /\ flashMode' = Replace(flashMode, i, NoFlash)
   /\ UNCHANGED <<automaticHidden, noSource, siteAutohide, hostHidden,
-                 startHidden, timerRefreshEnabled>>
+                 startHidden, timerMode, timerRefreshEnabled>>
 
 EnvironmentChange(i) ==
   AutomaticHide(i) \/ AutomaticShow(i) \/ SourceLost(i) \/ SourceGained(i) \/
@@ -250,6 +269,7 @@ Next ==
   \/ \E i \in Controllers : StopTimerRefresh(i)
   \/ \E i \in Controllers : EnvironmentChange(i)
   \/ \E value \in BOOLEAN : SetStartHidden(value)
+  \/ \E value \in BOOLEAN : SetTimerMode(value)
   \/ \E i \in Controllers : Release(i)
 
 Spec ==
@@ -300,7 +320,7 @@ AutoLayerIsExact ==
   \A i \in Controllers :
     attached[i] /\ ~hostHidden[i] /\ ~noSource[i] /\
     overrideMode[i] = Auto /\ flashMode[i] = NoFlash
-      => (Visible(i) <=> (~automaticHidden[i] /\ ~siteAutohide[i]))
+      => (Visible(i) <=> (~timerMode /\ ~automaticHidden[i] /\ ~siteAutohide[i]))
 
 (***************************************************************************)
 (* Action and non-interference properties.                                 *)
@@ -309,20 +329,20 @@ ToggleOneContract ==
   [] [\A i \in Controllers :
         ToggleOne(i) =>
           /\ overrideMode'[i] = ToggleTarget(i)
-          /\ flashMode'[i] = NoFlash]_vars
+          /\ flashMode'[i] = ToggleFlash(i)]_vars
 
 ToggleAllContract ==
   [] [ToggleAll =>
         \A i \in Controllers :
           IF attached[i]
             THEN /\ overrideMode'[i] = ToggleTarget(i)
-                 /\ flashMode'[i] = NoFlash
+                 /\ flashMode'[i] = ToggleFlash(i)
             ELSE /\ overrideMode'[i] = overrideMode[i]
                  /\ flashMode'[i] = flashMode[i]]_vars
 
 StickyToggleIntentContract ==
   [] [\A i \in Controllers :
-        attached[i] /\ (ToggleOne(i) \/ ToggleAll)
+        attached[i] /\ ~timerMode /\ (ToggleOne(i) \/ ToggleAll)
           => overrideMode'[i] =
                (IF overrideMode[i] = Auto
                   THEN IF Visible(i) THEN Hide ELSE Show
@@ -339,6 +359,11 @@ StartHiddenSettingIsNonRetroactive ==
         /\ overrideMode' = overrideMode
         /\ automaticHidden' = automaticHidden
         /\ flashMode' = flashMode]_vars
+
+TimerModeSwitchResetsVisibility ==
+  [] [(\E value \in BOOLEAN : SetTimerMode(value)) =>
+        /\ overrideMode' = [i \in Controllers |-> Auto]
+        /\ flashMode' = [i \in Controllers |-> NoFlash]]_vars
 
 LocalActionsAreLocal ==
   [] [\A i \in Controllers :
@@ -357,11 +382,12 @@ LocalActionsAreLocal ==
 IntentChangesOnlyByToggleOrRelease ==
   [] [(overrideMode' # overrideMode) =>
         (\/ ToggleAll
+         \/ \E value \in BOOLEAN : SetTimerMode(value)
          \/ \E i \in Controllers : ToggleOne(i) \/ Release(i))]_vars
 
 ManualIntentPersistsUntilRelease ==
   [] [\A i \in Controllers :
-        attached[i] /\ overrideMode[i] # Auto /\ attached'[i]
+        attached[i] /\ overrideMode[i] # Auto /\ attached'[i] /\ ~timerMode /\ ~timerMode'
           => overrideMode'[i] # Auto]_vars
 
 TimerRefreshOnlyStops ==
