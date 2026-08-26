@@ -9,6 +9,7 @@ The production policy is `src/core/controller-visibility.js`. Its machine-checke
 The contract covers:
 
 - one explicit override per controller: `AUTO`, `SHOW`, or `HIDE`;
+- a global overlay mode: manual persistent visibility or automatic timed feedback;
 - automatic visibility from `startHidden`, media visibility, and audio-controller enablement;
 - site-owned autohide such as YouTube's `.ytp-autohide`;
 - temporary video feedback and persistent audio feedback;
@@ -16,7 +17,7 @@ The contract covers:
 - targeted and document-wide display actions;
 - timer expiry and controller teardown.
 
-Explicit `SHOW` / `HIDE` intent persists for the lifetime of its controller. Persistence across reloads, cross-frame synchronization, and ownership shared with page scripts are not part of this contract. Adding any of them changes the concurrency model and requires revisiting both the TLA+ state space and the DOM adapter.
+In Manual mode, explicit `SHOW` / `HIDE` intent persists for the lifetime of its controller or until the mode changes. Persistence across reloads, cross-frame synchronization, and ownership shared with page scripts are not part of this contract. Adding any of them changes the concurrency model and requires revisiting both the TLA+ state space and the DOM adapter.
 
 ## State
 
@@ -30,6 +31,7 @@ Explicit `SHOW` / `HIDE` intent persists for the lifetime of its controller. Per
 | External host hide | `hostHidden`      | `hostHidden[i]`      | computed `display` / `visibility` on `<vsc-controller>`                   |
 | Feedback           | `flash`           | `flashMode[i]`       | `vsc-show` plus an optional `flashTimer`                                  |
 | Preference         | `startHidden`     | `startHidden`        | live settings value consulted by future automatic-show and flash events   |
+| Overlay mode       | `timerMode`       | `timerMode`          | `controllerHideMode` and the host's `vsc-timer-mode` class                |
 | Media kind         | `mediaType`       | `AudioControllers`   | media tag name                                                            |
 
 `startHidden` initializes the automatic layer but is not itself a permanent hard-hide bit. A live change to `startHidden` is non-retroactive: it does not immediately rewrite an existing controller or cancel an active flash. It blocks future automatic-show and flash requests until disabled.
@@ -41,7 +43,7 @@ For a controller `i`:
 ```text
 hardHidden = !attached || hostHidden || noSource || override == HIDE
 forcedShown = override == SHOW || flash != NONE
-visible = !hardHidden && (forcedShown || (!automaticHidden && !siteAutohide))
+visible = !hardHidden && (forcedShown || (!timerMode && !automaticHidden && !siteAutohide))
 ```
 
 Equivalent precedence, highest first:
@@ -56,7 +58,9 @@ external host hide / no source / FORCE_HIDE
 
 YouTube site autohide is implemented by domain-scoped light-DOM CSS on `<vsc-controller>`, not by copying page state into extension-owned DOM and not by the deprecated `:host-context()` selector. The host rule excludes explicit `SHOW` and `vsc-show` feedback before applying `visibility: hidden`; shadow selectors keep automatic hide, explicit `HIDE`, and no-source precedence. Changing either side requires the Chrome matrix test, not just a unit test.
 
-## User toggle transition
+## Overlay modes and user toggle transition
+
+The **Manual** setting preserves persistent visibility control. Non-display shortcuts do not affect visibility, and V alternates `SHOW` / `HIDE`:
 
 A display action samples rendered visibility before cancelling feedback:
 
@@ -69,21 +73,23 @@ A display action samples rendered visibility before cancelling feedback:
 
 The first press opposes what the user can currently see. Later presses alternate persistent `SHOW` / `HIDE` intent, so player autohide cannot silently retake control; `AUTO` is re-entered only when that controller is released and a fresh controller is created. Sampling before clearing `vsc-show` remains essential for the first press: `AUTO + site autohide + flash` is visibly shown, so the action must select `HIDE`, not `SHOW`.
 
-Keyboard and popup display actions broadcast to every attached controller. Each controller samples its first transition independently, so one broadcast may produce `HIDE` on a visible controller and `SHOW` on a hidden controller; later broadcasts alternate those controllers in opposite phase. A targeted adapter action affects only its owner. Released controllers are absent from broadcasts and cannot be mutated by an expired timer.
+The **Auto-hide** setting makes the controller idle-hidden independently of site CSS. Every shortcut, including V, enters `TIMED_ARMED`. A later shortcut re-arms the single timer, and the overlay disappears only after the configured 1–60 second delay has elapsed since the latest shortcut. Auto-hide never creates persistent `SHOW` / `HIDE` intent.
+
+In Manual mode, keyboard and popup display actions broadcast to every attached controller. Each controller samples its first transition independently, so one broadcast may produce `HIDE` on a visible controller and `SHOW` on a hidden controller; later broadcasts alternate those controllers in opposite phase. A targeted adapter action affects only its owner. Released controllers are absent from broadcasts and cannot be mutated by an expired timer.
 
 ## Automatic, feedback, and lifecycle transitions
 
 - Automatic hide sets `automaticHidden` without changing override or feedback.
 - Automatic show clears `automaticHidden` only when `startHidden` is false.
 - Source, site-autohide, and external-host changes affect only their own rendering layer.
-- A permitted video feedback request enters `TIMED_ARMED`; timer progress enters `TIMED_DUE`; expiry returns to `NONE`. A repeated request re-arms the timer.
+- In Auto-hide, every permitted video shortcut enters `TIMED_ARMED`; timer progress enters `TIMED_DUE`; expiry returns to `NONE`. A repeated shortcut re-arms the timer.
 - A permitted audio feedback request enters `PERSISTENT`. It has no timer and lasts until a display toggle or release.
-- `startHidden` and explicit `HIDE` block new feedback requests. Existing feedback survives a later live `startHidden=true` setting change and still expires normally.
+- `startHidden` blocks new feedback requests. In Manual mode, explicit `HIDE` also blocks feedback. Existing feedback survives a later live `startHidden=true` setting change and still expires normally.
 - Release clears override and feedback atomically for the abstract controller, cancels the production timer, removes StateManager membership, detaches `video.vsc`, and removes the host. Release is terminal for that controller identity; later control of the same media is a fresh controller initialized from current inputs.
 
 ## Formal model
 
-`specs/ControllerVisibility.tla` uses two controllers, one video and one audio. It explores local toggles, broadcast toggles, automatic and environmental changes, live `startHidden` changes, flash requests, bounded timer progress, expiry, and release. `StopTimerRefresh` is an auxiliary environment action: safety remains checked whether it occurs or not, while its false state marks a suffix in which no more video flash requests re-arm the timer.
+`specs/ControllerVisibility.tla` uses two controllers, one video and one audio. It explores both overlay modes, live mode switches, local toggles, broadcast toggles, automatic and environmental changes, live `startHidden` changes, flash requests, bounded timer progress, expiry, and release. `StopTimerRefresh` is an auxiliary environment action: safety remains checked whether it occurs or not, while its false state marks a suffix in which no more video feedback requests re-arm the timer.
 
 TLC checks:
 
@@ -91,9 +97,9 @@ TLC checks:
 - explicit `HIDE` / flash exclusion;
 - detached-controller inertness;
 - targeted-action locality and broadcast independence;
-- the render-aware first toggle and subsequent explicit `SHOW` / `HIDE` alternation;
+- manual render-aware `SHOW` / `HIDE` alternation and Auto-hide timer rearming;
 - environment and settings non-interference with user intent;
-- intent changes only through toggle or release, and explicit intent cannot return to `AUTO` before release;
+- explicit manual intent persistence and atomic reset when the selected mode changes;
 - weak-fair eventual progress for armed and due video timer phases;
 - eventual video flash clearance or release after the environment stops re-arming the timer.
 
@@ -105,10 +111,10 @@ The bounded timer models ordering and eventual progress, not wall-clock millisec
 
 The verification layers answer different questions:
 
-1. `npm run test:tlc` exhaustively checks the two-controller temporal model. The current configuration reaches 49,152 distinct states, generates 724,800 states, and checks three non-vacuous video-timer liveness branches.
-2. `tests/unit/core/controller-visibility.test.js` enumerates 448 valid local states and 6,720 state/event pairs against the pure JavaScript transition policy.
+1. `npm run test:tlc` exhaustively checks the two-controller temporal model. The current configuration reaches 61,440 distinct states, generates 939,904 states, and checks three non-vacuous video-timer liveness branches.
+2. `tests/unit/core/controller-visibility.test.js` enumerates 896 valid local states and 13,440 state/event pairs against the pure JavaScript transition policy.
 3. `tests/integration/controller-visibility-differential.test.js` replays deterministic mixed traces through the pure model and real `ActionHandler` / `VideoController` adapters, including local and broadcast actions, video and audio feedback, environment changes, live settings, expiry, and release.
-4. `tests/e2e/display-toggle.e2e.js` checks the real document-and-shadow cascade across `3 overrides × 2 automaticHidden × 2 siteAutohide × 2 flash × 2 noSource × 2 hostHidden = 96` render combinations, then verifies mixed two-controller local, broadcast, flash-sampling, and release behavior in Chrome.
+4. `tests/e2e/display-toggle.e2e.js` checks the real document-and-shadow cascade across `3 overrides × 2 automaticHidden × 2 siteAutohide × 2 flash × 2 noSource × 2 hostHidden = 96` render combinations, then verifies mixed two-controller manual behavior and site-independent configurable Auto-hide behavior in Chrome.
 
 A green TLA+ run cannot prove that CSS source order is correct, and a green browser matrix cannot prove timer liveness or non-interference across all action sequences. Both are required for changes to this contract.
 

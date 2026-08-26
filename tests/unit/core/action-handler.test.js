@@ -265,70 +265,45 @@ describe('ActionHandler', () => {
     expect(mockVideo.currentTime).toBe(25);
   });
 
-  it('display samples AUTO once, then alternates persistent HIDE and SHOW', async () => {
+  it('display rearms the interval in auto-hide mode', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
+    config.settings.controllerHideMode = 'timer';
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     const video = createTestVideoWithController(config, actionHandler);
     const controller = video.vsc.div;
-    const isControllerVisible = vi
-      .spyOn(actionHandler, 'isControllerVisible')
-      .mockReturnValueOnce(true);
+    vi.useFakeTimers();
+    try {
+      actionHandler.runAction('display', null, null);
+      expect(controller.dataset.vscVisibility).toBeUndefined();
+      expect(controller.classList.contains('vsc-show')).toBe(true);
 
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('hide');
-    expect(controller.classList.contains('vsc-hidden')).toBe(false);
+      await vi.advanceTimersByTimeAsync(4000);
+      actionHandler.runAction('display', null, null);
+      expect(controller.dataset.vscVisibility).toBeUndefined();
+      expect(controller.classList.contains('vsc-show')).toBe(true);
 
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('show');
-
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('hide');
-
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('show');
-    expect(controller.classList.contains('vsc-hidden')).toBe(false);
-    expect(isControllerVisible).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(controller.classList.contains('vsc-show')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('display preserves startHidden beneath persistent show/hide intent', async () => {
-    const config = window.VSC.videoSpeedConfig;
-    await config.load();
-    config.settings.startHidden = true;
-
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
-    const video = createTestVideoWithController(config, actionHandler);
-    const controller = video.vsc.div;
-    vi.spyOn(actionHandler, 'isControllerVisible').mockReturnValue(false);
-
-    expect(controller.classList.contains('vsc-hidden')).toBe(true);
-
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('show');
-    expect(controller.classList.contains('vsc-hidden')).toBe(true);
-
-    actionHandler.runAction('display', null, null);
-    expect(controller.dataset.vscVisibility).toBe('hide');
-    expect(controller.classList.contains('vsc-hidden')).toBe(true);
-  });
-
-  it('display samples an active flash before clearing it', async () => {
+  it('display rearms an active flash in auto-hide mode', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.startHidden = false;
+    config.settings.controllerHideMode = 'timer';
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     const video = createTestVideoWithController(config, actionHandler);
     const controller = video.vsc.div;
-    vi.spyOn(actionHandler, 'isControllerVisible').mockImplementation(() => {
-      expect(controller.classList.contains('vsc-show')).toBe(true);
-      return true;
-    });
-
     vi.useFakeTimers();
     try {
       actionHandler.flashController(controller, 1000);
@@ -336,12 +311,15 @@ describe('ActionHandler', () => {
       expect(controller.classList.contains('vsc-show')).toBe(true);
 
       actionHandler.runAction('display', null, null);
-      expect(controller.flashTimer).toBeUndefined();
-      expect(controller.classList.contains('vsc-show')).toBe(false);
-      expect(controller.dataset.vscVisibility).toBe('hide');
+      expect(controller.flashTimer).toBeDefined();
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+      expect(controller.dataset.vscVisibility).toBeUndefined();
 
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(controller.dataset.vscVisibility).toBe('hide');
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(controller.classList.contains('vsc-show')).toBe(false);
+      expect(controller.dataset.vscVisibility).toBeUndefined();
     } finally {
       vi.useRealTimers();
     }
@@ -381,24 +359,41 @@ describe('ActionHandler', () => {
 
   // --- flashController visibility rules ---
 
-  it('flashController: startHidden=true → never flashes, even after V toggle', async () => {
+  it('flashController preserves the hard-hidden preference in both modes', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.startHidden = true;
+    config.settings.controllerHideMode = 'timer';
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
     const video = createTestVideoWithController(config, actionHandler);
     const controller = video.vsc.div;
 
-    // Before any V toggle
     actionHandler.flashController(controller);
     expect(controller.classList.contains('vsc-show')).toBe(false);
+  });
 
-    // After user presses V (explicitly shows the controller)
-    controller.dataset.vscVisibility = 'show';
-    actionHandler.flashController(controller);
+  it('manual mode uses V for persistent visibility and ignores other shortcuts', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.controllerHideMode = 'manual';
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+    vi.spyOn(actionHandler, 'isControllerVisible').mockReturnValueOnce(true);
+
+    actionHandler.runAction('rewind', 5);
     expect(controller.classList.contains('vsc-show')).toBe(false);
+    expect(controller.dataset.vscVisibility).toBeUndefined();
+
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('hide');
+
+    actionHandler.runAction('display', null, null);
+    expect(controller.dataset.vscVisibility).toBe('show');
   });
 
   it('flashController: startHidden=false → flashes on speed change', async () => {
@@ -415,10 +410,60 @@ describe('ActionHandler', () => {
     expect(controller.classList.contains('vsc-show')).toBe(true);
   });
 
-  it('flashController: explicit hide override does not flash', async () => {
+  it('flashController uses five seconds and rearms from the latest input', async () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.startHidden = false;
+    config.settings.controllerHideMode = 'timer';
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+
+    vi.useFakeTimers();
+    try {
+      actionHandler.flashController(controller);
+      await vi.advanceTimersByTimeAsync(4000);
+      actionHandler.flashController(controller);
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(controller.classList.contains('vsc-show')).toBe(false);
+      expect(controller.flashTimer).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flashController honors the configured auto-hide delay', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.controllerHideMode = 'timer';
+    config.settings.controllerHideDelay = 3;
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+
+    vi.useFakeTimers();
+    try {
+      actionHandler.flashController(controller);
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(controller.classList.contains('vsc-show')).toBe(true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(controller.classList.contains('vsc-show')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('timer feedback can temporarily reveal a controller previously hidden in manual mode', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.controllerHideMode = 'timer';
 
     const eventManager = new window.VSC.EventManager(config, null);
     const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -426,9 +471,40 @@ describe('ActionHandler', () => {
     const controller = video.vsc.div;
 
     controller.dataset.vscVisibility = 'hide';
-
     actionHandler.flashController(controller);
+    expect(controller.dataset.vscVisibility).toBeUndefined();
+    expect(controller.classList.contains('vsc-show')).toBe(true);
+  });
+
+  it('timer mode flashes for non-speed shortcut actions', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.controllerHideMode = 'timer';
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+
+    actionHandler.runAction('rewind', 5);
+    expect(controller.classList.contains('vsc-show')).toBe(true);
+  });
+
+  it('timer mode flashes for speed shortcuts but not external UI synchronization', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.controllerHideMode = 'timer';
+
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const video = createTestVideoWithController(config, actionHandler);
+    const controller = video.vsc.div;
+
+    actionHandler.syncIndicator(video, 1.5);
     expect(controller.classList.contains('vsc-show')).toBe(false);
+
+    actionHandler.runAction('faster', 0.1);
+    expect(controller.classList.contains('vsc-show')).toBe(true);
   });
 
   it('ActionHandler should work with videos in nested shadow DOM', async () => {

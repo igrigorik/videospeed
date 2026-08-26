@@ -56,6 +56,7 @@ class ControllerVisibility {
       hostHidden: false,
       flash: this.FLASH.NONE,
       startHidden: false,
+      timerMode: false,
       mediaType: this.MEDIA_TYPES.VIDEO,
       ...values,
     };
@@ -91,35 +92,37 @@ class ControllerVisibility {
     if (state.override === this.OVERRIDES.SHOW || state.flash !== this.FLASH.NONE) {
       return true;
     }
-    return !state.automaticHidden && !state.siteAutohide;
+    return !state.timerMode && !state.automaticHidden && !state.siteAutohide;
   }
 
   /**
-   * The first toggle opposes pre-action rendering; later toggles alternate
-   * persistent SHOW/HIDE intent. AUTO is re-entered only by controller release.
-   * The adapter must sample rendering before cancelling flash.
+   * Automatic mode never creates a persistent override. Manual mode preserves
+   * the existing persistent SHOW/HIDE alternation.
    * @param {*} override
-   * @param {boolean} [renderedVisible] - Required only when toggling from AUTO
-   * @returns {'show'|'hide'}
+   * @param {boolean} renderedVisible - Pre-action rendered visibility
+   * @param {boolean} timerMode
+   * @returns {'auto'|'show'|'hide'}
    */
-  static nextOverride(override, renderedVisible) {
+  static nextOverride(override, renderedVisible, timerMode = false) {
     const current = this.normalizeOverride(override);
+    if (typeof renderedVisible !== 'boolean') {
+      throw new TypeError('renderedVisible must be boolean when toggling visibility');
+    }
+    if (timerMode) {
+      return this.OVERRIDES.AUTO;
+    }
     if (current === this.OVERRIDES.SHOW) {
       return this.OVERRIDES.HIDE;
     }
     if (current === this.OVERRIDES.HIDE) {
       return this.OVERRIDES.SHOW;
     }
-    if (typeof renderedVisible !== 'boolean') {
-      throw new TypeError('renderedVisible must be boolean when toggling from AUTO');
-    }
     return renderedVisible ? this.OVERRIDES.HIDE : this.OVERRIDES.SHOW;
   }
 
   /**
-   * startHidden and explicit HIDE are the only policy-level flash blockers.
-   * Source/automatic/site hiding remains render-layer state so a flash can
-   * provide feedback without corrupting AUTO.
+   * Timer mode permits feedback through automatic hiding. Manual mode keeps
+   * startHidden and explicit HIDE as hard feedback blockers.
    * @param {Object} input
    * @returns {boolean}
    */
@@ -127,7 +130,7 @@ class ControllerVisibility {
     return (
       input?.attached !== false &&
       !input?.startHidden &&
-      this.normalizeOverride(input?.override) !== this.OVERRIDES.HIDE
+      (input?.timerMode || this.normalizeOverride(input?.override) !== this.OVERRIDES.HIDE)
     );
   }
 
@@ -151,13 +154,23 @@ class ControllerVisibility {
             event.renderedVisible === undefined
               ? this.isVisible(state)
               : this.requireBoolean(event.renderedVisible, 'renderedVisible');
-          next.override = this.nextOverride(state.override, renderedVisible);
-          next.flash = this.FLASH.NONE;
+          next.override = this.nextOverride(state.override, renderedVisible, state.timerMode);
+          if (state.timerMode && this.allowsFlash(state)) {
+            next.flash =
+              state.mediaType === this.MEDIA_TYPES.AUDIO
+                ? this.FLASH.PERSISTENT
+                : this.FLASH.TIMED_ARMED;
+          } else {
+            next.flash = this.FLASH.NONE;
+          }
         }
         break;
 
       case this.EVENTS.FLASH_REQUEST:
         if (this.allowsFlash(state)) {
+          if (state.timerMode && state.override === this.OVERRIDES.HIDE) {
+            next.override = this.OVERRIDES.AUTO;
+          }
           next.flash =
             state.mediaType === this.MEDIA_TYPES.AUDIO
               ? this.FLASH.PERSISTENT
@@ -243,6 +256,7 @@ class ControllerVisibility {
       'siteAutohide',
       'hostHidden',
       'startHidden',
+      'timerMode',
     ]) {
       this.requireBoolean(state[key], key);
     }

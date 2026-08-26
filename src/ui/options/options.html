@@ -58,6 +58,23 @@
           <input id="startHidden" type="checkbox" />
         </div>
         <div class="row">
+          <label for="controllerHideMode"
+            >Overlay<br />
+            <em>Auto-hide shows feedback after every shortcut. Manual uses V only.</em></label
+          >
+          <select id="controllerHideMode">
+            <option value="timer">Auto-hide</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="controllerHideDelay"
+            >Auto-hide delay<br />
+            <em>Seconds after the latest shortcut before the overlay disappears.</em></label
+          >
+          <input id="controllerHideDelay" type="number" min="1" max="60" step="1" />
+        </div>
+        <div class="row">
           <label for="exclusiveKeys"
             >Exclusive keyboard shortcuts<br />
             <em>When possible, prevent websites from also handling VSC shortcut keys.</em></label

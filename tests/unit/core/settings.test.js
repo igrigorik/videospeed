@@ -7,6 +7,8 @@ import {
   installChromeMock,
   cleanupChromeMock,
   resetMockStorage,
+  getMockStorage,
+  simulateExternalStorageWrite,
 } from '../../helpers/chrome-mock.js';
 import { vi } from 'vitest';
 
@@ -41,6 +43,42 @@ describe('Settings', () => {
     expect(settings).toBeDefined();
     expect(settings.enabled).toBe(true);
     expect(settings.lastSpeed).toBeNull(); // no user choice yet
+  });
+
+  it('loads and validates overlay mode and Auto-hide delay', async () => {
+    const storage = getMockStorage();
+    storage.controllerHideMode = 'timer';
+    storage.controllerHideDelay = 7;
+
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
+    expect(config.settings.controllerHideMode).toBe('timer');
+    expect(config.settings.controllerHideDelay).toBe(7);
+
+    storage.controllerHideMode = 'invalid';
+    storage.controllerHideDelay = 0;
+    const fallback = new window.VSC.VideoSpeedConfig();
+    await fallback.load();
+    expect(fallback.settings.controllerHideMode).toBe('manual');
+    expect(fallback.settings.controllerHideDelay).toBe(5);
+  });
+
+  it('applies overlay mode changes to existing controllers', async () => {
+    const host = document.createElement('vsc-controller');
+    host.classList.add('vsc-show');
+    host.dataset.vscVisibility = 'show';
+    host.flashTimer = setTimeout(() => {}, 1000);
+    document.body.appendChild(host);
+    const media = { vsc: { div: host } };
+    vi.spyOn(window.VSC.stateManager, 'getControlledElements').mockReturnValue([media]);
+
+    new window.VSC.VideoSpeedConfig();
+    simulateExternalStorageWrite({ controllerHideMode: 'timer' });
+
+    expect(host.classList.contains('vsc-timer-mode')).toBe(true);
+    expect(host.classList.contains('vsc-show')).toBe(false);
+    expect(host.dataset.vscVisibility).toBeUndefined();
+    expect(host.flashTimer).toBeUndefined();
   });
 
   it('VideoSpeedConfig should save settings to storage', async () => {

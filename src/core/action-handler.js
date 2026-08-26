@@ -6,6 +6,8 @@
 window.VSC = window.VSC || {};
 
 class ActionHandler {
+  static CONTROLLER_FEEDBACK_MS = 5000;
+
   constructor(config, eventManager) {
     this.config = config;
     this.eventManager = eventManager;
@@ -56,6 +58,12 @@ class ActionHandler {
 
       if (!v.classList.contains('vsc-cancelled')) {
         this.executeAction(action, value, v, e, { authorityBatch });
+        if (
+          this.config.settings.controllerHideMode === 'timer' &&
+          !['display', 'blink', 'drag'].includes(action)
+        ) {
+          this.flashController(controller);
+        }
       }
     });
   }
@@ -164,10 +172,8 @@ class ActionHandler {
   }
 
   /**
-   * Toggle an explicit visibility override without mutating the automatic
-   * state maintained by startHidden, media visibility, and site autohide.
-   * The first toggle opposes rendered AUTO; later toggles alternate persistent
-   * SHOW/HIDE intent so player autohide cannot silently retake control.
+   * Automatic mode treats V like every other shortcut and rearms the feedback
+   * interval. Manual mode preserves the persistent SHOW/HIDE override contract.
    * @param {HTMLMediaElement} video - Media element whose controller is toggled
    */
   toggleControllerVisibility(video) {
@@ -179,16 +185,22 @@ class ActionHandler {
 
     const visibility = window.VSC.ControllerVisibility;
     const currentOverride = visibility.normalizeOverride(controller.dataset.vscVisibility);
-    // Sample before cancelling a flash: the first V press must flip what the
-    // user currently sees, including temporary speed feedback.
-    const isVisible =
+    const timerMode = this.config.settings.controllerHideMode === 'timer';
+
+    if (timerMode) {
+      delete controller.dataset.vscVisibility;
+      this.flashController(controller);
+      return;
+    }
+
+    const renderedVisible =
       currentOverride === visibility.OVERRIDES.AUTO
         ? this.isControllerVisible(controller)
-        : undefined;
-    const nextOverride =
-      currentOverride === visibility.OVERRIDES.AUTO && isVisible === null
-        ? null
-        : visibility.nextOverride(currentOverride, isVisible);
+        : currentOverride === visibility.OVERRIDES.SHOW;
+
+    if (renderedVisible === null) {
+      return;
+    }
 
     if (controller.flashTimer !== undefined) {
       clearTimeout(controller.flashTimer);
@@ -196,9 +208,11 @@ class ActionHandler {
     }
     controller.classList.remove('vsc-show');
 
-    if (nextOverride !== null) {
-      controller.dataset.vscVisibility = nextOverride;
-    }
+    controller.dataset.vscVisibility = visibility.nextOverride(
+      currentOverride,
+      renderedVisible,
+      false
+    );
   }
 
   /**
@@ -368,21 +382,28 @@ class ActionHandler {
    * Single entry point for all temporary visibility — replaces both
    * blinkController and EventManager.showController.
    * @param {HTMLElement} controller - Controller element
-   * @param {number} duration - Duration in ms (default 2000)
+   * @param {number} duration - Duration in ms (defaults to 5000 in automatic
+   *   mode, otherwise 2000)
    */
   flashController(controller, duration) {
     const visibility = window.VSC.ControllerVisibility;
     const override = visibility.normalizeOverride(controller.dataset.vscVisibility);
+    const timerMode = this.config.settings.controllerHideMode === 'timer';
     if (
       !visibility.allowsFlash({
-        attached: true,
+        attached: controller.isConnected,
         startHidden: this.config.settings.startHidden,
         override,
+        timerMode,
       })
     ) {
       const reason = this.config.settings.startHidden ? 'startHidden preference' : 'user hide';
       window.VSC.logger.debug(`flashController skipped: ${reason}`);
       return;
+    }
+
+    if (timerMode && override === visibility.OVERRIDES.HIDE) {
+      delete controller.dataset.vscVisibility;
     }
 
     const isAudioController = this.isAudioController(controller);
@@ -404,7 +425,7 @@ class ActionHandler {
         controller.classList.remove('vsc-show');
         controller.flashTimer = undefined;
         window.VSC.logger.debug('Removing vsc-show class after flash timeout');
-      }, duration || 2000);
+      }, duration ?? this.getControllerFeedbackDuration());
     } else {
       window.VSC.logger.debug('Audio controller flash - keeping vsc-show class');
     }
@@ -560,8 +581,8 @@ class ActionHandler {
   }
 
   /**
-   * SYNC_UI effect primitive: reflect a speed in the controller badge and
-   * flash for visual feedback. Never touches the register or authority.
+   * SYNC_UI effect primitive: reflect a speed in the controller badge.
+   * Never touches visibility, the register, or authority.
    *
    * @param {HTMLMediaElement} video - Video element
    * @param {number} rate - Speed to display
@@ -576,10 +597,19 @@ class ActionHandler {
       return;
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
+  }
 
-    if (video.vsc?.div) {
-      this.flashController(video.vsc.div);
+  /**
+   * @returns {number} Configured automatic feedback interval in milliseconds
+   */
+  getControllerFeedbackDuration() {
+    if (this.config.settings.controllerHideMode !== 'timer') {
+      return 2000;
     }
+    const seconds = Number(this.config.settings.controllerHideDelay);
+    return Number.isFinite(seconds) && seconds >= 1 && seconds <= 60
+      ? seconds * 1000
+      : ActionHandler.CONTROLLER_FEEDBACK_MS;
   }
 }
 
