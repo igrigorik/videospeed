@@ -379,4 +379,31 @@ describe('Inject', () => {
     expect(extension._customSheet).toBeNull();
     expect(document.adoptedStyleSheets).toContain(extension._controllerSheet);
   });
+
+  describe('VSC_MESSAGE detail guard', () => {
+    /**
+     * Dispatch a VSC_MESSAGE and return any error the listener let escape.
+     * A throw inside a listener does not propagate out of dispatchEvent, so
+     * jsdom reports it on window instead.
+     */
+    const dispatchAndCaptureError = (init) => {
+      const errors = [];
+      const onError = (e) => errors.push(e.message || String(e));
+      window.addEventListener('error', onError);
+      try {
+        document.documentElement.dispatchEvent(new CustomEvent('VSC_MESSAGE', init));
+      } finally {
+        window.removeEventListener('error', onError);
+      }
+      return errors;
+    };
+
+    it('ignores a VSC_MESSAGE dispatched with no detail', () => {
+      expect(dispatchAndCaptureError(undefined)).toEqual([]);
+    });
+
+    it('ignores a VSC_MESSAGE dispatched with a null detail', () => {
+      expect(dispatchAndCaptureError({ detail: null })).toEqual([]);
+    });
+  });
 });
