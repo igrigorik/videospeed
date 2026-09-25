@@ -226,4 +226,27 @@ describe('MutationObserver', () => {
     expect(mockOnVideoFound[0].video).toBe(videoElement);
     expect(mockOnVideoFound[0].parent).toBe(videoElement.parentNode);
   });
+  it('rescans media already present in a replacement document element', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const observer = new window.VSC.VideoMutationObserver(
+      mockConfig,
+      (video, parent) => mockOnVideoFound.push({ video, parent }),
+      () => {}
+    );
+
+    const replacementRoot = document.createElement('html');
+    const replacementBody = document.createElement('body');
+    const videoElement = document.createElement('video');
+
+    replacementBody.appendChild(videoElement);
+    replacementRoot.appendChild(replacementBody);
+
+    observer.onDocumentReplaced(replacementRoot);
+
+    expect(mockOnVideoFound).toHaveLength(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+    expect(mockOnVideoFound[0].parent).toBe(videoElement.parentNode);
+  });
+
 });

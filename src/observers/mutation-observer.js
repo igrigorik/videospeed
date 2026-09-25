@@ -70,9 +70,11 @@ class VideoMutationObserver {
       }
 
       if (node === document.documentElement) {
-        // Document was replaced (e.g., watch.sling.com uses document.write)
-        window.VSC.logger.debug('Document was replaced, reinitializing');
-        this.onDocumentReplaced();
+        // Document was replaced (e.g., watch.sling.com uses document.write).
+        // The added <html> subtree already exists as one mutation payload, so
+        // scan it immediately instead of waiting for later child mutations.
+        window.VSC.logger.debug('Document was replaced, rescanning');
+        this.onDocumentReplaced(node);
         return;
       }
 
@@ -270,9 +272,13 @@ class VideoMutationObserver {
    * Handle document replacement
    * @private
    */
-  onDocumentReplaced() {
-    // This callback should trigger reinitialization
-    window.VSC.logger.warn('Document replacement detected - full reinitialization needed');
+  onDocumentReplaced(documentElement = document.documentElement) {
+    if (!documentElement) {
+      return;
+    }
+
+    window.VSC.logger.info('Document replacement detected - rescanning media');
+    this.checkForVideoAndShadowRoot(documentElement, document, true);
   }
 
   /**
