@@ -226,4 +226,27 @@ describe('MutationObserver', () => {
     expect(mockOnVideoFound[0].video).toBe(videoElement);
     expect(mockOnVideoFound[0].parent).toBe(videoElement.parentNode);
   });
+  it('disconnects observers attached to shadow roots during stop()', () => {
+    const mockConfig = { settings: {} };
+    const observer = new window.VSC.VideoMutationObserver(
+      mockConfig,
+      () => {},
+      () => {}
+    );
+
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const disconnectSpy = vi.spyOn(MutationObserver.prototype, 'disconnect');
+
+    try {
+      observer.observeShadowRoot(shadowRoot);
+      observer.stop();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(observer.shadowObservers.size).toBe(0);
+    } finally {
+      disconnectSpy.mockRestore();
+    }
+  });
+
 });
