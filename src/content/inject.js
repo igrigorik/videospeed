@@ -125,10 +125,10 @@ class VideoSpeedExtension {
           `Attached controllers to ${lightMedia.length} media elements (light scan)`
         );
 
-        // Schedule comprehensive scan for later if needed
-        if (lightMedia.length === 0) {
-          this.scheduleComprehensiveScan(document);
-        }
+        // Always schedule the delayed comprehensive scan. The light scan only
+        // sees media in the regular DOM, so pages that contain both light-DOM
+        // media and pre-existing shadow-DOM media still need the deeper pass.
+        this.scheduleComprehensiveScan(document);
       } catch (error) {
         this.logger.error(`Failed to scan media elements: ${error.message}`);
       }

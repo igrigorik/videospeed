@@ -282,6 +282,41 @@ describe('Inject', () => {
     }
   });
 
+  it('always schedules the comprehensive scan after the light scan', () => {
+    extension = window.VSC_controller;
+    const originalRequestIdleCallback = globalThis.requestIdleCallback;
+    const originalMediaObserver = extension.mediaObserver;
+    const originalAcceptingMedia = extension.acceptingMedia;
+    const onVideoFound = vi.spyOn(extension, 'onVideoFound').mockImplementation(() => {});
+    const scheduleComprehensiveScan = vi
+      .spyOn(extension, 'scheduleComprehensiveScan')
+      .mockImplementation(() => {});
+
+    try {
+      const lightMedia = document.createElement('video');
+      extension.mediaObserver = {
+        scanForMediaLight: vi.fn(() => [lightMedia]),
+      };
+      extension.acceptingMedia = true;
+      globalThis.requestIdleCallback = (callback) => callback();
+
+      extension.deferredMediaScan(document);
+
+      expect(extension.mediaObserver.scanForMediaLight).toHaveBeenCalledWith(document);
+      expect(onVideoFound).toHaveBeenCalledWith(
+        lightMedia,
+        lightMedia.parentElement || lightMedia.parentNode
+      );
+      expect(scheduleComprehensiveScan).toHaveBeenCalledWith(document);
+    } finally {
+      globalThis.requestIdleCallback = originalRequestIdleCallback;
+      extension.mediaObserver = originalMediaObserver;
+      extension.acceptingMedia = originalAcceptingMedia;
+      onVideoFound.mockRestore();
+      scheduleComprehensiveScan.mockRestore();
+    }
+  });
+
   // --- CSS injection: adoptedStyleSheets composition ---
 
   /** Helper: reset extension CSS state so injectControllerCSS can re-run. */
