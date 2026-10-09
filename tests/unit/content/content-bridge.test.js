@@ -203,6 +203,24 @@ describe('content-bridge', () => {
       expect(events[0].detail.abort).toBe(true);
     });
 
+    it('signals abort when a siteRule disables an ancestor frame URL', async () => {
+      getMockStorage().siteRules = [{ pattern: 'looptube.io', enabled: false }];
+      vi.stubGlobal('location', {
+        href: 'https://www.youtube.com/embed/video',
+        protocol: 'https:',
+        hostname: 'www.youtube.com',
+        ancestorOrigins: ['https://looptube.io'],
+      });
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+
+      await loadBridge();
+      await requestSettings();
+
+      expect(events).toEqual([{ type: 'VSC_SETTINGS_READY', detail: { abort: true } }]);
+    });
+
     it.each(['about:blank', 'about:BLANK', 'about:blank#child', 'about:srcdoc'])(
       'fails closed in inherited frame %s',
       async (href) => {

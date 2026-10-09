@@ -62,8 +62,11 @@ function init() {
 
         // Legacy blacklist is consulted only before migration creates siteRules.
         const blacklisted = !settings.siteRules && isBlacklisted(settings.blacklist, location.href);
-        const siteRuleMatch = matchSiteRule(settings.siteRules, location.href);
-        const siteDisabled = siteRuleMatch && siteRuleMatch.enabled === false;
+        const siteRuleDisables = (href) =>
+          matchSiteRule(settings.siteRules, href)?.enabled === false;
+        const siteDisabled =
+          siteRuleDisables(location.href) ||
+          Array.from(location.ancestorOrigins || []).some(siteRuleDisables);
         if (disabledForDocument || settings.enabled === false || blacklisted || siteDisabled) {
           dispatchAbort();
           return;
