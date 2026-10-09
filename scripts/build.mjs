@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const pkg = require(path.join(rootDir, 'package.json'));
 
 const isWatch = process.argv.includes('--watch');
-const isRelease = process.env.RELEASE === '1';
+const isRelease = process.argv.includes('--release') || process.env.RELEASE === '1';
 
 const common = {
   bundle: true,
