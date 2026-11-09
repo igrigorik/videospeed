@@ -6,6 +6,11 @@ const MessageTypes = {
   TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
 };
 
+// The popup is a trusted extension context, unlike page context. It updates the
+// global remembered speed; in-page changes are remembered per top-level site
+// by the content bridge.
+let rememberSpeed = false;
+
 document.addEventListener('DOMContentLoaded', () => {
   // Load settings and initialize speed controls
   loadSettingsAndInitialize();
@@ -62,6 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load settings and initialize UI
   function loadSettingsAndInitialize() {
     chrome.storage.sync.get(null, (storage) => {
+      rememberSpeed = storage.rememberSpeed === true;
+
       // Find the step values from keyBindings
       let slowerStep = 0.1;
       let fasterStep = 0.1;
@@ -148,6 +155,11 @@ document.addEventListener('DOMContentLoaded', () => {
           type: MessageTypes.SET_SPEED,
           payload: { speed: speed },
         });
+
+        // Trusted global preference. Page-originated changes stay per site.
+        if (rememberSpeed && Number.isFinite(speed)) {
+          chrome.storage.sync.set({ lastSpeed: speed });
+        }
       }
     });
   }

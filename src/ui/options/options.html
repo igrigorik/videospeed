@@ -205,10 +205,10 @@ vsc-controller { top: 50px !important; }
             to all new videos but are forgotten on page reload.
           </p>
           <p>
-            When <code>rememberSpeed</code> is <strong>on</strong>, the last speed you set is stored
-            and persists across sessions. This stored speed <strong>takes precedence</strong> over
-            site rule defaults. To let a site rule win again, either turn off
-            <code>rememberSpeed</code> or manually reset to 1x.
+            When <code>rememberSpeed</code> is <strong>on</strong>, the last speed you set on a site
+            is stored for that site and persists across sessions. The popup's speed presets update
+            the global remembered speed used on sites without their own remembered value. A matching
+            site rule speed still takes precedence.
           </p>
 
           <h4 id="faq-keys">A site's keyboard shortcuts conflict with mine. What can I do?</h4>
