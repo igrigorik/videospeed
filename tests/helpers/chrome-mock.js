@@ -16,6 +16,9 @@ const mockStorage = {
   logLevel: 1,
 };
 
+// chrome.storage.local is used by the bridge for per-origin remembered speed.
+const mockLocalStorage = {};
+
 // Track onChanged listeners so set() can fire them
 const onChangedListeners = [];
 
@@ -64,6 +67,42 @@ export const chromeMock = {
       },
       clear: (callback) => {
         Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+        setTimeout(() => callback && callback(), 10);
+      },
+    },
+    local: {
+      get: (keys, callback) => {
+        setTimeout(() => {
+          let result;
+          if (keys === null || keys === undefined) {
+            result = { ...mockLocalStorage };
+          } else {
+            result = {};
+            const keyList = Array.isArray(keys) ? keys : [keys];
+            keyList.forEach((key) => {
+              if (key in mockLocalStorage) {
+                result[key] = mockLocalStorage[key];
+              }
+            });
+          }
+          callback(result);
+        }, 10);
+      },
+      set: (items, callback) => {
+        Object.assign(mockLocalStorage, items);
+        setTimeout(() => {
+          if (globalThis.chrome && callback) {
+            callback();
+          }
+        }, 10);
+      },
+      remove: (keys, callback) => {
+        const keysArray = Array.isArray(keys) ? keys : [keys];
+        keysArray.forEach((key) => delete mockLocalStorage[key]);
+        setTimeout(() => callback && callback(), 10);
+      },
+      clear: (callback) => {
+        Object.keys(mockLocalStorage).forEach((key) => delete mockLocalStorage[key]);
         setTimeout(() => callback && callback(), 10);
       },
     },
@@ -142,6 +181,7 @@ export function resetMockStorage() {
     blacklist: 'www.instagram.com\nx.com',
     logLevel: 1,
   });
+  Object.keys(mockLocalStorage).forEach((key) => delete mockLocalStorage[key]);
   // Clear all onChanged listeners between tests
   onChangedListeners.length = 0;
 }
@@ -152,6 +192,13 @@ export function resetMockStorage() {
  */
 export function getMockStorage() {
   return mockStorage;
+}
+
+/**
+ * Get a direct reference to mock local storage for assertions.
+ */
+export function getMockLocalStorage() {
+  return mockLocalStorage;
 }
 
 /**
