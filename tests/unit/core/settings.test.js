@@ -291,4 +291,57 @@ describe('Settings', () => {
 
     window.VSC.matchSiteRule = original;
   });
+
+  it('uses the bridge-resolved initialSpeed without exposing raw storage', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    const getSpy = vi.spyOn(window.VSC.StorageManager, 'get').mockResolvedValue({
+      initialSpeed: 1.75,
+      rememberSpeed: true,
+      keyBindings: window.VSC.Constants.DEFAULT_SETTINGS.keyBindings,
+      customCSS: '',
+      controllerOpacity: 0.3,
+      controllerButtonSize: 14,
+      startHidden: false,
+      audioBoolean: true,
+      exclusiveKeys: false,
+      logLevel: 3,
+      // Deliberately present raw keys: the page-context loader must ignore them.
+      siteRules: [{ pattern: 'localhost', enabled: true, speed: 3.0 }],
+      lastSpeed: 2.9,
+      blacklist: 'localhost',
+    });
+
+    await config.load();
+
+    expect(config.settings.lastSpeed).toBe(1.75);
+    expect(config.settings.siteRules).toEqual([]);
+    expect(config.settings.siteDefaultSpeed).toBeNull();
+
+    getSpy.mockRestore();
+  });
+
+  it('treats a null bridge initialSpeed as no authority', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    const getSpy = vi.spyOn(window.VSC.StorageManager, 'get').mockResolvedValue({
+      initialSpeed: null,
+      rememberSpeed: true,
+      keyBindings: window.VSC.Constants.DEFAULT_SETTINGS.keyBindings,
+      customCSS: '',
+      controllerOpacity: 0.3,
+      controllerButtonSize: 14,
+      startHidden: false,
+      audioBoolean: true,
+      exclusiveKeys: false,
+      logLevel: 3,
+      lastSpeed: 2.9,
+      siteRules: [{ pattern: 'localhost', enabled: true, speed: 3.0 }],
+    });
+
+    await config.load();
+
+    expect(config.settings.lastSpeed).toBeNull();
+    expect(config.settings.siteDefaultSpeed).toBeNull();
+
+    getSpy.mockRestore();
+  });
 });

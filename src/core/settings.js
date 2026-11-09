@@ -89,6 +89,23 @@ if (!window.VSC.VideoSpeedConfig) {
           await this.save({ keyBindings: this.settings.keyBindings });
         }
 
+        // Page context receives only a resolved initial speed from the bridge;
+        // raw site rules and stored lastSpeed stay in the isolated world.
+        // Adapt it to the site-rule shape the loader below already understands.
+        const hasBridgeInitialSpeed = Object.prototype.hasOwnProperty.call(storage, 'initialSpeed');
+        if (hasBridgeInitialSpeed) {
+          const initialSpeed =
+            typeof storage.initialSpeed === 'number' && Number.isFinite(storage.initialSpeed)
+              ? storage.initialSpeed
+              : null;
+          storage.siteRules =
+            initialSpeed === null
+              ? []
+              : [{ pattern: window.location.href, enabled: true, speed: initialSpeed }];
+          storage.lastSpeed = initialSpeed;
+          delete storage.blacklist;
+        }
+
         // Migrate legacy blacklist → siteRules (one-shot)
         if (storage.blacklist !== null && storage.blacklist !== undefined && !storage.siteRules) {
           const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
@@ -157,6 +174,11 @@ if (!window.VSC.VideoSpeedConfig) {
           this.settings.lastSpeed = Number(storage.lastSpeed) || null;
         } else {
           this.settings.lastSpeed = null;
+        }
+        if (hasBridgeInitialSpeed) {
+          // Page context only received the resolved value, not the rules.
+          this.settings.siteRules = [];
+          this.settings.siteDefaultSpeed = null;
         }
         this.settings.exclusiveKeys = Boolean(storage.exclusiveKeys);
         this.settings.audioBoolean = Boolean(storage.audioBoolean);

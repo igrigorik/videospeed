@@ -18,28 +18,32 @@ import {
   cleanupChromeMock,
   resetMockStorage,
   getMockStorage,
+  getMockLocalStorage,
 } from '../../helpers/chrome-mock.js';
 
 const docEl = document.documentElement;
 
 // --- Minimal test infrastructure ---
 
-/** MV3 bridge uses `await chrome.storage.sync.get(null)` — wrap callback mock. */
+/** MV3 bridge uses promise-based storage APIs — wrap callback mock. */
 function promisifyChromeMock() {
-  const origGet = globalThis.chrome.storage.sync.get;
-  globalThis.chrome.storage.sync.get = (keys, callback) => {
-    if (typeof callback === 'function') {
-      return origGet(keys, callback);
-    }
-    return new Promise((resolve) => origGet(keys, resolve));
-  };
-  const origSet = globalThis.chrome.storage.sync.set;
-  globalThis.chrome.storage.sync.set = (items, callback) => {
-    if (typeof callback === 'function') {
-      return origSet(items, callback);
-    }
-    return new Promise((resolve) => origSet(items, resolve));
-  };
+  for (const area of ['sync', 'local']) {
+    const store = globalThis.chrome.storage[area];
+    const origGet = store.get;
+    store.get = (keys, callback) => {
+      if (typeof callback === 'function') {
+        return origGet(keys, callback);
+      }
+      return new Promise((resolve) => origGet(keys, resolve));
+    };
+    const origSet = store.set;
+    store.set = (items, callback) => {
+      if (typeof callback === 'function') {
+        return origSet(items, callback);
+      }
+      return new Promise((resolve) => origSet(items, resolve));
+    };
+  }
 }
 
 /** Track docEl listeners so afterEach can clean up bridge-registered ones. */
@@ -233,13 +237,17 @@ describe('content-bridge', () => {
 
       await requestSettings();
       expect(events).toHaveLength(1);
-      expect(events[0].detail.settings.lastSpeed).toBe(2.5);
+      expect(events[0].detail.settings.initialSpeed).toBe(2.5);
+      expect(events[0].detail.settings.lastSpeed).toBeUndefined();
       expect(events[0].detail.settings.rememberSpeed).toBe(true);
     });
 
-    it('strips sensitive keys, passes customCSS, includes hostname', async () => {
+    it('sends only the functional allowlist; raw storage keys never cross', async () => {
       getMockStorage().blacklist = 'some.site';
       getMockStorage().enabled = true;
+      getMockStorage().siteRules = [{ pattern: 'localhost', enabled: true, speed: 2.3 }];
+      getMockStorage().lastSpeed = 2.5;
+      getMockStorage().rememberSpeed = true;
       getMockStorage().customCSS = 'vsc-controller { top: 42px; }';
       await loadBridge();
 
@@ -249,12 +257,44 @@ describe('content-bridge', () => {
       await requestSettings();
 
       const { settings, hostname } = events[0].detail;
-      // Stripped from settings
+      // Raw storage and lifecycle keys are not part of the page-visible payload.
       expect(settings.blacklist).toBeUndefined();
       expect(settings.enabled).toBeUndefined();
-      // customCSS passes through (inject.js reads it from config.settings)
+      expect(settings.siteRules).toBeUndefined();
+      expect(settings.lastSpeed).toBeUndefined();
+      expect(settings.schemaVersion).toBeUndefined();
+      // The resolved starting speed is sent instead.
+      expect(settings.initialSpeed).toBe(2.3);
+      // Functional settings still pass through.
       expect(settings.customCSS).toBe('vsc-controller { top: 42px; }');
-      expect(typeof hostname).toBe('string');
+      expect(settings.rememberSpeed).toBe(true);
+      expect(hostname).toBeUndefined();
+    });
+
+    it('prefers this origin remembered speed over the global value', async () => {
+      getMockStorage().rememberSpeed = true;
+      getMockStorage().lastSpeed = 1.1;
+      getMockLocalStorage()[`vsc:lastSpeed:${location.origin}`] = 1.8;
+      await loadBridge();
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+      await requestSettings();
+
+      expect(events[0].detail.settings.initialSpeed).toBe(1.8);
+    });
+
+    it('ignores another origin remembered speed', async () => {
+      getMockStorage().rememberSpeed = true;
+      getMockStorage().lastSpeed = 1.1;
+      getMockLocalStorage()['vsc:lastSpeed:https://other.example'] = 2.9;
+      await loadBridge();
+
+      const { events, cleanup } = collectEvents('VSC_SETTINGS_READY');
+      eventCleanup = cleanup;
+      await requestSettings();
+
+      expect(events[0].detail.settings.initialSpeed).toBe(1.1);
     });
 
     it('does not lose a request while the initial storage read is pending', async () => {
@@ -273,11 +313,12 @@ describe('content-bridge', () => {
       docEl.dispatchEvent(new CustomEvent('VSC_REQUEST_SETTINGS'));
       expect(events).toHaveLength(0);
 
-      resolveSettings({ ...getMockStorage(), lastSpeed: 2.5 });
-      await vi.advanceTimersByTimeAsync(0);
+      resolveSettings({ ...getMockStorage(), lastSpeed: 2.5, rememberSpeed: true });
+      await vi.advanceTimersByTimeAsync(20);
 
       expect(events).toHaveLength(1);
-      expect(events[0].detail.settings.lastSpeed).toBe(2.5);
+      expect(events[0].detail.settings.initialSpeed).toBe(2.5);
+      expect(events[0].detail.settings.lastSpeed).toBeUndefined();
     });
 
     it('keeps a pre-handshake disable sticky across rapid re-enable', async () => {
@@ -303,7 +344,7 @@ describe('content-bridge', () => {
       onChanged({ enabled: { oldValue: true, newValue: false } }, 'sync');
       onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
       resolveSettings({ ...getMockStorage(), enabled: true });
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(20);
 
       expect(events.some((event) => event.detail?.type === 'VSC_TEARDOWN')).toBe(true);
       expect(events.find((event) => event.type === 'VSC_SETTINGS_READY')?.detail).toEqual({
@@ -329,56 +370,91 @@ describe('content-bridge', () => {
   });
 
   // =========================================================================
-  // Trust boundary — only lastSpeed writable from MAIN world
+  // Trust boundary — page-originated writes are per-origin and throttled
   // =========================================================================
 
   describe('VSC_WRITE_STORAGE trust boundary', () => {
-    it('writes valid lastSpeed to chrome.storage and clamps to range', async () => {
+    const rememberedSpeed = () => getMockLocalStorage()[`vsc:lastSpeed:${location.origin}`];
+
+    it('writes valid lastSpeed to per-origin local storage and clamps to range', async () => {
+      getMockStorage().rememberSpeed = true;
       await loadBridge();
-      const storage = getMockStorage();
       await requestSettings();
 
       // Valid speed
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
       await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(2.5);
+      expect(rememberedSpeed()).toBe(2.5);
 
       // Clamped to min (0.07)
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 0.01 } }));
-      await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(0.07);
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBe(0.07);
 
       // Clamped to max (16)
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 99 } }));
-      await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(16);
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBe(16);
+
+      // Never written to sync storage (no cross-site identifier).
+      expect(getMockStorage().lastSpeed).toBe(1.0);
     });
 
     it('rejects invalid speed values and non-speed keys', async () => {
+      getMockStorage().rememberSpeed = true;
       await loadBridge();
-      const storage = getMockStorage();
-      const originalSpeed = storage.lastSpeed;
       await requestSettings();
 
       // Non-number
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 'fast' } }));
-      await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(originalSpeed);
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBeUndefined();
 
       // NaN
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: NaN } }));
-      await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(originalSpeed);
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBeUndefined();
 
       // Non-lastSpeed key (trust boundary)
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { startHidden: true } }));
-      await vi.advanceTimersByTimeAsync(20);
-      expect(storage.startHidden).toBe(false); // unchanged from default
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(getMockStorage().startHidden).toBe(false); // unchanged from default
 
       // Null detail
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: null }));
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBeUndefined();
+    });
+
+    it('does not persist page-originated speed when rememberSpeed is off', async () => {
+      getMockStorage().rememberSpeed = false;
+      await loadBridge();
+      await requestSettings();
+
+      docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
+      await vi.advanceTimersByTimeAsync(1100);
+
+      expect(rememberedSpeed()).toBeUndefined();
+    });
+
+    it('coalesces rapid writes instead of issuing one storage write per event', async () => {
+      getMockStorage().rememberSpeed = true;
+      await loadBridge();
+      await requestSettings();
+
+      for (const speed of [1.1, 1.2, 1.3, 1.4]) {
+        docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: speed } }));
+      }
       await vi.advanceTimersByTimeAsync(20);
-      expect(storage.lastSpeed).toBe(originalSpeed);
+      expect(rememberedSpeed()).toBe(1.4);
+
+      // Subsequent events inside the throttle window are coalesced to the last
+      // value once the window opens.
+      for (const speed of [1.5, 1.6, 1.7]) {
+        docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: speed } }));
+      }
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(rememberedSpeed()).toBe(1.7);
     });
   });
 
@@ -401,9 +477,8 @@ describe('content-bridge', () => {
     });
 
     it('stays inactive after re-enable until the page reloads', async () => {
+      getMockStorage().rememberSpeed = true;
       const onChanged = await loadBridge();
-      const storage = getMockStorage();
-      const originalSpeed = storage.lastSpeed;
       const { events, cleanup } = collectEvents('VSC_MESSAGE');
       eventCleanup = cleanup;
 
@@ -411,10 +486,10 @@ describe('content-bridge', () => {
       onChanged({ enabled: { oldValue: true, newValue: false } }, 'sync');
       onChanged({ enabled: { oldValue: false, newValue: true } }, 'sync');
       docEl.dispatchEvent(new CustomEvent('VSC_WRITE_STORAGE', { detail: { lastSpeed: 2.5 } }));
-      await vi.advanceTimersByTimeAsync(20);
+      await vi.advanceTimersByTimeAsync(1100);
 
       expect(events.map((event) => event.detail?.type)).toEqual(['VSC_TEARDOWN']);
-      expect(storage.lastSpeed).toBe(originalSpeed);
+      expect(getMockLocalStorage()[`vsc:lastSpeed:${location.origin}`]).toBeUndefined();
     });
 
     it('does NOT teardown on blacklist changes (takes effect on reload)', async () => {
@@ -462,26 +537,29 @@ describe('content-bridge', () => {
   // =========================================================================
 
   describe('storage relay', () => {
-    it('relays storage changes to MAIN world, filtering out sensitive keys', async () => {
+    it('relays only functional settings to MAIN world', async () => {
       const onChanged = await loadBridge();
       const { events, cleanup } = collectEvents('VSC_STORAGE_CHANGED');
       eventCleanup = cleanup;
       await requestSettings();
 
-      // Mixed change: lastSpeed (should relay) + enabled (should filter)
       onChanged(
         {
           lastSpeed: { oldValue: 1.0, newValue: 2.0 },
+          siteRules: { oldValue: [], newValue: [{ pattern: 'localhost', enabled: false }] },
           enabled: { oldValue: true, newValue: true },
           blacklist: { oldValue: '', newValue: '' },
+          customCSS: { oldValue: '', newValue: 'vsc-controller { top: 4px; }' },
         },
         'sync'
       );
 
       expect(events).toHaveLength(1);
-      expect(events[0].detail.lastSpeed).toBeDefined();
+      expect(events[0].detail.lastSpeed).toBeUndefined();
+      expect(events[0].detail.siteRules).toBeUndefined();
       expect(events[0].detail.enabled).toBeUndefined();
       expect(events[0].detail.blacklist).toBeUndefined();
+      expect(events[0].detail.customCSS.newValue).toBe('vsc-controller { top: 4px; }');
     });
   });
 

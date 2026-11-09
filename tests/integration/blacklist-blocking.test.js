@@ -60,27 +60,26 @@ describe('BlacklistBlocking', () => {
     expect(mockVideo.vsc).toBeDefined();
   });
 
-  it('Settings passed to page context should not contain blacklist or enabled', async () => {
-    const fullSettings = {
-      lastSpeed: 1.5,
-      enabled: true,
-      blacklist: 'youtube.com\nnetflix.com',
+  it('Page-context settings are an allowlist with a resolved initial speed', async () => {
+    // The bridge resolves site rules/remembered speed and sends only the
+    // functional settings MAIN needs. Raw storage keys never cross.
+    const settingsForPage = {
+      initialSpeed: 1.5,
       rememberSpeed: true,
       audioBoolean: true,
       startHidden: false,
       controllerOpacity: 0.3,
       controllerButtonSize: 14,
       keyBindings: [],
+      customCSS: '',
       logLevel: 3,
     };
 
-    const settingsForPage = { ...fullSettings };
-    delete settingsForPage.blacklist;
-    delete settingsForPage.enabled;
-
     expect(settingsForPage.blacklist).toBe(undefined);
     expect(settingsForPage.enabled).toBe(undefined);
-    expect(settingsForPage.lastSpeed).toBe(1.5);
+    expect(settingsForPage.siteRules).toBe(undefined);
+    expect(settingsForPage.lastSpeed).toBe(undefined);
+    expect(settingsForPage.initialSpeed).toBe(1.5);
     expect(settingsForPage.rememberSpeed).toBe(true);
     expect(settingsForPage.keyBindings.length).toBe(0);
   });
