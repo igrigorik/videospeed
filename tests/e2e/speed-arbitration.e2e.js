@@ -55,6 +55,7 @@ export default async function runSpeedArbitrationE2ETests() {
       const extensionPage = await getStoragePage();
       return extensionPage.evaluate(async (lastSpeed) => {
         await new Promise((resolve) => chrome.storage.sync.clear(resolve));
+        await new Promise((resolve) => chrome.storage.local.clear(resolve));
         await new Promise((resolve) =>
           chrome.storage.sync.set(
             { enabled: true, rememberSpeed: true, lastSpeed, siteRules: [] },
@@ -68,7 +69,12 @@ export default async function runSpeedArbitrationE2ETests() {
       return extensionPage.evaluate(
         () =>
           new Promise((resolve) =>
-            chrome.storage.sync.get('lastSpeed', ({ lastSpeed }) => resolve(lastSpeed))
+            chrome.storage.local.get(null, (items) => {
+              // Page-originated speed is stored per origin; the file: fixture
+              // uses the opaque "null" origin.
+              const key = Object.keys(items).find((name) => name.startsWith('vsc:lastSpeed:'));
+              resolve(key ? items[key] : undefined);
+            })
           )
       );
     };

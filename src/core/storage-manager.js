@@ -114,7 +114,9 @@ if (!window.VSC.StorageManager) {
         });
       }
 
-      // Only lastSpeed can cross the trust boundary to chrome.storage
+      // Only lastSpeed can cross the bridge. The bridge scopes it to this
+      // top-level site and persists it locally (see content-bridge.js); it is
+      // not a channel for arbitrary extension-storage writes.
       const keys = Object.keys(data);
       if (keys.length === 1 && keys[0] === 'lastSpeed') {
         const speed = data.lastSpeed;
@@ -186,7 +188,26 @@ if (!window.VSC.StorageManager) {
               reject(error);
               return;
             }
-            resolve();
+
+            // Per-origin remembered speeds live in local storage; a reset or
+            // import must remove them too, otherwise stale speeds survive and
+            // override the new settings.
+            chrome.storage.local.clear(() => {
+              if (chrome.runtime.lastError) {
+                const error = new Error(
+                  `Storage clear failed: ${chrome.runtime.lastError.message}`
+                );
+                window.VSC.logger?.error?.(
+                  `Chrome local storage clear failed: ${chrome.runtime.lastError.message}`
+                );
+                if (this.errorCallback) {
+                  this.errorCallback(error, { operation: 'clear' });
+                }
+                reject(error);
+                return;
+              }
+              resolve();
+            });
           });
         });
       }

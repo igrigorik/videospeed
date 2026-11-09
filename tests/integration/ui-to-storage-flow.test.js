@@ -3,7 +3,13 @@
  * Tests the complete path from user interactions to storage persistence
  */
 
-import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../helpers/chrome-mock.js';
+import {
+  installChromeMock,
+  cleanupChromeMock,
+  resetMockStorage,
+  getMockStorage,
+  getMockLocalStorage,
+} from '../helpers/chrome-mock.js';
 import { createMockVideo, createMockDOM } from '../helpers/test-utils.js';
 
 // Load all required modules
@@ -218,5 +224,15 @@ describe('UIToStorageFlow', () => {
     expect(mockVideo.playbackRate).toBe(0.07);
     expect(controller.speedIndicator.textContent).toBe('0.07');
     expect(config.settings.lastSpeed).toBe(0.07);
+  });
+
+  it('clear removes sync settings and per-site local speeds', async () => {
+    getMockStorage().lastSpeed = 2;
+    getMockLocalStorage()['vsc:lastSpeed:https://example.com'] = 2;
+
+    await window.VSC.StorageManager.clear();
+
+    expect(getMockStorage().lastSpeed).toBeUndefined();
+    expect(Object.keys(getMockLocalStorage())).toHaveLength(0);
   });
 });
