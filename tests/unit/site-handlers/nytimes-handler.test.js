@@ -72,4 +72,31 @@ describe('NYTimesHandler', () => {
     vi.stubGlobal('location', { hostname: 'example.com' });
     expect(manager.shouldIgnoreVideo(betamaxVideo())).toBe(true);
   });
+
+  it('surfaces betamax videos to the light scan even when light-DOM audio exists', () => {
+    vi.stubGlobal('location', { hostname: 'www.nytimes.com' });
+    document.body.appendChild(document.createElement('audio'));
+    const video = betamaxVideo();
+
+    const observer = new window.VSC.MediaElementObserver(
+      { settings: { audioBoolean: true } },
+      manager
+    );
+    const found = observer.scanForMediaLight(document);
+
+    expect(found).toContain(video);
+  });
+
+  it('finds betamax videos nested in the video feed shadow root', () => {
+    vi.stubGlobal('location', { hostname: 'www.nytimes.com' });
+    const feed = document.createElement('nyt-video-feed');
+    const feedRoot = feed.attachShadow({ mode: 'open' });
+    const host = document.createElement('nyt-betamax');
+    const video = gifLikeVideo();
+    host.attachShadow({ mode: 'open' }).appendChild(video);
+    feedRoot.appendChild(host);
+    document.body.appendChild(feed);
+
+    expect(manager.detectSpecialVideos(document)).toEqual([video]);
+  });
 });
