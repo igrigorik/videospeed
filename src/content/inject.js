@@ -474,7 +474,7 @@ class VideoSpeedExtension {
     const message = event.detail;
 
     // Handle namespaced VSC message types
-    if (typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
+    if (message && typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
       // Use state manager for complete media element discovery (includes shadow DOM)
       const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
 
