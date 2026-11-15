@@ -11,7 +11,7 @@ class VideoMutationObserver {
     this.onVideoRemoved = onVideoRemoved;
     this.mediaObserver = mediaObserver;
     this.observer = null;
-    this.shadowObservers = new Set();
+    this.shadowObservers = new Map();
   }
 
   /**
@@ -261,7 +261,7 @@ class VideoMutationObserver {
     };
 
     shadowObserver.observe(shadowRoot, observerOptions);
-    this.shadowObservers.add(shadowRoot);
+    this.shadowObservers.set(shadowRoot, shadowObserver);
 
     window.VSC.logger.debug('Shadow root observer added');
   }
@@ -285,10 +285,9 @@ class VideoMutationObserver {
     }
 
     // Clean up shadow observers
-    this.shadowObservers.forEach((_shadowRoot) => {
-      // Note: We can't access the observer directly, but disconnecting the main
-      // observer should handle most cases. Shadow observers will be garbage collected.
-    });
+    for (const shadowObserver of this.shadowObservers.values()) {
+      shadowObserver.disconnect();
+    }
     this.shadowObservers.clear();
 
     window.VSC.logger.debug('Video mutation observer stopped');
