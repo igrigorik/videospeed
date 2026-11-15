@@ -14,6 +14,7 @@ class SiteHandlerManager {
       window.VSC.AmazonHandler,
       window.VSC.AppleHandler,
       window.VSC.DailymotionHandler,
+      window.VSC.NYTimesHandler,
       window.VSC.FrameHandler,
     ];
   }
@@ -102,7 +103,13 @@ class SiteHandlerManager {
     // Sites like Telegram, X, Imgur serve animated stickers/GIFs as <video
     // autoplay loop muted> elements. Showing a speed overlay on these is
     // visually noisy and not useful.
-    if (video.tagName === 'VIDEO' && video.loop && video.muted && !video.controls) {
+    if (
+      video.tagName === 'VIDEO' &&
+      video.loop &&
+      video.muted &&
+      !video.controls &&
+      !handler.allowsGifLikeVideo(video)
+    ) {
       window.VSC.logger.debug('Video ignored: gif-video pattern (loop + muted + no controls)');
       return true;
     }

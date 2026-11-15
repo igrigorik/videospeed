@@ -100,6 +100,16 @@ class BaseSiteHandler {
   }
 
   /**
+   * Exempt a video from the generic gif-video filter (loop + muted + no
+   * controls) when the site's real player uses that markup.
+   * @param {HTMLMediaElement} _video - Video element
+   * @returns {boolean} True if the video is a real player video
+   */
+  allowsGifLikeVideo(_video) {
+    return false;
+  }
+
+  /**
    * Resolve a page gesture to exactly one controlled media element.
    *
    * Return null unless a site-specific player relationship is unambiguous.
