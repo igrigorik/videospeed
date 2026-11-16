@@ -282,6 +282,36 @@ describe('Inject', () => {
     }
   });
 
+  it('ignores a command that arrives before startup has finished', () => {
+    extension = window.VSC_controller;
+    const previousActionHandler = extension.actionHandler;
+    const errors = [];
+    const onError = (event) => errors.push(event.error);
+    window.addEventListener('error', onError);
+
+    try {
+      // The bridge is live from the handshake on, but the action handler is
+      // only created in the idle callback that finishes startup.
+      extension.actionHandler = null;
+
+      for (const type of ['SET_SPEED', 'ADJUST_SPEED', 'RESET_SPEED', 'TOGGLE_DISPLAY']) {
+        document.documentElement.dispatchEvent(
+          new CustomEvent('VSC_MESSAGE', {
+            detail: {
+              type: window.VSC.Constants.MESSAGE_TYPES[type],
+              payload: { speed: 2, delta: 0.1 },
+            },
+          })
+        );
+      }
+
+      expect(errors).toEqual([]);
+    } finally {
+      window.removeEventListener('error', onError);
+      extension.actionHandler = previousActionHandler;
+    }
+  });
+
   // --- CSS injection: adoptedStyleSheets composition ---
 
   /** Helper: reset extension CSS state so injectControllerCSS can re-run. */

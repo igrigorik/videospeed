@@ -816,12 +816,12 @@ async function restore_options() {
     document.getElementById('logLevel').value = storage.logLevel;
     document.getElementById('controllerCSS').value = storage.customCSS ?? '';
 
-    // Render site rules
-    const siteRules = storage.siteRules || window.VSC.Constants.DEFAULT_SETTINGS.siteRules;
+    // Render the site rules in force: saved rules, a legacy blacklist, or the
+    // defaults — the same list the content bridge enforces.
     const rulesContainer = document.getElementById('site-rules-container');
     // Clear existing rule rows but keep the header
     rulesContainer.querySelectorAll('.row.site-rule').forEach((r) => r.remove());
-    for (const rule of siteRules) {
+    for (const rule of storage.siteRules) {
       add_site_rule(rule);
     }
 

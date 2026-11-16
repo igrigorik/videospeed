@@ -475,6 +475,16 @@ class VideoSpeedExtension {
 
     // Handle namespaced VSC message types
     if (message && typeof message === 'object' && message.type && message.type.startsWith('VSC_')) {
+      // Every command but teardown acts through the action handler, which
+      // exists only once startup has finished. A command that arrives earlier
+      // has nothing to act on.
+      if (
+        !extension.actionHandler &&
+        message.type !== window.VSC.Constants.MESSAGE_TYPES.TEARDOWN
+      ) {
+        return;
+      }
+
       // Use state manager for complete media element discovery (includes shadow DOM)
       const videos = window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
 
@@ -543,9 +553,7 @@ class VideoSpeedExtension {
         }
 
         case window.VSC.Constants.MESSAGE_TYPES.TOGGLE_DISPLAY:
-          if (extension.actionHandler) {
-            extension.actionHandler.runAction('display', null, null);
-          }
+          extension.actionHandler.runAction('display', null, null);
           break;
 
         case window.VSC.Constants.MESSAGE_TYPES.TEARDOWN:

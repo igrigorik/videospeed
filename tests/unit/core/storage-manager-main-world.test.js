@@ -34,10 +34,6 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
     // Remove chrome mock so hasChrome evaluates false on re-import
     delete globalThis.chrome;
 
-    // Clear local caches the module may inspect/write
-    delete window.VSC_settings;
-    delete window.VSC_settingsLatch;
-
     // Force vitest to re-evaluate the module file
     vi.resetModules();
     await import('../../../src/core/storage-manager.js');
@@ -57,36 +53,35 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
     vi.useRealTimers();
   });
 
-  // ---------------------------------------------------------------------------
-  // GET
-  // ---------------------------------------------------------------------------
-  describe('get()', () => {
-    it('fires VSC_REQUEST_SETTINGS and resolves on VSC_SETTINGS_READY', async () => {
-      const bridgedSettings = { lastSpeed: 1.5, rememberSpeed: true };
+  it('reports that storage is reached through the bridge', () => {
+    expect(StorageManager.isBridged).toBe(true);
+  });
 
-      // Simulate bridge: respond to request with settings
+  // ---------------------------------------------------------------------------
+  // REQUEST RUNTIME SETTINGS
+  // ---------------------------------------------------------------------------
+  describe('requestRuntimeSettings()', () => {
+    /** Play the bridge: answer the next settings request with `detail`. */
+    function answerWith(detail) {
       const responder = () => {
-        docEl.dispatchEvent(
-          new CustomEvent('VSC_SETTINGS_READY', {
-            detail: { settings: bridgedSettings },
-          })
-        );
+        docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail }));
       };
-      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder);
+      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder, { once: true });
+    }
 
-      const result = await StorageManager.get({ lastSpeed: 1.0 });
+    it('fires VSC_REQUEST_SETTINGS and resolves with what the bridge sends', async () => {
+      const settings = { initialSpeed: 1.5, rememberSpeed: true };
+      answerWith({ settings });
 
-      expect(result.lastSpeed).toBe(1.5);
-      expect(result.rememberSpeed).toBe(true);
-
-      docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
+      // As received: the bridge already resolved defaults, so none are added.
+      await expect(StorageManager.requestRuntimeSettings()).resolves.toEqual(settings);
     });
 
     it('fails closed on 2s timeout', async () => {
       vi.useFakeTimers();
 
       // No responder installed — settings authorization is unknown.
-      const promise = StorageManager.get({ lastSpeed: 1.0, enabled: true });
+      const promise = StorageManager.requestRuntimeSettings();
 
       await vi.advanceTimersByTimeAsync(2100);
 
@@ -94,44 +89,14 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
     });
 
     it.each([
+      ['an abort', { abort: true }],
       ['no detail', undefined],
       ['no settings object', {}],
       ['array settings', { settings: [] }],
     ])('fails closed when the bridge response has %s', async (_label, detail) => {
-      const responder = () => {
-        docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail }));
-      };
-      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder);
+      answerWith(detail);
 
-      await expect(StorageManager.get({ lastSpeed: 1.0 })).resolves.toBeNull();
-
-      docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
-    });
-
-    it('merges defaults with received settings', async () => {
-      const responder = () => {
-        docEl.dispatchEvent(
-          new CustomEvent('VSC_SETTINGS_READY', {
-            detail: { settings: { lastSpeed: 2.0 } },
-          })
-        );
-      };
-      docEl.addEventListener('VSC_REQUEST_SETTINGS', responder);
-
-      // Pass defaults that include keys NOT in bridged settings
-      const result = await StorageManager.get({
-        lastSpeed: 1.0,
-        enabled: true,
-        controllerOpacity: 0.3,
-      });
-
-      // Bridged value overrides default
-      expect(result.lastSpeed).toBe(2.0);
-      // Defaults fill in missing keys
-      expect(result.enabled).toBe(true);
-      expect(result.controllerOpacity).toBe(0.3);
-
-      docEl.removeEventListener('VSC_REQUEST_SETTINGS', responder);
+      await expect(StorageManager.requestRuntimeSettings()).resolves.toBeNull();
     });
   });
 
@@ -171,17 +136,6 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
       delete window.VSC.logger;
     });
 
-    it('updates window.VSC_settings cache regardless of key', async () => {
-      window.VSC_settings = { lastSpeed: 1.0 };
-
-      // Non-bridgeable key should still update the in-memory cache
-      await StorageManager.set({ enabled: false });
-
-      expect(window.VSC_settings.enabled).toBe(false);
-      // Original key preserved
-      expect(window.VSC_settings.lastSpeed).toBe(1.0);
-    });
-
     it('handles non-number lastSpeed gracefully (no dispatch)', async () => {
       const dispatched = vi.fn();
       docEl.addEventListener('VSC_WRITE_STORAGE', dispatched);
@@ -194,9 +148,6 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
 
       expect(dispatched).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('invalid lastSpeed'));
-
-      // Cache should still update (keeps in-memory state consistent)
-      expect(window.VSC_settings.lastSpeed).toBe('fast');
 
       docEl.removeEventListener('VSC_WRITE_STORAGE', dispatched);
       delete window.VSC.logger;
@@ -212,52 +163,12 @@ describe('StorageManager — MAIN world (CustomEvent paths)', () => {
       StorageManager.onChanged(callback);
 
       const changes = {
-        lastSpeed: { oldValue: 1.0, newValue: 2.0 },
+        startHidden: { newValue: true },
       };
       docEl.dispatchEvent(new CustomEvent('VSC_STORAGE_CHANGED', { detail: changes }));
 
       expect(callback).toHaveBeenCalledOnce();
       expect(callback).toHaveBeenCalledWith(changes);
-    });
-
-    it('updates window.VSC_settings cache from changes', () => {
-      const callback = vi.fn();
-      StorageManager.onChanged(callback);
-
-      window.VSC_settings = { lastSpeed: 1.0 };
-
-      const changes = {
-        lastSpeed: { oldValue: 1.0, newValue: 3.0 },
-        rememberSpeed: { oldValue: false, newValue: true },
-      };
-      docEl.dispatchEvent(new CustomEvent('VSC_STORAGE_CHANGED', { detail: changes }));
-
-      expect(window.VSC_settings.lastSpeed).toBe(3.0);
-      expect(window.VSC_settings.rememberSpeed).toBe(true);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // REMOVE / CLEAR
-  // ---------------------------------------------------------------------------
-  describe('remove() / clear()', () => {
-    it('remove() clears keys from local cache', async () => {
-      window.VSC_settings = { lastSpeed: 2.0, enabled: true, rememberSpeed: false };
-
-      await StorageManager.remove(['lastSpeed', 'rememberSpeed']);
-
-      expect(window.VSC_settings.lastSpeed).toBeUndefined();
-      expect(window.VSC_settings.rememberSpeed).toBeUndefined();
-      // Untouched key remains
-      expect(window.VSC_settings.enabled).toBe(true);
-    });
-
-    it('clear() empties local cache', async () => {
-      window.VSC_settings = { lastSpeed: 2.0, enabled: true, rememberSpeed: false };
-
-      await StorageManager.clear();
-
-      expect(window.VSC_settings).toEqual({});
     });
   });
 });

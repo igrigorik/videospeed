@@ -1,10 +1,4 @@
-// Message type constants
-const MessageTypes = {
-  SET_SPEED: 'VSC_SET_SPEED',
-  ADJUST_SPEED: 'VSC_ADJUST_SPEED',
-  RESET_SPEED: 'VSC_RESET_SPEED',
-  TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
-};
+import { MESSAGE_TYPES } from '../../utils/messages.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Load settings and initialize speed controls
@@ -145,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, {
-          type: MessageTypes.SET_SPEED,
+          type: MESSAGE_TYPES.SET_SPEED,
           payload: { speed: speed },
         });
       }
@@ -156,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, {
-          type: MessageTypes.ADJUST_SPEED,
+          type: MESSAGE_TYPES.ADJUST_SPEED,
           payload: { delta: delta },
         });
       }

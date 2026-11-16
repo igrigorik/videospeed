@@ -3,7 +3,11 @@
  * Tests regex patterns with and without flags
  */
 
-import { isBlacklisted } from '../../../src/utils/blacklist.js';
+import { matchSiteRule, selectSiteRules } from '../../../src/utils/site-pattern.js';
+
+/** Whether a legacy blacklist disables `href`, resolved the way the bridge does. */
+const isBlacklisted = (blacklist, href) =>
+  matchSiteRule(selectSiteRules({ blacklist }), href) !== null;
 
 describe('Blacklist Regex', () => {
   describe('should parse regex patterns WITHOUT flags', () => {

@@ -5,7 +5,12 @@
 
 import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../helpers/chrome-mock.js';
 import { createMockVideo, createMockDOM } from '../helpers/test-utils.js';
-import { isBlacklisted } from '../../src/utils/blacklist.js';
+import { matchSiteRule, selectSiteRules } from '../../src/utils/site-pattern.js';
+
+/** Whether a legacy blacklist disables `href`, resolved the way the bridge does. */
+const isBlacklisted = (blacklist, href) =>
+  matchSiteRule(selectSiteRules({ blacklist }), href) !== null;
+
 describe('BlacklistBlocking', () => {
   let mockDOM;
 
@@ -58,31 +63,6 @@ describe('BlacklistBlocking', () => {
 
     mockVideo.vsc = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
     expect(mockVideo.vsc).toBeDefined();
-  });
-
-  it('Settings passed to page context should not contain blacklist or enabled', async () => {
-    const fullSettings = {
-      lastSpeed: 1.5,
-      enabled: true,
-      blacklist: 'youtube.com\nnetflix.com',
-      rememberSpeed: true,
-      audioBoolean: true,
-      startHidden: false,
-      controllerOpacity: 0.3,
-      controllerButtonSize: 14,
-      keyBindings: [],
-      logLevel: 3,
-    };
-
-    const settingsForPage = { ...fullSettings };
-    delete settingsForPage.blacklist;
-    delete settingsForPage.enabled;
-
-    expect(settingsForPage.blacklist).toBe(undefined);
-    expect(settingsForPage.enabled).toBe(undefined);
-    expect(settingsForPage.lastSpeed).toBe(1.5);
-    expect(settingsForPage.rememberSpeed).toBe(true);
-    expect(settingsForPage.keyBindings.length).toBe(0);
   });
 
   it('Default disabled sites exclude Instagram and stay aligned across schemas', () => {

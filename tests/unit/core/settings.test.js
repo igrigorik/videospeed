@@ -7,6 +7,7 @@ import {
   installChromeMock,
   cleanupChromeMock,
   resetMockStorage,
+  getMockStorage,
 } from '../../helpers/chrome-mock.js';
 import { vi } from 'vitest';
 
@@ -205,52 +206,13 @@ describe('Settings', () => {
     window.VSC.StorageManager.set = originalSet;
   });
 
-  // --- Site rules + speed initialization ---
-
-  it('siteDefaultSpeed is set when siteRule matches with speed', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
-    // Mock matchSiteRule to return a rule with speed
-    const original = window.VSC.matchSiteRule;
-    window.VSC.matchSiteRule = () => ({ pattern: 'test.com', enabled: true, speed: 2.3 });
-
-    await config.load();
-    expect(config.settings.siteDefaultSpeed).toBe(2.3);
-
-    window.VSC.matchSiteRule = original;
-  });
-
-  it('siteDefaultSpeed is null when siteRule matches with speed=null', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
-    const original = window.VSC.matchSiteRule;
-    window.VSC.matchSiteRule = () => ({ pattern: 'test.com', enabled: false, speed: null });
-
-    await config.load();
-    // load() resets to an explicit null before matching (sticky-state fix)
-    expect(config.settings.siteDefaultSpeed).toBeNull();
-
-    window.VSC.matchSiteRule = original;
-  });
-
-  it('siteDefaultSpeed is null when no rule matches', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
-    const original = window.VSC.matchSiteRule;
-    window.VSC.matchSiteRule = () => null;
-
-    await config.load();
-    // load() resets to an explicit null before matching (sticky-state fix)
-    expect(config.settings.siteDefaultSpeed).toBeNull();
-
-    window.VSC.matchSiteRule = original;
-  });
+  // --- Speed authority on extension pages ---
+  // A site rule's speed is resolved by the content bridge for the document it
+  // runs in (see runtime-settings.test.js). An extension page has no such
+  // document, so its authority is the remembered speed or nothing.
 
   it('lastSpeed reset to null when rememberSpeed is false', async () => {
-    // Inject lastSpeed=1.5 into mock storage
-    globalThis.chrome.storage.sync.get = (keys, callback) => {
-      setTimeout(() => {
-        const defaults = typeof keys === 'object' ? keys : {};
-        callback({ ...defaults, lastSpeed: 1.5, rememberSpeed: false });
-      }, 10);
-    };
+    Object.assign(getMockStorage(), { lastSpeed: 1.5, rememberSpeed: false });
 
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
@@ -258,37 +220,75 @@ describe('Settings', () => {
   });
 
   it('lastSpeed preserved when rememberSpeed is true', async () => {
-    globalThis.chrome.storage.sync.get = (keys, callback) => {
-      setTimeout(() => {
-        const defaults = typeof keys === 'object' ? keys : {};
-        callback({ ...defaults, lastSpeed: 1.5, rememberSpeed: true });
-      }, 10);
-    };
+    Object.assign(getMockStorage(), { lastSpeed: 1.5, rememberSpeed: true });
 
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
     expect(config.settings.lastSpeed).toBe(1.5);
   });
 
-  it('site rule speed wins over stored lastSpeed when rememberSpeed is off', async () => {
-    // Storage has lastSpeed=1.5 from a previous session, rememberSpeed=false
-    globalThis.chrome.storage.sync.get = (keys, callback) => {
-      setTimeout(() => {
-        const defaults = typeof keys === 'object' ? keys : {};
-        callback({ ...defaults, lastSpeed: 1.5, rememberSpeed: false });
-      }, 10);
-    };
+  it('lastSpeed is read back with the two decimals VSC stores', async () => {
+    Object.assign(getMockStorage(), { lastSpeed: 1.234567891234567, rememberSpeed: true });
 
     const config = new window.VSC.VideoSpeedConfig();
-    const original = window.VSC.matchSiteRule;
-    window.VSC.matchSiteRule = () => ({ pattern: 'test.com', enabled: true, speed: 2.3 });
+    await config.load();
+    expect(config.settings.lastSpeed).toBe(1.23);
+  });
 
+  it('reads preferences the way the page script will see them', async () => {
+    Object.assign(getMockStorage(), { controllerOpacity: 'opaque', logLevel: 9, startHidden: 1 });
+
+    const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
-    // Rule seeds lastSpeed as initial authority (F5 fix)
-    expect(config.settings.lastSpeed).toBe(2.3);
-    expect(config.settings.siteDefaultSpeed).toBe(2.3);
+    expect(config.settings).toMatchObject({
+      controllerOpacity: 0.3,
+      logLevel: 3,
+      startHidden: true,
+    });
+  });
 
-    window.VSC.matchSiteRule = original;
+  // --- Site rules on extension pages ---
+  // The options page shows the rules the content bridge enforces: what the
+  // user saved, under either key, else the defaults.
+
+  describe('site rules', () => {
+    const loadRules = async (stored) => {
+      const storage = getMockStorage();
+      delete storage.blacklist;
+      Object.assign(storage, stored);
+
+      const config = new window.VSC.VideoSpeedConfig();
+      await config.load();
+      return config.settings.siteRules;
+    };
+
+    it('are the defaults when nothing was ever saved', async () => {
+      expect(await loadRules({})).toEqual(window.VSC.Constants.DEFAULT_SETTINGS.siteRules);
+    });
+
+    it('are the saved rules, even an empty list', async () => {
+      const siteRules = [{ pattern: 'youtube.com', enabled: true, speed: 2 }];
+
+      expect(await loadRules({ siteRules, blacklist: 'netflix.com' })).toEqual(siteRules);
+      expect(await loadRules({ siteRules: [], blacklist: 'netflix.com' })).toEqual([]);
+    });
+
+    it('are a legacy blacklist, read as disabled rules, when no rules are saved', async () => {
+      expect(await loadRules({ blacklist: 'youtube.com\nnetflix.com' })).toEqual([
+        { pattern: 'youtube.com', enabled: false, speed: null },
+        { pattern: 'netflix.com', enabled: false, speed: null },
+      ]);
+    });
+
+    it('are not written back to storage on load', async () => {
+      const set = vi.spyOn(window.VSC.StorageManager, 'set');
+      const { keyBindings } = window.VSC.Constants.DEFAULT_SETTINGS;
+
+      await loadRules({ blacklist: 'youtube.com', keyBindings });
+
+      expect(set).not.toHaveBeenCalled();
+      set.mockRestore();
+    });
   });
 });

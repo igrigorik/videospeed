@@ -64,20 +64,12 @@ async function createLegacyWorld(init) {
   }
 
   const config = window.VSC.videoSpeedConfig;
-  // siteDefaultSpeed is sticky across load() calls (load only ever SETS it on
-  // a rule match, never clears it) — harmless in production where every page
-  // load is a fresh process, but the test singleton leaks it between
-  // scenarios and load() then nulls lastSpeed via the F5 branch.
-  config.settings.siteDefaultSpeed = null;
   await config.load();
-  // Replicate load()'s site-rule branch without depending on URL pattern
-  // matching in the jsdom environment. A rule seeds lastSpeed as initial
-  // authority (F5 fix — mirrors settings.js load()).
+  // In production the content bridge resolves a matching site rule to the
+  // initial lastSpeed (F5 fix — see resolveRuntimeSettings). Stand in for
+  // that here without depending on URL pattern matching in jsdom.
   if (init.siteRuleSpeed !== null && init.siteRuleSpeed !== undefined) {
-    config.settings.siteDefaultSpeed = init.siteRuleSpeed;
     config.settings.lastSpeed = init.siteRuleSpeed;
-  } else {
-    config.settings.siteDefaultSpeed = null;
   }
 
   const eventManager = new window.VSC.EventManager(config, null);

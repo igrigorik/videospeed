@@ -1,8 +1,12 @@
 /**
- * Unit tests for site-pattern.js — matchSiteRule() and isBlacklisted() wrapper
+ * Unit tests for site-pattern.js — matchSiteRule() and selectSiteRules()
  */
 
-import { matchSiteRule, isBlacklisted } from '../../../src/utils/site-pattern.js';
+import {
+  DEFAULT_SITE_RULES,
+  matchSiteRule,
+  selectSiteRules,
+} from '../../../src/utils/site-pattern.js';
 
 // --- matchSiteRule() ---
 
@@ -87,17 +91,57 @@ describe('SitePattern', () => {
     expect(match.extra).toBe('data');
   });
 
-  // --- isBlacklisted() backward compat ---
-
-  it('isBlacklisted still works with legacy string format', () => {
-    expect(isBlacklisted('youtube.com\nnetflix.com', 'https://youtube.com/')).toBe(true);
-    expect(isBlacklisted('youtube.com\nnetflix.com', 'https://netflix.com/')).toBe(true);
-    expect(isBlacklisted('youtube.com\nnetflix.com', 'https://example.com/')).toBe(false);
+  it('matchSiteRule skips entries that are not rules', () => {
+    const rules = [
+      null,
+      'youtube.com',
+      { pattern: 42, enabled: false, speed: null },
+      { pattern: 'youtube.com', enabled: true, speed: 1.5 },
+    ];
+    const match = matchSiteRule(rules, 'https://youtube.com/');
+    expect(match.speed).toBe(1.5);
   });
 
-  it('isBlacklisted returns false for empty/null blacklist', () => {
-    expect(isBlacklisted('', 'https://youtube.com/')).toBe(false);
-    expect(isBlacklisted(null, 'https://youtube.com/')).toBe(false);
-    expect(isBlacklisted(undefined, 'https://youtube.com/')).toBe(false);
+  // --- selectSiteRules() ---
+
+  describe('selectSiteRules', () => {
+    const saved = [{ pattern: 'youtube.com', enabled: true, speed: 2.0 }];
+
+    it('returns the saved rules', () => {
+      expect(selectSiteRules({ siteRules: saved, blacklist: 'netflix.com' })).toBe(saved);
+    });
+
+    it('treats a saved empty list as no rules, not as nothing saved', () => {
+      expect(selectSiteRules({ siteRules: [], blacklist: 'netflix.com' })).toEqual([]);
+    });
+
+    it('treats a saved empty blacklist as no rules', () => {
+      expect(selectSiteRules({ blacklist: '' })).toEqual([]);
+    });
+
+    it('reads a legacy blacklist as disabled rules when no rules are saved', () => {
+      expect(selectSiteRules({ blacklist: ' youtube.com \n\nnetflix.com\r' })).toEqual([
+        { pattern: 'youtube.com', enabled: false, speed: null },
+        { pattern: 'netflix.com', enabled: false, speed: null },
+      ]);
+    });
+
+    it.each([[null], [undefined], ['youtube.com'], [{}]])(
+      'falls back to the blacklist when siteRules is %o',
+      (siteRules) => {
+        expect(selectSiteRules({ siteRules, blacklist: 'netflix.com' })).toEqual([
+          { pattern: 'netflix.com', enabled: false, speed: null },
+        ]);
+      }
+    );
+
+    it('applies the defaults when neither rules nor a blacklist is saved', () => {
+      expect(selectSiteRules({})).toBe(DEFAULT_SITE_RULES);
+      expect(DEFAULT_SITE_RULES.map((rule) => rule.pattern)).toEqual([
+        'imgur.com',
+        'teams.microsoft.com',
+        'meet.google.com',
+      ]);
+    });
   });
 });

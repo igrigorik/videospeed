@@ -10,8 +10,16 @@ import {
   displayKeyFromCode,
   PREDEFINED_ACTIONS,
   BLACKLISTED_CODES,
-  DEFAULT_BINDINGS,
+  defaultKeyBindings,
 } from './key-maps.js';
+import { MESSAGE_TYPES } from './messages.js';
+import {
+  DEFAULT_LAST_SPEED,
+  LOG_LEVELS,
+  PREFERENCE_DEFAULTS,
+  SPEED_LIMITS,
+} from './runtime-settings.js';
+import { DEFAULT_SITE_RULES } from './site-pattern.js';
 import { DEFAULT_CONTROLLER_CSS } from '../styles/controller-css-defaults.js';
 
 window.VSC = window.VSC || {};
@@ -20,41 +28,26 @@ window.VSC.Constants = {};
 
 if (!window.VSC.Constants.DEFAULT_SETTINGS) {
   // Define constants directly first for ES6 exports
-  const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
   const regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 
   // Assign to global namespace
-  window.VSC.Constants.regStrip = regStrip;
   window.VSC.Constants.regEndsWithFlags = regEndsWithFlags;
 
   window.VSC.Constants.DEFAULT_CONTROLLER_CSS = DEFAULT_CONTROLLER_CSS;
 
   const DEFAULT_SETTINGS = {
     schemaVersion: 1,
-    lastSpeed: 1.0, // default 1x
+    lastSpeed: DEFAULT_LAST_SPEED,
     enabled: true, // default enabled
-    rememberSpeed: false, // default: false
-    exclusiveKeys: false, // default: false
-    audioBoolean: true, // default: true (enable audio controller support)
-    startHidden: false, // default: false
-    controllerOpacity: 0.3, // default: 0.3
-    controllerButtonSize: 14,
-    customCSS: '', // user's additional CSS injected alongside the built-in defaults
-    keyBindings: PREDEFINED_ACTIONS.map((action) => ({
-      action,
-      ...DEFAULT_BINDINGS[action],
-      predefined: true,
-    })),
-    siteRules: [
-      { pattern: 'imgur.com', enabled: false, speed: null },
-      { pattern: 'teams.microsoft.com', enabled: false, speed: null },
-      { pattern: 'meet.google.com', enabled: false, speed: null },
-    ],
-    blacklist: `imgur.com
-teams.microsoft.com
-meet.google.com`.replace(regStrip, ''),
+    // The preferences the page script runs on (see runtime-settings.js).
+    ...PREFERENCE_DEFAULTS,
+    // In stored form, with options-page metadata. A mutable list of its own:
+    // the runtime default is frozen, and settings code edits bindings in place.
+    keyBindings: defaultKeyBindings(),
+    siteRules: DEFAULT_SITE_RULES,
+    // The default site rules in the legacy form older synced versions read.
+    blacklist: DEFAULT_SITE_RULES.map((rule) => rule.pattern).join('\n'),
     defaultLogLevel: 4,
-    logLevel: 3,
   };
 
   window.VSC.Constants.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
@@ -67,28 +60,6 @@ meet.google.com`.replace(regStrip, ''),
   const formatSpeed = (speed) => speed.toFixed(2);
 
   window.VSC.Constants.formatSpeed = formatSpeed;
-
-  const LOG_LEVELS = {
-    NONE: 1,
-    ERROR: 2,
-    WARNING: 3,
-    INFO: 4,
-    DEBUG: 5,
-    VERBOSE: 6,
-  };
-
-  const MESSAGE_TYPES = {
-    SET_SPEED: 'VSC_SET_SPEED',
-    ADJUST_SPEED: 'VSC_ADJUST_SPEED',
-    RESET_SPEED: 'VSC_RESET_SPEED',
-    TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
-    TEARDOWN: 'VSC_TEARDOWN',
-  };
-
-  const SPEED_LIMITS = {
-    MIN: 0.07, // Video min rate per Chromium source
-    MAX: 16, // Maximum playback speed in Chrome per Chromium source
-  };
 
   const CONTROLLER_SIZE_LIMITS = {
     // Video elements: minimum size before rejecting controller entirely

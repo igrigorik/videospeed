@@ -1,8 +1,11 @@
 /**
- * Chrome storage management utilities.
+ * Storage access for both sides of the content-script boundary.
  *
- * Context-aware: uses chrome.storage.sync when available (extension contexts),
- * falls back to CustomEvent bridge with content-bridge.js (MAIN world).
+ * Extension pages reach chrome.storage.sync directly. The page script (MAIN
+ * world) has no chrome.* APIs and goes through content-bridge.js. Of storage,
+ * the bridge carries exactly three things: this document's runtime settings
+ * at startup, later changes to runtime preferences, and a request to remember
+ * a speed.
  */
 
 window.VSC = window.VSC || {};
@@ -16,6 +19,9 @@ if (!window.VSC.StorageManager) {
   class StorageManager {
     static errorCallback = null;
 
+    /** True in MAIN world, where the content bridge is the only way to storage. */
+    static isBridged = !hasChrome;
+
     /**
      * Register error callback for monitoring storage failures
      * @param {Function} callback - Callback function for errors
@@ -25,20 +31,16 @@ if (!window.VSC.StorageManager) {
     }
 
     /**
-     * @param {Object} defaults - Default values
-     * @returns {Promise<Object>} Storage data
+     * Ask the bridge for this document's runtime settings. MAIN world only.
+     *
+     * The answer arrives over a page-visible event, so it is returned as
+     * received; the caller normalizes it. That check guards against a
+     * malformed answer, not a forged one — a page can forge either.
+     *
+     * @returns {Promise<Object|null>} The settings, or null when VSC is off
+     *   for this document or the bridge gave no usable answer
      */
-    static async get(defaults = {}) {
-      if (hasChrome) {
-        return new Promise((resolve) => {
-          chrome.storage.sync.get(defaults, (storage) => {
-            window.VSC.logger?.debug?.('StorageManager: settings from chrome.storage');
-            resolve(storage);
-          });
-        });
-      }
-
-      // No chrome.storage — request settings from bridge via CustomEvent
+    static requestRuntimeSettings() {
       return new Promise((resolve) => {
         const onReady = (e) => {
           docEl.removeEventListener('VSC_SETTINGS_READY', onReady);
@@ -53,16 +55,15 @@ if (!window.VSC.StorageManager) {
             return;
           }
 
-          // Bridge signals abort for blacklisted/disabled sites.
+          // Bridge signals abort for disabled sites.
           if (detail.abort) {
             window.VSC.logger?.debug?.('StorageManager: site disabled by bridge');
             resolve(null);
             return;
           }
 
-          // CustomEvents are page-visible and therefore not an authentication
-          // boundary. Reject malformed payloads instead of letting `{}` or an
-          // unrelated page event silently activate MAIN with defaults.
+          // Reject malformed payloads instead of letting `{}` or an unrelated
+          // page event silently activate MAIN with defaults.
           if (
             !detail.settings ||
             typeof detail.settings !== 'object' ||
@@ -74,7 +75,7 @@ if (!window.VSC.StorageManager) {
           }
 
           window.VSC.logger?.debug?.('StorageManager: settings from bridge');
-          resolve({ ...defaults, ...detail.settings });
+          resolve(detail.settings);
         };
 
         const timeout = setTimeout(() => {
@@ -90,6 +91,22 @@ if (!window.VSC.StorageManager) {
     }
 
     /**
+     * Read stored settings. Extension pages only.
+     * @param {Object} defaults - Values for keys that are not stored
+     * @returns {Promise<Object>} Storage data
+     */
+    static async get(defaults = {}) {
+      return new Promise((resolve) => {
+        chrome.storage.sync.get(defaults, (storage) => {
+          window.VSC.logger?.debug?.('StorageManager: settings from chrome.storage');
+          resolve(storage);
+        });
+      });
+    }
+
+    /**
+     * Write settings. From MAIN world only `lastSpeed` can be written, and
+     * only as a request the bridge may decline.
      * @param {Object} data - Data to store
      * @returns {Promise<void>}
      */
@@ -130,71 +147,58 @@ if (!window.VSC.StorageManager) {
           `StorageManager.set: only lastSpeed bridgeable from MAIN. Keys: ${keys.join(', ')}`
         );
       }
-
-      // Update local cache regardless (keeps in-memory state current)
-      window.VSC_settings = { ...window.VSC_settings, ...data };
-      return Promise.resolve();
     }
 
     /**
-     * Remove keys from storage.
+     * Remove keys from storage. Extension pages only.
      * @param {Array<string>} keys - Keys to remove
      * @returns {Promise<void>}
      */
     static async remove(keys) {
-      if (hasChrome) {
-        return new Promise((resolve, reject) => {
-          chrome.storage.sync.remove(keys, () => {
-            if (chrome.runtime.lastError) {
-              const error = new Error(`Storage remove failed: ${chrome.runtime.lastError.message}`);
-              window.VSC.logger?.error?.(
-                `Chrome storage remove failed: ${chrome.runtime.lastError.message}`
-              );
-              if (this.errorCallback) {
-                this.errorCallback(error, { removedKeys: keys });
-              }
-              reject(error);
-              return;
+      return new Promise((resolve, reject) => {
+        chrome.storage.sync.remove(keys, () => {
+          if (chrome.runtime.lastError) {
+            const error = new Error(`Storage remove failed: ${chrome.runtime.lastError.message}`);
+            window.VSC.logger?.error?.(
+              `Chrome storage remove failed: ${chrome.runtime.lastError.message}`
+            );
+            if (this.errorCallback) {
+              this.errorCallback(error, { removedKeys: keys });
             }
-            resolve();
-          });
+            reject(error);
+            return;
+          }
+          resolve();
         });
-      }
-      // No chrome.storage — update local cache only
-      if (window.VSC_settings) {
-        keys.forEach((key) => delete window.VSC_settings[key]);
-      }
-      return Promise.resolve();
+      });
     }
 
     /**
-     * Clear all storage.
+     * Clear all storage. Extension pages only.
      * @returns {Promise<void>}
      */
     static async clear() {
-      if (hasChrome) {
-        return new Promise((resolve, reject) => {
-          chrome.storage.sync.clear(() => {
-            if (chrome.runtime.lastError) {
-              const error = new Error(`Storage clear failed: ${chrome.runtime.lastError.message}`);
-              window.VSC.logger?.error?.(
-                `Chrome storage clear failed: ${chrome.runtime.lastError.message}`
-              );
-              if (this.errorCallback) {
-                this.errorCallback(error, { operation: 'clear' });
-              }
-              reject(error);
-              return;
+      return new Promise((resolve, reject) => {
+        chrome.storage.sync.clear(() => {
+          if (chrome.runtime.lastError) {
+            const error = new Error(`Storage clear failed: ${chrome.runtime.lastError.message}`);
+            window.VSC.logger?.error?.(
+              `Chrome storage clear failed: ${chrome.runtime.lastError.message}`
+            );
+            if (this.errorCallback) {
+              this.errorCallback(error, { operation: 'clear' });
             }
-            resolve();
-          });
+            reject(error);
+            return;
+          }
+          resolve();
         });
-      }
-      window.VSC_settings = {};
-      return Promise.resolve();
+      });
     }
 
     /**
+     * Listen for settings changes. MAIN world hears only what the bridge
+     * relays: runtime preferences that actually changed.
      * @param {Function} callback - Callback with changes in chrome.storage.onChanged format
      */
     static onChanged(callback) {
@@ -205,16 +209,7 @@ if (!window.VSC.StorageManager) {
           }
         });
       } else {
-        docEl.addEventListener('VSC_STORAGE_CHANGED', (e) => {
-          const changes = e.detail;
-          for (const [key, change] of Object.entries(changes)) {
-            if (change.newValue !== undefined) {
-              window.VSC_settings = window.VSC_settings || {};
-              window.VSC_settings[key] = change.newValue;
-            }
-          }
-          callback(changes);
-        });
+        docEl.addEventListener('VSC_STORAGE_CHANGED', (e) => callback(e.detail));
       }
     }
   }

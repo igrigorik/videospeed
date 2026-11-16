@@ -1,13 +1,22 @@
 /**
- * Site pattern matching utilities.
+ * Site rules: which rules a profile has, and which rule matches a URL.
  *
- * Shared matching engine used by siteRules (structured array) and the legacy
- * blacklist (newline-separated string).  Pure ES module — no DOM dependencies.
+ * Rules are `{ pattern, enabled, speed }` objects stored under `siteRules`.
+ * Profiles saved before site rules existed carry a newline-separated
+ * `blacklist` string instead, which reads as a list of disabled rules.
+ * Pure ES module — no DOM dependencies.
  */
 
 const regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 const regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 const escapeRegExp = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
+
+/** Sites where VSC stays off until the user says otherwise. */
+export const DEFAULT_SITE_RULES = Object.freeze(
+  ['imgur.com', 'teams.microsoft.com', 'meet.google.com'].map((pattern) =>
+    Object.freeze({ pattern, enabled: false, speed: null })
+  )
+);
 
 /**
  * Compile a pattern string into a RegExp.
@@ -69,7 +78,9 @@ export function matchSiteRule(rules, href) {
   }
 
   for (const rule of rules) {
-    const regexp = compilePattern(rule.pattern || '');
+    // An entry without a pattern string matches nothing. Stored rules are not
+    // validated on import, and one bad entry must not take the rest down.
+    const regexp = typeof rule?.pattern === 'string' ? compilePattern(rule.pattern) : null;
     if (regexp && regexp.test(href)) {
       return rule;
     }
@@ -79,25 +90,37 @@ export function matchSiteRule(rules, href) {
 }
 
 /**
- * Backward-compatible wrapper: check a legacy newline-separated blacklist string.
+ * Read a legacy blacklist as disabled site rules, one per non-empty line.
  *
  * @param {string} blacklist - Newline-separated pattern string
- * @param {string} href - URL to test
- * @returns {boolean} true if any pattern matches
+ * @returns {Array<{pattern: string, enabled: boolean, speed: null}>}
  */
-// Expose on window.VSC for page-context consumers (settings.js).
-window.VSC = window.VSC || {};
-window.VSC.matchSiteRule = matchSiteRule;
-
-export function isBlacklisted(blacklist, href) {
-  if (!blacklist) {
-    return false;
-  }
-
-  const rules = blacklist
+function rulesFromBlacklist(blacklist) {
+  return blacklist
     .split('\n')
-    .map((line) => ({ pattern: line.replace(regStrip, '') }))
-    .filter((r) => r.pattern.length > 0);
+    .map((line) => line.replace(regStrip, ''))
+    .filter(Boolean)
+    .map((pattern) => ({ pattern, enabled: false, speed: null }));
+}
 
-  return matchSiteRule(rules, href) !== null;
+/**
+ * The site rules in force for a stored profile: what the user saved, else the
+ * defaults.
+ *
+ * Rules are saved under two keys, so "saved" means the `siteRules` list, where
+ * an empty list is a deliberate "no rules", or else the legacy `blacklist`.
+ * The content bridge enforces this list and the options page displays it;
+ * both call this function so the two cannot disagree.
+ *
+ * @param {Object} stored - Settings as stored, without defaults filled in
+ * @returns {Array<{pattern: string, enabled: boolean, speed: number|null}>}
+ */
+export function selectSiteRules(stored) {
+  if (Array.isArray(stored.siteRules)) {
+    return stored.siteRules;
+  }
+  if (typeof stored.blacklist === 'string') {
+    return rulesFromBlacklist(stored.blacklist);
+  }
+  return DEFAULT_SITE_RULES;
 }

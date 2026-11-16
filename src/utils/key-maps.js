@@ -232,6 +232,18 @@ export const DEFAULT_BINDINGS = Object.freeze({
   jump: { code: 'KeyJ', key: 74, keyCode: 74, displayKey: 'j', value: 0 },
 });
 
+/**
+ * A fresh list of the default bindings, one per predefined action.
+ * Callers own the result and may edit it in place.
+ */
+export function defaultKeyBindings() {
+  return PREDEFINED_ACTIONS.map((action) => ({
+    action,
+    ...DEFAULT_BINDINGS[action],
+    predefined: true,
+  }));
+}
+
 /** event.code values that must not be recorded as shortcuts. */
 export const BLACKLISTED_CODES = new Set([
   'Tab',

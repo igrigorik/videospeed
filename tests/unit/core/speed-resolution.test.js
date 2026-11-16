@@ -3,9 +3,12 @@
  * through a real VideoController + arbitration adapter).
  *
  * Covers the LOAD-priority truth table (docs/speed-arbitration.md):
- *   baseline = siteDefaultSpeed ?? 1.0
- *   lastSpeed wins if user has changed it (in-memory, !== 1.0)
+ *   lastSpeed starts as the matching site rule's speed, else the remembered
+ *   speed, else null — resolved by the content bridge (runtime-settings.js)
+ *   lastSpeed wins once the user has changed it in memory
  *   rememberSpeed controls cross-session storage persistence only
+ *
+ * These tests set lastSpeed directly to stand in for the bridge's answer.
  */
 
 import {
@@ -55,7 +58,6 @@ describe('SpeedResolution', () => {
     await config.load();
     config.settings.rememberSpeed = false;
     config.settings.lastSpeed = 1.0;
-    config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
@@ -66,9 +68,8 @@ describe('SpeedResolution', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    // load() seeds lastSpeed from the rule (F5 fix)
+    // the bridge resolves the rule to the initial lastSpeed (F5 fix)
     config.settings.lastSpeed = 2.0;
-    config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
@@ -80,7 +81,6 @@ describe('SpeedResolution', () => {
     await config.load();
     config.settings.rememberSpeed = true;
     config.settings.lastSpeed = 1.5;
-    config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.5);
@@ -92,7 +92,6 @@ describe('SpeedResolution', () => {
     await config.load();
     config.settings.rememberSpeed = true;
     config.settings.lastSpeed = 1.0;
-    config.settings.siteDefaultSpeed = undefined;
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
@@ -103,8 +102,7 @@ describe('SpeedResolution', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = true;
-    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
-    config.settings.siteDefaultSpeed = 2.0;
+    config.settings.lastSpeed = 2.0; // the bridge resolves the rule to the initial lastSpeed (F5 fix)
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
@@ -115,8 +113,7 @@ describe('SpeedResolution', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
     config.settings.rememberSpeed = false;
-    config.settings.lastSpeed = 2.0; // load() seeds lastSpeed from the rule (F5 fix)
-    config.settings.siteDefaultSpeed = 2.0;
+    config.settings.lastSpeed = 2.0; // the bridge resolves the rule to the initial lastSpeed (F5 fix)
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(2.0);
@@ -132,7 +129,6 @@ describe('SpeedResolution', () => {
     await config.load();
     config.settings.rememberSpeed = false;
     config.settings.lastSpeed = 1.0; // user pressed Reset — real number, not null
-    config.settings.siteDefaultSpeed = 2.0;
 
     const ctrl = makeController(config);
     expect(ctrl.arbitration.lifecycleTarget(ctrl.video)).toBe(1.0);
@@ -144,7 +140,6 @@ describe('SpeedResolution', () => {
     await config.load();
     config.settings.rememberSpeed = false;
     config.settings.lastSpeed = null;
-    config.settings.siteDefaultSpeed = null;
 
     const ctrl = makeController(config);
     // Release N (cell 1 fixed): no authority means the arbiter emits no

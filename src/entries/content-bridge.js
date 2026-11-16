@@ -1,28 +1,49 @@
 /**
  * Content Bridge — ISOLATED world thin bridge for chrome.* API access.
  *
- * Runs at document_start. Communicates with inject.js (MAIN world) via
- * CustomEvents on document.documentElement.
+ * Runs at document_start and talks to inject.js (MAIN world) through
+ * CustomEvents on document.documentElement. The page can read every one of
+ * those events, so nothing is forwarded as stored: the bridge sends the
+ * projections built by runtime-settings.js and keeps the rest to itself.
+ * See docs/settings-trust-boundary.md.
  *
  * Settings handshake:
- *   1. Bridge starts the settings read and registers VSC_REQUEST_SETTINGS
+ *   1. Bridge starts the storage read and registers VSC_REQUEST_SETTINGS
  *   2. MAIN world fires VSC_REQUEST_SETTINGS at document_idle
- *   3. Bridge responds with VSC_SETTINGS_READY once its storage snapshot is ready
+ *   3. Bridge answers VSC_SETTINGS_READY with this document's runtime
+ *      settings, or { abort: true } when VSC is off here
  */
 
-import { isBlacklisted } from '../utils/blacklist.js';
-import { matchSiteRule } from '../utils/site-pattern.js';
-
-// Speed limits for page→bridge write validation.
-// Duplicated from constants.js (ISOLATED world can't import page modules).
-const SPEED_MIN = 0.07;
-const SPEED_MAX = 16;
+import { MESSAGE_TYPES, readCommand } from '../utils/messages.js';
+import {
+  normalizeRememberedSpeed,
+  preferenceChanges,
+  readPreference,
+  resolveRuntimeSettings,
+} from '../utils/runtime-settings.js';
 
 const docEl = document.documentElement;
 let bridgeInitialized = false;
 
+function dispatch(type, detail) {
+  docEl.dispatchEvent(new CustomEvent(type, { detail }));
+}
+
 function dispatchAbort() {
-  docEl.dispatchEvent(new CustomEvent('VSC_SETTINGS_READY', { detail: { abort: true } }));
+  dispatch('VSC_SETTINGS_READY', { abort: true });
+}
+
+/** Sync storage as it stands after `changes`, given the state before them. */
+function applyChanges(stored, changes) {
+  const next = { ...stored };
+  for (const [key, { newValue }] of Object.entries(changes)) {
+    if (newValue === undefined) {
+      delete next[key];
+    } else {
+      next[key] = newValue;
+    }
+  }
+  return next;
 }
 
 function init() {
@@ -41,53 +62,60 @@ function init() {
       return;
     }
 
+    // Sync storage as of the latest change; null until the startup read lands,
+    // and for good if it fails. Changes that outrun the read wait in
+    // `earlyChanges`, which is dropped once the read has settled.
+    let stored = null;
+    let earlyChanges = [];
     let disabledForDocument = false;
     let bridgeActive = false;
 
     // Start the read without awaiting it. The request listener is installed in
-    // this same task, so MAIN cannot fire into the old listener-free window.
-    const settingsReady = chrome.storage.sync.get(null).catch((error) => {
-      console.error('[VSC] Initial settings load failed:', error);
-      return null;
-    });
+    // this same task, so MAIN cannot fire into a listener-free window.
+    const storageRead = chrome.storage.sync
+      .get(null)
+      .then(
+        (snapshot) => {
+          stored = earlyChanges.reduce(applyChanges, snapshot);
+        },
+        (error) => {
+          console.error('[VSC] Initial settings load failed:', error);
+        }
+      )
+      .finally(() => {
+        earlyChanges = null;
+      });
 
     docEl.addEventListener(
       'VSC_REQUEST_SETTINGS',
       async () => {
-        const settings = await settingsReady;
+        await storageRead;
+
+        // Resolved once, from the latest state. Site-rule edits after this
+        // point take effect on the next load.
+        const settings =
+          stored && !disabledForDocument ? resolveRuntimeSettings(stored, location.href) : null;
         if (!settings) {
           dispatchAbort();
           return;
         }
 
-        // Legacy blacklist is consulted only before migration creates siteRules.
-        const blacklisted = !settings.siteRules && isBlacklisted(settings.blacklist, location.href);
-        const siteRuleMatch = matchSiteRule(settings.siteRules, location.href);
-        const siteDisabled = siteRuleMatch && siteRuleMatch.enabled === false;
-        if (disabledForDocument || settings.enabled === false || blacklisted || siteDisabled) {
-          dispatchAbort();
-          return;
-        }
-
-        const publicSettings = { ...settings };
-        delete publicSettings.blacklist;
-        delete publicSettings.enabled;
         bridgeActive = true;
-        docEl.dispatchEvent(
-          new CustomEvent('VSC_SETTINGS_READY', {
-            detail: {
-              settings: publicSettings,
-              hostname: location.hostname.replace(/^www\./, ''),
-            },
-          })
-        );
+        dispatch('VSC_SETTINGS_READY', { settings });
       },
       { once: true }
     );
 
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace !== 'sync') {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'sync') {
         return;
+      }
+
+      const before = stored;
+      if (stored) {
+        stored = applyChanges(stored, changes);
+      } else {
+        earlyChanges?.push(changes);
       }
 
       const enabledChange = changes.enabled;
@@ -97,47 +125,44 @@ function init() {
       }
       if (enabledChange?.newValue === false) {
         bridgeActive = false;
-        docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: { type: 'VSC_TEARDOWN' } }));
+        dispatch('VSC_MESSAGE', { type: MESSAGE_TYPES.TEARDOWN });
         return;
       }
       if (!bridgeActive) {
         return;
       }
 
-      const relayChanges = { ...changes };
-      delete relayChanges.enabled;
-      delete relayChanges.blacklist;
-      if (Object.keys(relayChanges).length > 0) {
-        docEl.dispatchEvent(new CustomEvent('VSC_STORAGE_CHANGED', { detail: relayChanges }));
+      // The page hears about a change only if it alters a runtime preference.
+      const visibleChanges = preferenceChanges(before, stored);
+      if (visibleChanges) {
+        dispatch('VSC_STORAGE_CHANGED', visibleChanges);
       }
     });
 
+    // Popup commands are rebuilt from their known fields, never forwarded.
     chrome.runtime.onMessage.addListener((request) => {
-      if (bridgeActive) {
-        docEl.dispatchEvent(new CustomEvent('VSC_MESSAGE', { detail: request }));
+      const command = bridgeActive ? readCommand(request) : null;
+      if (command) {
+        dispatch('VSC_MESSAGE', command);
       }
     });
 
-    const handleWriteStorage = (e) => {
+    // The one thing a page may ask storage to do: remember a speed. The page
+    // cannot grant itself that; the user's own setting, as stored, decides.
+    const handleWriteStorage = (event) => {
       try {
-        if (!bridgeActive) {
+        if (!bridgeActive || !readPreference(stored, 'rememberSpeed')) {
           return;
         }
 
-        const data = e.detail;
-        if (!data || typeof data !== 'object') {
+        const lastSpeed = normalizeRememberedSpeed(event.detail?.lastSpeed);
+        if (lastSpeed === null) {
           return;
         }
 
-        // Only lastSpeed can cross from MAIN into extension storage.
-        if ('lastSpeed' in data) {
-          const speed = data.lastSpeed;
-          if (typeof speed === 'number' && Number.isFinite(speed)) {
-            chrome.storage.sync.set({
-              lastSpeed: Math.min(Math.max(speed, SPEED_MIN), SPEED_MAX),
-            });
-          }
-        }
+        chrome.storage.sync.set({ lastSpeed }).catch((error) => {
+          console.warn('[VSC] Could not remember speed:', error);
+        });
       } catch (err) {
         if (err.message?.includes('Extension context invalidated')) {
           docEl.removeEventListener('VSC_WRITE_STORAGE', handleWriteStorage);
