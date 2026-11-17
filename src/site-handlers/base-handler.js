@@ -47,6 +47,24 @@ class BaseSiteHandler {
   }
 
   /**
+   * Hide the native ratechange echo of a VSC write from page listeners.
+   *
+   * Some players mirror every rate they observe into internal state and
+   * write back a clamped value asynchronously (a worker round-trip), which
+   * the synchronous reactive-rewrite detection in SpeedArbitration cannot
+   * correlate. Returning true routes the write through the same
+   * suppressPropagation path used for proven reactive rewrites, so the page
+   * never observes that rate. Keep it narrow: hidden writes leave the site's
+   * own player state stale.
+   * @param {HTMLMediaElement} _video - Video element
+   * @param {number} _speed - Target speed about to be written
+   * @returns {boolean} True to hide this write's echo from the page
+   */
+  hidesRateEcho(_video, _speed) {
+    return false;
+  }
+
+  /**
    * Handle site-specific speed change.
    * Called whenever the extension sets playback speed (user action, fight-back, etc.).
    * Override to sync with a site's custom player API.

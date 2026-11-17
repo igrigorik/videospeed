@@ -49,6 +49,7 @@ import '../site-handlers/facebook-handler.js';
 import '../site-handlers/amazon-handler.js';
 import '../site-handlers/apple-handler.js';
 import '../site-handlers/dailymotion-handler.js';
+import '../site-handlers/twitch-handler.js';
 import '../site-handlers/frame-handler.js';
 import '../site-handlers/index.js';
 

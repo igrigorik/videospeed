@@ -14,6 +14,7 @@ class SiteHandlerManager {
       window.VSC.AmazonHandler,
       window.VSC.AppleHandler,
       window.VSC.DailymotionHandler,
+      window.VSC.TwitchHandler,
       window.VSC.FrameHandler,
     ];
   }
@@ -74,6 +75,16 @@ class SiteHandlerManager {
   handleSpeedChange(video, speed) {
     const handler = this.getCurrentHandler();
     handler.handleSpeedChange(video, speed);
+  }
+
+  /**
+   * Whether the current site needs this write's echo hidden from the page
+   * @param {HTMLMediaElement} video - Video element
+   * @param {number} speed - Target speed
+   * @returns {boolean}
+   */
+  hidesRateEcho(video, speed) {
+    return this.getCurrentHandler().hidesRateEcho(video, speed);
   }
 
   /**
