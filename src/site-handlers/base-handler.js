@@ -58,6 +58,23 @@ class BaseSiteHandler {
   }
 
   /**
+   * Whether the native ratechange echo of a VSC write of `rate` must be hidden
+   * from page listeners.
+   *
+   * Echoes are observable by default so player UIs and integrations stay in
+   * sync. Override only for a player that clamps any rate it observes to a
+   * product ceiling and writes the clamp back asynchronously: the reactive
+   * echo guard cannot causally attribute such a rewrite, so every VSC write is
+   * vetoed until the fight budget runs out. Cite the motivating issue.
+   * @param {HTMLMediaElement} _video - Video element
+   * @param {number} _rate - Rate VSC is about to write
+   * @returns {boolean} True to stop the echo at VSC's document-capture listener
+   */
+  hidesRateEcho(_video, _rate) {
+    return false;
+  }
+
+  /**
    * Handle site-specific seeking functionality
    * @param {HTMLMediaElement} video - Video element
    * @param {number} seekSeconds - Seconds to seek

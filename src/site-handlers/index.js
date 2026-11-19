@@ -14,6 +14,7 @@ class SiteHandlerManager {
       window.VSC.AmazonHandler,
       window.VSC.AppleHandler,
       window.VSC.DailymotionHandler,
+      window.VSC.TwitchHandler,
       window.VSC.FrameHandler,
     ];
   }
@@ -74,6 +75,16 @@ class SiteHandlerManager {
   handleSpeedChange(video, speed) {
     const handler = this.getCurrentHandler();
     handler.handleSpeedChange(video, speed);
+  }
+
+  /**
+   * Whether the current site's player must not observe the echo of a VSC write
+   * @param {HTMLMediaElement} video - Video element
+   * @param {number} speed - Rate VSC is about to write
+   * @returns {boolean} True to hide the echo from page listeners
+   */
+  hidesRateEcho(video, speed) {
+    return this.getCurrentHandler().hidesRateEcho(video, speed);
   }
 
   /**

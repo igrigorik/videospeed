@@ -552,8 +552,12 @@ class ActionHandler {
   writeRate(video, rate, { suppressEchoPropagation = false } = {}) {
     const numericSpeed = Number(rate.toFixed(2));
     if (video.playbackRate !== numericSpeed && this.eventManager?.arbitration) {
+      // A site handler may also hide echoes from a player that would clamp
+      // them (#1651); the token mechanism is the same as the retry echo's.
       this.eventManager.arbitration.noteWrite(video, numericSpeed, {
-        suppressPropagation: suppressEchoPropagation,
+        suppressPropagation:
+          suppressEchoPropagation ||
+          window.VSC.siteHandlerManager.hidesRateEcho(video, numericSpeed),
       });
     }
     window.VSC.siteHandlerManager.handleSpeedChange(video, numericSpeed);

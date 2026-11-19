@@ -86,6 +86,8 @@ This deliberately favors VSC's granular rate over players that enforce restricte
 
 The policy is automatic. Add a compatibility mode only for a concrete conflict outside this rule. Reactive-echo isolation is browser-adapter policy, not a pure-arbiter or TLA+ transition.
 
+Site handlers may declare one such compatibility mode, `hidesRateEcho(video, rate)`. Its echoes use the same hidden-token path as the corrective retry. It covers players whose veto is asynchronous and therefore outside causal proof. Twitch is the current case (#1651): its player core forwards every observed rate to a worker, which answers one round trip later with a 2x clamp. Each VSC write above 2x was undone, the fight budget ran out, and VSC stood down at 2x. The player core never re-asserts its rate on its own, so hiding VSC writes above the clamp is enough. Writes at or below it stay visible, so Twitch's menu keeps tracking them. This is adapter-only: it changes no authority, conflict-record or TLA+ transition.
+
 There is intentionally no document-wide surrender effect. Local surrender is not an authority mutation.
 
 ## Transition table

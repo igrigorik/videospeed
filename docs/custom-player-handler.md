@@ -148,6 +148,7 @@ These are the core operations. Each method **owns** the operation entirely -- th
 Called whenever the extension sets playback speed. This includes user-initiated speed changes, programmatic changes, and fight-back speed restoration.
 
 **Default behavior:**
+
 ```js
 handleSpeedChange(video, speed) {
   video.playbackRate = speed;
@@ -170,20 +171,27 @@ handleSpeedChange(video, speed) {
 
 **When is this called?**
 
-| Scenario | Example |
-|---|---|
-| User changes speed | Keyboard shortcut, popup slider |
-| Extension restores speed | Page load with "remember speed" enabled |
-| Fight-back | Site tried to reset speed, extension restores it |
-| Cooldown restore | Site changed speed during cooldown window |
+| Scenario                 | Example                                          |
+| ------------------------ | ------------------------------------------------ |
+| User changes speed       | Keyboard shortcut, popup slider                  |
+| Extension restores speed | Page load with "remember speed" enabled          |
+| Fight-back               | Site tried to reset speed, extension restores it |
+| Cooldown restore         | Site changed speed during cooldown window        |
 
 All paths go through `handleSpeedChange`. There are no direct `video.playbackRate` assignments in the extension's core.
+
+#### `hidesRateEcho(video, rate)`
+
+Returns whether the `ratechange` caused by a VSC write of `rate` should be stopped at VSC's document-capture listener, so page listeners on the media element never see it. Default: `false`. Echoes stay visible so player UIs keep tracking VSC.
+
+Override this only for a player that clamps any rate it observes and writes the clamp back **asynchronously**. VSC's reactive-echo guard catches synchronous rewrites, but it can't attribute an async one, so each VSC write gets reset, VSC's fight budget runs out, and it stands down. Example: Twitch's worker answers with a 2x clamp (#1651). Hide only the rates the player would reject. The player's own UI won't reflect hidden rates.
 
 #### `handleSeek(video, seekSeconds)`
 
 Called when the user seeks forward or backward. The `seekSeconds` value is negative for rewind.
 
 **Default behavior:**
+
 ```js
 handleSeek(video, seekSeconds) {
   const newTime = Math.max(0, Math.min(video.duration, video.currentTime + seekSeconds));
@@ -232,13 +240,14 @@ When a site externally changes `video.playbackRate` (e.g., the site's own speed 
 
 ## Existing handlers
 
-| Handler | Site | Key overrides |
-|---|---|---|
-| `YouTubeHandler` | youtube.com | Controller positioning, autohide CSS forwarding, video filtering |
-| `NetflixHandler` | netflix.com | Controller positioning, custom seeking via postMessage |
-| `FacebookHandler` | facebook.com | Controller positioning, dynamic content observer |
-| `AmazonHandler` | amazon.com, primevideo.com | Controller positioning, size-based video filtering |
-| `AppleHandler` | tv.apple.com | Controller positioning, shadow DOM video detection |
+| Handler           | Site                                      | Key overrides                                                    |
+| ----------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| `YouTubeHandler`  | youtube.com                               | Controller positioning, autohide CSS forwarding, video filtering |
+| `NetflixHandler`  | netflix.com                               | Controller positioning, custom seeking via postMessage           |
+| `FacebookHandler` | facebook.com                              | Controller positioning, dynamic content observer                 |
+| `AmazonHandler`   | amazon.com, primevideo.com                | Controller positioning, size-based video filtering               |
+| `AppleHandler`    | tv.apple.com                              | Controller positioning, shadow DOM video detection               |
+| `TwitchHandler`   | twitch.tv (incl. player.twitch.tv embeds) | Hides echoes above the player's 2x clamp (`hidesRateEcho`)       |
 
 ## Testing
 
