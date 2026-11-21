@@ -551,12 +551,13 @@ class ActionHandler {
    */
   writeRate(video, rate, { suppressEchoPropagation = false } = {}) {
     const numericSpeed = Number(rate.toFixed(2));
+    const siteHandlers = window.VSC.siteHandlerManager;
     if (video.playbackRate !== numericSpeed && this.eventManager?.arbitration) {
       this.eventManager.arbitration.noteWrite(video, numericSpeed, {
-        suppressPropagation: suppressEchoPropagation,
+        suppressPropagation: suppressEchoPropagation || siteHandlers.hidesRateEchoes(video),
       });
     }
-    window.VSC.siteHandlerManager.handleSpeedChange(video, numericSpeed);
+    siteHandlers.handleSpeedChange(video, numericSpeed);
   }
 
   /**

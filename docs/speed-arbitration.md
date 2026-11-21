@@ -86,6 +86,8 @@ This deliberately favors VSC's granular rate over players that enforce restricte
 
 The policy is automatic. Add a compatibility mode only for a concrete conflict outside this rule. Reactive-echo isolation is browser-adapter policy, not a pure-arbiter or TLA+ transition.
 
+The compatibility mode is `BaseSiteHandler.hidesRateEchoes()`. When the current site handler returns true, every VSC write token is registered with propagation suppressed, so each VSC echo is stopped at document capture and never reaches page listeners; native writes are not tokens and still propagate and classify normally. Only Twitch opts in (#1651): its worker-backed player answers any unrequested `ratechange` by posting the rate to the core, which clamps to [0.25, 2] and writes the clamp back on a later task. That asynchronous veto is outside the causal proof above, and a visible retry would only be vetoed again. Hiding the echo keeps the player from ever learning the rate, at the cost that its own speed menu keeps showing its last value.
+
 There is intentionally no document-wide surrender effect. Local surrender is not an authority mutation.
 
 ## Transition table

@@ -36,6 +36,7 @@ export async function loadCoreModules() {
   await import('../../src/site-handlers/amazon-handler.js');
   await import('../../src/site-handlers/apple-handler.js');
   await import('../../src/site-handlers/dailymotion-handler.js');
+  await import('../../src/site-handlers/twitch-handler.js');
   await import('../../src/site-handlers/frame-handler.js');
   await import('../../src/site-handlers/index.js');
 

@@ -58,6 +58,21 @@ class BaseSiteHandler {
   }
 
   /**
+   * Hide VSC's own ratechange echoes from page listeners on this site.
+   *
+   * By default an ordinary VSC write stays observable so player UI and
+   * auxiliary media can sync with it (docs/speed-arbitration.md, reactive echo
+   * isolation). Opt in only for a player that answers an observed rate with an
+   * asynchronous veto, which the synchronous causal-proof path cannot see.
+   * The trade-off: the player's own UI and internal state keep their old rate.
+   * @param {HTMLMediaElement} _video - Video element being written
+   * @returns {boolean} True to stop VSC write echoes at document capture
+   */
+  hidesRateEchoes(_video) {
+    return false;
+  }
+
+  /**
    * Handle site-specific seeking functionality
    * @param {HTMLMediaElement} video - Video element
    * @param {number} seekSeconds - Seconds to seek

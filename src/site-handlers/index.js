@@ -14,6 +14,7 @@ class SiteHandlerManager {
       window.VSC.AmazonHandler,
       window.VSC.AppleHandler,
       window.VSC.DailymotionHandler,
+      window.VSC.TwitchHandler,
       window.VSC.FrameHandler,
     ];
   }
@@ -74,6 +75,15 @@ class SiteHandlerManager {
   handleSpeedChange(video, speed) {
     const handler = this.getCurrentHandler();
     handler.handleSpeedChange(video, speed);
+  }
+
+  /**
+   * Whether VSC write echoes must be hidden from page listeners on this site
+   * @param {HTMLMediaElement} video - Video element being written
+   * @returns {boolean}
+   */
+  hidesRateEchoes(video) {
+    return this.getCurrentHandler().hidesRateEchoes(video);
   }
 
   /**
