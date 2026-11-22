@@ -253,6 +253,122 @@ async function waitForDualControllerStates(page, expected, context) {
   }
 }
 
+async function assertEndedControllerOverlap(page) {
+  const waitForVisible = async (expected, context) => {
+    await page
+      .waitForFunction(
+        (target) =>
+          Object.entries(target).every(([id, visible]) => {
+            const host = document.getElementById(id)?.vsc?.div;
+            const panel = host?.shadowRoot?.querySelector('#controller');
+            if (!panel) {
+              return false;
+            }
+            const style = getComputedStyle(panel);
+            const rendered =
+              getComputedStyle(host).visibility === 'visible' &&
+              style.visibility === 'visible' &&
+              style.opacity !== '0' &&
+              panel.getBoundingClientRect().width > 0;
+            return rendered === visible;
+          }),
+        { timeout: 2500 },
+        expected
+      )
+      .catch(() => {
+        throw new Error(`${context}: expected controller visibility ${JSON.stringify(expected)}`);
+      });
+  };
+
+  await page.goto(`file://${path.join(__dirname, 'dual-video.html')}`, {
+    waitUntil: 'networkidle2',
+  });
+  await waitForVisible({ videoA: true, videoB: true }, 'two independent players');
+  await page.evaluate(async () => {
+    const ad = document.getElementById('videoA');
+    ad.vsc.div.dataset.vscVisibility = 'show';
+    ad.loop = false;
+    ad.currentTime = ad.duration - 0.05;
+    await ad.play();
+  });
+  await page.waitForFunction(() => document.getElementById('videoA').ended);
+  await waitForVisible({ videoA: true, videoB: true }, 'ended video without a replacement');
+
+  const panelPositions = await page.evaluate(() => {
+    const ad = document.getElementById('videoA');
+    const replacement = document.getElementById('videoB').cloneNode(true);
+    replacement.id = 'replacement';
+    replacement.style.position = 'absolute';
+    ad.parentElement.append(replacement);
+    const panel = ad.vsc.div.shadowRoot.querySelector('#controller');
+    return { top: panel.style.top, left: panel.style.left };
+  });
+  await page.waitForFunction(() => !!document.getElementById('replacement').vsc?.div);
+  await page.evaluate(({ top, left }) => {
+    const replacement = document.getElementById('replacement');
+    Object.assign(replacement.vsc.div.shadowRoot.querySelector('#controller').style, { top, left });
+  }, panelPositions);
+  await waitForVisible(
+    { videoA: false, replacement: true, videoB: true },
+    'overlapping replacement'
+  );
+
+  await page.evaluate(() => {
+    document.getElementById('replacement').vsc.div.dataset.vscVisibility = 'hide';
+  });
+  await waitForVisible({ videoA: true, replacement: false }, 'replacement hidden by user');
+  await page.$eval('#replacement', (video) => video.play());
+  await page.keyboard.press('d');
+  const rates = await page.evaluate(() => ({
+    ended: document.getElementById('videoA').playbackRate,
+    playing: document.getElementById('replacement').playbackRate,
+    independent: document.getElementById('videoB').playbackRate,
+  }));
+  if (rates.ended !== 1 || rates.playing !== 1.1 || rates.independent !== 1.1) {
+    throw new Error(
+      `D should skip only the ended video with a playing replacement. Got ${JSON.stringify(rates)}`
+    );
+  }
+  await page.evaluate(() => {
+    document.getElementById('replacement').vsc.div.dataset.vscVisibility = 'show';
+  });
+  await waitForVisible({ videoA: false, replacement: true }, 'replacement shown again');
+
+  await page.evaluate(() => {
+    const panel = document
+      .getElementById('replacement')
+      .vsc.div.shadowRoot.querySelector('#controller');
+    panel.style.left = `${parseFloat(panel.style.left) + 200}px`;
+  });
+  await waitForVisible({ videoA: true, replacement: true }, 'replacement moved away');
+  await page.evaluate((left) => {
+    document
+      .getElementById('replacement')
+      .vsc.div.shadowRoot.querySelector('#controller').style.left = left;
+  }, panelPositions.left);
+  await waitForVisible({ videoA: false, replacement: true }, 'replacement moved back');
+  await page.evaluate(() => {
+    document.getElementById('videoA').currentTime = 0;
+  });
+  await waitForVisible({ videoA: true, replacement: true }, 'seek away from playback end');
+  await page.evaluate(async () => {
+    const ad = document.getElementById('videoA');
+    ad.currentTime = ad.duration - 0.05;
+    await ad.play();
+  });
+  await waitForVisible({ videoA: false, replacement: true }, 'video ends again');
+  await page.evaluate(() => document.getElementById('replacement').remove());
+  await waitForVisible({ videoA: true, videoB: true }, 'replacement removed');
+  const previousRate = await page.$eval('#videoA', (video) => video.playbackRate);
+  await page.keyboard.press('d');
+  const endedRate = await page.$eval('#videoA', (video) => video.playbackRate);
+  if (endedRate !== Number((previousRate + 0.1).toFixed(2))) {
+    throw new Error(
+      `D should still reach an ended video without a playing replacement. Got ${previousRate} → ${endedRate}`
+    );
+  }
+}
+
 async function testDisplayToggle() {
   console.log('🧪 Testing display visibility overrides...');
 
@@ -499,6 +615,8 @@ async function testDisplayToggle() {
     }
 
     console.log('   ✅ Mixed-controller local/broadcast/release transitions');
+    await assertEndedControllerOverlap(page);
+    console.log('   ✅ Ended controller only hides for an overlapping replacement');
     console.log('✅ Display visibility override test passed!');
     return { success: true };
   } catch (error) {

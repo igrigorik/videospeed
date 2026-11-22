@@ -53,6 +53,10 @@ class ShadowDOMManager {
         visibility: hidden !important;
         opacity: 0 !important;
       }
+
+      :host([data-vsc-overlap-hidden]) #controller {
+        visibility: hidden !important;
+      }
       
       #controller {
         position: absolute;

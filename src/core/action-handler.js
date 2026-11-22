@@ -40,8 +40,14 @@ class ActionHandler {
       targetController = e.target.getRootNode().host;
     }
 
+    const isPlaybackBroadcast = !targetController && !['display', 'blink', 'drag'].includes(action);
+    // Resolve the targets before a play/pause action can change who is playing.
+    const targets = isPlaybackBroadcast
+      ? mediaTags.filter((video) => !video.ended || !video.vsc?.overlapGroup?.hasPlayingVideo())
+      : mediaTags;
+
     const authorityBatch = this.createAuthorityBatch();
-    mediaTags.forEach((v) => {
+    targets.forEach((v) => {
       const controller = v.vsc?.div;
 
       if (!controller) {
