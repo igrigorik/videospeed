@@ -21,6 +21,10 @@ vsc-controller {
   user-select: none;
 }
 
+vsc-controller[data-vsc-overlap-hidden] {
+  visibility: hidden !important;
+}
+
 /* shift YT 3D controller down */
 /* e.g. https://www.youtube.com/watch?v=erftYPflJzQ */
 .ytp-webgl-spherical-control {

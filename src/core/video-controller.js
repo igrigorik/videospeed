@@ -3,6 +3,8 @@
  *
  */
 
+import { trackControllerOverlap } from './controller-overlap.js';
+
 window.VSC = window.VSC || {};
 
 class VideoController {
@@ -48,6 +50,7 @@ class VideoController {
 
     // Create UI
     this.div = this.initializeControls();
+    this.overlapGroup = target.tagName === 'VIDEO' ? trackControllerOverlap(this) : null;
 
     // Set up event handlers
     this.setupEventHandlers();
@@ -166,6 +169,7 @@ class VideoController {
       opacity: this.config.settings.controllerOpacity,
       buttonSize: this.config.settings.controllerButtonSize,
     });
+    this.panel = window.VSC.ShadowDOMManager.getController(shadow);
 
     // Set up control events
     this.controlsManager.setupControlEvents(shadow, this.video);
@@ -183,9 +187,8 @@ class VideoController {
     const computedPosition = getComputedStyle(wrapper).position;
     if (computedPosition !== 'relative') {
       const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
-      const innerController = window.VSC.ShadowDOMManager.getController(shadow);
-      innerController.style.top = position.top;
-      innerController.style.left = position.left;
+      this.panel.style.top = position.top;
+      this.panel.style.left = position.left;
     }
 
     window.VSC.logger.debug('initializeControls End');
@@ -234,24 +237,25 @@ class VideoController {
    * @private
    */
   setupEventHandlers() {
-    const mediaEventAction = (event) => {
-      this.applyLifecycleSpeed(event.type);
-    };
-
     // Bind event handlers. Seek evidence is recorded before the readyState
     // restore guard so initialization-time seeks can explain a 1.0 reset.
-    this.handlePlay = mediaEventAction.bind(this);
+    this.handlePlay = (event) => {
+      this.overlapGroup?.update();
+      this.applyLifecycleSpeed(event.type);
+    };
     this.handleSeekEvidence = (event) => {
       this.arbitration.classifier?.observeSeek(this.video, event.timeStamp);
     };
     this.handleSeek = (event) => {
+      this.overlapGroup?.update();
       this.handleSeekEvidence(event);
       if (event.target.readyState < 2) {
         return;
       }
-      mediaEventAction.call(this, event);
+      this.applyLifecycleSpeed(event.type);
     };
     this.handleMediaInit = (event) => {
+      this.overlapGroup?.update();
       this.arbitration.clearEchoTransaction(this.video);
       this.arbitration.classifier?.observeMediaInit(this.video, event.timeStamp);
     };
@@ -264,6 +268,11 @@ class VideoController {
     this.video.addEventListener('seeking', this.handleSeekEvidence);
     this.video.addEventListener('seeked', this.handleSeek);
     this.video.addEventListener('loadstart', this.handleMediaInit);
+
+    if (this.overlapGroup) {
+      this.handleEnded = () => this.overlapGroup.update();
+      this.video.addEventListener('ended', this.handleEnded);
+    }
 
     window.VSC.logger.debug('Added media event handlers: play, seeking, seeked, loadstart');
   }
@@ -312,6 +321,10 @@ class VideoController {
     if (this.div && this.div.parentNode) {
       this.div.remove();
     }
+    if (this.overlapGroup) {
+      this.overlapGroup.remove(this);
+      this.overlapGroup = null;
+    }
 
     // Remove event listeners
     if (this.handlePlay) {
@@ -333,6 +346,10 @@ class VideoController {
     if (this.handleLoadedMetadata) {
       this.video.removeEventListener('loadedmetadata', this.handleLoadedMetadata);
       this.handleLoadedMetadata = null;
+    }
+    if (this.handleEnded) {
+      this.video.removeEventListener('ended', this.handleEnded);
+      this.handleEnded = null;
     }
 
     // Disconnect mutation observer
